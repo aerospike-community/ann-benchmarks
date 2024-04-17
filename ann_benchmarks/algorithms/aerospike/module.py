@@ -130,7 +130,8 @@ class Aerospike(BaseANN):
                 print(f'Aerospike: Dropping Index...')
                 s = time.time()
                 await self._adminClient.index_drop(namespace=self._namespace,
-                                                    name=self._idx_name)                
+                                                    name=self._idx_name)
+                await asyncio.sleep(10) #we have to sleep...
                 t = time.time()
                 print(f"Aerospike: Drop Index Time (sec) = {t - s}")                
             else:
@@ -146,6 +147,7 @@ class Aerospike(BaseANN):
                                                     index_params= self._idx_hnswparams,
                                                     vector_distance_metric=self._idx_value
                                                     )
+            await asyncio.sleep(10) #we have to sleep...
             t = time.time()
             print(f"Aerospike: Index Creation Time (sec) = {t - s}")
             _AerospikeIdxNames.append(self._idx_name)
@@ -157,19 +159,20 @@ class Aerospike(BaseANN):
             for i, embedding in enumerate(X):
                 #print(f'Item {i},{embedding.shape}  Vector:{embedding}')
                 taskPuts.append(self._client.put(namespace=self._namespace,
-                                        set=self._setName,                            
-                                        key=i,
-                                        bins={
-                                        self._idx_binName:embedding.tolist(),
-                                        self._idx_binKeyName:i
-                                        },
+                                                    set_name=self._setName,                            
+                                                    key=i,
+                                                    record_data={
+                                                        self._idx_binName:embedding.tolist(),
+                                                        self._idx_binKeyName:i
+                                                    }
                 ))
-            await asyncio.as_completed(taskPuts) 
+            await asyncio.gather(*taskPuts) 
             t = time.time()
             print(f"Aerospike: Index Put Time (sec) = {t - s}")
             print("Aerospike: waiting for indexing to complete")
             await self._client.wait_for_index_completion(namespace=self._namespace,
                                                                 name=self._idx_name)
+            await asyncio.sleep(10) #we have to sleep...
             t = time.time()
             print(f"Aerospike: Index Total Populating Time (sec) = {t - s}")
     
@@ -189,19 +192,21 @@ class Aerospike(BaseANN):
                                                     types.HnswSearchParams(),
                                                     hnswParams
                                                 )
-           
-    def query(self, q, n):
-        queryTask = self._queryLoopEvent.create_task(
-                        self._client.vector_search(namespace=self._namespace,
+
+    async def queryAsync(self, q, n):
+        result = await self._client.vector_search(namespace=self._namespace,
                                                     index_name=self._idx_name,
                                                     query=q.tolist(),
                                                     limit=n,
                                                     search_params=self._query_hnswsearchparams,
-                                                    bin_names=self._idx_binKeyName))
-        result = self._queryLoopEvent.run_until_complete(queryTask)
+                                                    bin_names=[self._idx_binKeyName])
         result_ids = [neighbor.bins[self._idx_binKeyName] for neighbor in result]
         return result_ids
     
+    def query(self, q, n):
+        queryTask = self._queryLoopEvent.create_task(self.queryAsync(q,n))
+        return self._queryLoopEvent.run_until_complete(queryTask)
+        
     #def get_batch_results(self):
     #    return self.batch_results
 
@@ -209,5 +214,6 @@ class Aerospike(BaseANN):
     #    return self.batch_latencies
 
     def __str__(self):
-        hnswparams = str(self._idx_hnswparams).strip().replace("\n", ", ")
+        batchingparams = f"maxrecs:{self._idx_hnswparams.batching_params.max_records}, interval:{self._idx_hnswparams.batching_params.interval}, disabled:{self._idx_hnswparams.batching_params.disabled}"
+        hnswparams = f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}"
         return f"Aerospike([{self._metric}, {self._host}, {self._port}, {self._namespace}, {self._setName}, {self._idx_name}, {self._idx_type}, {self._idx_value}, {self._dims}, {{{hnswparams}}}, {{{self._query_hnswsearchparams}}}])"
