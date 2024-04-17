@@ -11,8 +11,8 @@ ENV VERIFY_TLS=
 ENV APP_INDEXER_PARALLELISM=1
 
 
-ARG AEROSPIKE_CLIENT_VERSION=0.3.1
+ARG AEROSPIKE_CLIENT_VERSION=0.4.0
 
 RUN pip install pythonping
-RUN python3 -m pip install --break-system-packages aerospike-proximus==${AEROSPIKE_CLIENT_VERSION}  --extra-index-url https://aerospike.jfrog.io/artifactory/api/pypi/aerospike-pypi-dev/simple
+RUN python3 -m pip install --break-system-packages aerospike-vector==${AEROSPIKE_CLIENT_VERSION}  --extra-index-url https://aerospike.jfrog.io/artifactory/api/pypi/aerospike-pypi-dev/simple
 
