@@ -10,13 +10,36 @@
             "request": "launch",
             "program": "${workspaceFolder}/run.py",
             "cwd": "${workspaceFolder}",
-            "args": ["--docker-tag", "ann-benchmarks-aerospike",
+            "args": ["--algorithm", "aerospike",
                      "--max-n-algorithms", "4",
                      "--runs", "1",
                      "--dataset", "random-xs-20-angular",
                      "--local",
                      "--force",
                      "--timeout", "300"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: ann-benchmarks-aerospike All Sets Local",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run.py",
+            "cwd": "${workspaceFolder}",
+            "args": ["--algorithm", "aerospike",
+                     "--local",
+                     "--force",
+                     "--timeout", "7200"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: ann-benchmarks-aerospike All Sets Docker",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run.py",
+            "cwd": "${workspaceFolder}",
+            "args": ["--algorithm", "aerospike",
+                     "--force",
+                     "--timeout", "7200"],
             "console": "integratedTerminal"
         }
     ]
