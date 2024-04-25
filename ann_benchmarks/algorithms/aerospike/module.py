@@ -155,6 +155,21 @@ class Aerospike(BaseANN):
         print(f'Aerospike: Index Creation Time (sec) = {t - s}, Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
         _AerospikeIdxNames.append(self._idx_name)
             
+            
+    async def PutVector(self, key: int, embedding, i: int) -> None:
+        try:
+            await self._client.put(namespace=self._namespace,
+                                        set_name=self._setName,
+                                        key=key,
+                                        record_data={
+                                            self._idx_binName:embedding.tolist(),
+                                            self._idx_binKeyName:key
+                                        }
+            )
+        except Exception as e:
+            print(f'\n** Count: {i} Key: {key} Exception: "{e}" **\r\n')        
+            raise e
+        
     async def fitAsync(self, X: np.array) -> None:
         global _AerospikeIdxNames
         
@@ -191,23 +206,13 @@ class Aerospike(BaseANN):
             s = time.time()
             taskPuts = []
             i = 0
-            for key, embedding in enumerate(X):                
-                taskPuts.append(self._client.put(namespace=self._namespace,
-                                                    set_name=self._setName,                            
-                                                    key=key,
-                                                    record_data={
-                                                        self._idx_binName:embedding.tolist(),
-                                                        self._idx_binKeyName:i
-                                                    }                
-                ))
+            #async with asyncio. as tg: #only in 3.11
+            for key, embedding in enumerate(X):
                 i += 1
+                taskPuts.append(self.PutVector(key, embedding, i))
+                #await self.PutVector(key, embedding, i)                
                 print('Aerospike: Index Put Counter [%d]\r'%i, end="")
-            for coroutine in asyncio.as_completed(taskPuts):
-                try:
-                    await coroutine
-                except Exception as e:
-                    print('\nAerospike: Put exception:', e)
-                    
+            await asyncio.gather(*taskPuts)            
             t = time.time()
             print(f"\nAerospike: Index Put {i:,} Recs in {t - s} (secs)")
             print("Aerospike: waiting for indexing to complete")            

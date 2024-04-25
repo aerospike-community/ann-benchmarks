@@ -12,7 +12,7 @@
             "cwd": "${workspaceFolder}",
             "args": ["--algorithm", "aerospike",
                      "--max-n-algorithms", "4",
-                     "--runs", "1",
+                     "--runs", "5",
                      "--dataset", "random-xs-20-angular",
                      "--local",
                      "--force",
