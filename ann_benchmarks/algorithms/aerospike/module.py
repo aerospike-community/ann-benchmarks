@@ -3,6 +3,7 @@ import os
 import numpy as np
 import time
 import enum
+import logging
 
 from typing import Iterable, List, Any
 from pythonping import ping
@@ -10,6 +11,9 @@ from pythonping import ping
 from aerospike_vector import vectordb_admin, vectordb_client, types
 
 from ..base.module import BaseANN
+
+loggerASClient = logging.getLogger("aerospike_vector")
+logger = logging.getLogger(__name__)
 
 _AerospikeIdxNames : list = []
 
@@ -29,6 +33,19 @@ class Aerospike(BaseANN):
                     dropIdx: bool = True,
                     actions: str = "ALLOPS",
                     ping: bool = False):
+        
+        asLogFile = os.environ.get("APP_LOGFILE")
+        
+        if asLogFile is not None:
+            self._logFileHandler = logging.FileHandler(asLogFile, "w+")
+            logFormatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            self._logFileHandler.setFormatter(logFormatter)
+            loggerASClient.addHandler(self._logFileHandler)
+            logger.addHandler(self._logFileHandler)
+            loggerASClient.setLevel(logging.DEBUG)
+            logger.setLevel(logging.DEBUG)                        
+            logger.info('Start Aerospike ANN Client')
+            
         self._metric = metric
         self._dims = dimension
         self._idx_type = idx_type.upper()        
@@ -50,8 +67,7 @@ class Aerospike(BaseANN):
         self._namespace = os.environ.get("PROXIMUS_NAMESPACE") or "test"
         self._setName = os.environ.get("PROXIMUS_SET") or "ANN-data"
         self._verifyTLS = os.environ.get("VERIFY_TLS") or True
-        self._idx_sleep = os.environ.get("INDEX_SLEEP") or 300
-        #self._idx_parallism = int(os.environ.get("APP_INDEXER_PARALLELISM") or 1)
+        self._idx_sleep = os.environ.get("INDEX_SLEEP") or 300        
         if not uniqueIdxName or self._idx_hnswparams is None:
             self._idx_name = f'{self._setName}_{self._idx_type}_Idx'
         else:
@@ -113,7 +129,8 @@ class Aerospike(BaseANN):
             self._queryLoopEvent.close
         
     async def DropIndex(self) -> bool:
-        print(f'Aerospike: Dropping Index...')
+        print(f'Aerospike: Dropping Index {self._namespace}.{self._idx_name}...')
+        logger.info(f'Dropping Index {self._namespace}.{self._idx_name}')
         result = False
         s = time.time()
 
@@ -128,6 +145,7 @@ class Aerospike(BaseANN):
                             for index in existingIndexes)):
             if self._idx_sleep > 0 and loopTimes>= self._idx_sleep:
                 print(f"\nAerospike: Drop Index Timed Out!")
+                logger.info("Drop Index Timed Out")
                 result = False
                 break
             loopTimes += 1
@@ -137,11 +155,13 @@ class Aerospike(BaseANN):
 
         t = time.time()
         print(f'\nAerospike: Result: {result}, Drop Index Time (sec) = {t - s}, Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
+        logger.info("Drop Index Completed")
         return result
     
     async def CreateIndex(self) -> None:
         global _AerospikeIdxNames
         print(f'Aerospike: Creating Index {self._namespace}.{self._idx_name}')
+        logger.info(f'Creating Index {self._namespace}.{self._idx_name}')
         s = time.time()
         await self._adminClient.index_create(namespace=self._namespace,
                                                 name=self._idx_name,
@@ -153,6 +173,7 @@ class Aerospike(BaseANN):
                                                 )            
         t = time.time()
         print(f'Aerospike: Index Creation Time (sec) = {t - s}, Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
+        logger.info("Index Created")
         _AerospikeIdxNames.append(self._idx_name)
             
             
@@ -167,7 +188,8 @@ class Aerospike(BaseANN):
                                         }
             )
         except Exception as e:
-            print(f'\n** Count: {i} Key: {key} Exception: "{e}" **\r\n')        
+            print(f'\n** Count: {i} Key: {key} Exception: "{e}" **\r\n')
+            logger.exception(f"Put Failure on Count: {i} Key: {key}")       
             raise e
         
     async def fitAsync(self, X: np.array) -> None:
@@ -202,7 +224,8 @@ class Aerospike(BaseANN):
             await self.CreateIndex()
             
         if populateIdx:
-            print(f'Aerospike: Populating Index {self._namespace}.{self._idx_name}')           
+            print(f'Aerospike: Populating Index {self._namespace}.{self._idx_name}')
+            logger.info(f'Populating Index {self._namespace}.{self._idx_name}')
             s = time.time()
             taskPuts = []
             i = 0
@@ -215,12 +238,14 @@ class Aerospike(BaseANN):
             await asyncio.gather(*taskPuts)            
             t = time.time()
             print(f"\nAerospike: Index Put {i:,} Recs in {t - s} (secs)")
+            logger.info(f'Index Put Records {i,}')
             print("Aerospike: waiting for indexing to complete")            
             await self._client.wait_for_index_completion(namespace=self._namespace,
                                                                 name=self._idx_name)            
             t = time.time()
             print(f"Aerospike: Index Total Populating Time (sec) = {t - s}")
-    
+            logger.info(f'Populating Index Completed')
+            
     def fit(self, X: np.array) -> None:              
         
         if self._actions == OperationActions.QUERYONLY:
