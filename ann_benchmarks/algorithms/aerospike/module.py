@@ -3,6 +3,7 @@ import os
 import numpy as np
 import time
 import enum
+import os
 import logging
 
 from typing import Iterable, List, Any
@@ -41,8 +42,9 @@ class Aerospike(BaseANN):
         if self._indocker:
             print("Aerospike: Running In Docker Container")
         
-        if not self._indocker and asLogFile is not None and not asLogFile:
-            self._logFileHandler = logging.FileHandler(asLogFile, "w+")
+        if not self._indocker and asLogFile is not None and asLogFile:
+            print(f"Aerospike: Logging to file {os.getcwd()}/{asLogFile}")
+            self._logFileHandler = logging.FileHandler(asLogFile, "w+")        
             logFormatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
             self._logFileHandler.setFormatter(logFormatter)
             loggerASClient.addHandler(self._logFileHandler)
