@@ -24,7 +24,7 @@ class OperationActions(enum.Enum):
     QUERYONLY = 2
     
 class Aerospike(BaseANN):
-    
+           
     def __init__(self,
                     metric: str, 
                     dimension: int,
@@ -36,8 +36,12 @@ class Aerospike(BaseANN):
                     ping: bool = False):
         
         asLogFile = os.environ.get("APP_LOGFILE")
+        self._indocker = Aerospike.InDocker()
         
-        if asLogFile is not None:
+        if self._indocker:
+            print("Aerospike: Running In Docker Container")
+        
+        if not self._indocker and asLogFile is not None and not asLogFile:
             self._logFileHandler = logging.FileHandler(asLogFile, "w+")
             logFormatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
             self._logFileHandler.setFormatter(logFormatter)
@@ -92,6 +96,12 @@ class Aerospike(BaseANN):
         logger.info(f"init completed: {self}")
         
     @staticmethod
+    def InDocker() -> bool:
+        """ Returns: True if running in a Docker container, else False """
+        with open('/proc/1/cgroup', 'rt') as ifh:
+            return 'docker' in ifh.read()
+        
+    @staticmethod
     def SetHnswParamsAttrs(__obj :object, __dict: dict) -> object:
         for key in __dict: 
             if key == 'batching_params':
@@ -99,7 +109,7 @@ class Aerospike(BaseANN):
                     __obj,
                     key,
                     Aerospike.SetHnswParamsAttrs(
-                            types.HnswBatchingParams(),
+                            vectorTypes.HnswBatchingParams(),
                             __dict[key].asdict()
                     )
                 )
@@ -229,8 +239,9 @@ class Aerospike(BaseANN):
                 for key, embedding in enumerate(X):
                     i += 1
                     taskPuts.append(self.PutVector(key, embedding, i, client))
-                    #await self.PutVector(key, embedding, i)                
-                    print('Aerospike: Index Put Counter [%d]\r'%i, end="")
+                    #await self.PutVector(key, embedding, i)
+                    if not self._indocker:
+                        print('Aerospike: Index Put Counter [%d]\r'%i, end="")
                 await asyncio.gather(*taskPuts)            
                 t = time.time()
                 print(f"\nAerospike: Index Put {i:,} Recs in {t - s} (secs)")
