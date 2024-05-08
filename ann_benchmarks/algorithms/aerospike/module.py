@@ -8,7 +8,8 @@ import logging
 from typing import Iterable, List, Any
 from pythonping import ping
 
-from aerospike_vector_search import vectordb_admin, vectordb_client, types
+from aerospike_vector_search import types as vectorTypes, Client as vectorSyncClient
+from aerospike_vector_search.aio import AdminClient as vectorASyncAdminClient, Client as vectorASyncClient
 
 from ..base.module import BaseANN
 
@@ -49,13 +50,13 @@ class Aerospike(BaseANN):
         self._metric = metric
         self._dims = dimension
         self._idx_type = idx_type.upper()        
-        self._idx_value = types.VectorDistanceMetric[self._idx_type]
+        self._idx_value = vectorTypes.VectorDistanceMetric[self._idx_type]
         self._actions = OperationActions[actions.upper()]
         if hnswParams is None or len(hnswParams) == 0:
             self._idx_hnswparams = None
         else:
             self._idx_hnswparams = Aerospike.SetHnswParamsAttrs(
-                                        types.HnswParams(),
+                                        vectorTypes.HnswParams(),
                                         hnswParams
                                     )
         self._idx_drop = dropIdx
@@ -77,24 +78,18 @@ class Aerospike(BaseANN):
         self._query_hnswsearchparams = None
         
         if ping:
-            print(f'Aerospike: Trying Connection to {self._host} {self._verifyTLS} {self._listern}')
+            print(f'Aerospike: Trying Ping to {self._host} {self._verifyTLS} {self._listern}')
             print(ping(self._host, verbose=True))
-            
-        print('Aerospike: Try Create Admin client {self}')
-        self._adminClient = vectordb_admin.VectorDbAdminClient(
-                                            seeds=types.HostPort(host=self._host,
-                                                                    port=self._port,
-                                                                    isTls=self._verifyTLS), 
-                                            listener_name=self._listern)
-        
-        print('Aerospike: Try Create Client')
-        self._client = vectordb_client.VectorDbClient(
-                                    seeds=types.HostPort(host=self._host,
+                    
+        print('Aerospike: Try Create Sync Client')
+        self._syncClient = vectorSyncClient(
+                                    seeds=vectorTypes.HostPort(host=self._host,
                                                             port=self._port,
-                                                            isTls=self._verifyTLS), 
+                                                            is_tls=self._verifyTLS), 
                                     listener_name=self._listern)
-        self._queryLoopEvent = asyncio.get_event_loop()
+        
         print(f'Aerospike: init completed: {self} Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
+        logger.info(f"init completed: {self}")
         
     @staticmethod
     def SetHnswParamsAttrs(__obj :object, __dict: dict) -> object:
@@ -115,29 +110,21 @@ class Aerospike(BaseANN):
     def done(self) -> None:
         """Clean up BaseANN once it is finished being used."""
         print(f'Aerospike: done: {self} Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
+        logger.info(f"done: {self}")
         
-        loop = asyncio.get_event_loop()
-        try:
-            if self._client is not None:
-                clientCloseTask = loop.create_task(self._client.close())
-            if self._adminClient is not None:
-                adminCloseTask = loop.create_task(self._adminClient.close())
-            loop.run_until_complete(asyncio.gather(clientCloseTask, adminCloseTask))
-        finally:
-            loop.close
-        if self._queryLoopEvent is not None:
-            self._queryLoopEvent.close
-        
-    async def DropIndex(self) -> bool:
+        if self._syncClient is not None:
+            clientCloseTask = self._syncClient.close()
+                    
+    async def DropIndex(self, adminClient: vectorASyncAdminClient) -> bool:
         print(f'Aerospike: Dropping Index {self._namespace}.{self._idx_name}...')
         logger.info(f'Dropping Index {self._namespace}.{self._idx_name}')
         result = False
         s = time.time()
 
-        await self._adminClient.index_drop(namespace=self._namespace,
+        await adminClient.index_drop(namespace=self._namespace,
                                             name=self._idx_name)
         
-        existingIndexes = await self._adminClient.index_list()
+        existingIndexes = await adminClient.index_list()
         loopTimes = 0
         result = True
         while (any(index["id"]["namespace"] == self._namespace
@@ -151,19 +138,19 @@ class Aerospike(BaseANN):
             loopTimes += 1
             print('Aerospike: Waiting on Index Drop [%d]\r'%loopTimes, end="")
             await asyncio.sleep(1)                       
-            existingIndexes = await self._adminClient.index_list()
+            existingIndexes = await adminClient.index_list()
 
         t = time.time()
         print(f'\nAerospike: Result: {result}, Drop Index Time (sec) = {t - s}, Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
         logger.info("Drop Index Completed")
         return result
     
-    async def CreateIndex(self) -> None:
+    async def CreateIndex(self, adminClient: vectorASyncAdminClient) -> None:
         global _AerospikeIdxNames
         print(f'Aerospike: Creating Index {self._namespace}.{self._idx_name}')
         logger.info(f'Creating Index {self._namespace}.{self._idx_name}')
         s = time.time()
-        await self._adminClient.index_create(namespace=self._namespace,
+        await adminClient.index_create(namespace=self._namespace,
                                                 name=self._idx_name,
                                                 sets=self._setName,
                                                 vector_field=self._idx_binName,
@@ -175,17 +162,16 @@ class Aerospike(BaseANN):
         print(f'Aerospike: Index Creation Time (sec) = {t - s}, Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
         logger.info("Index Created")
         _AerospikeIdxNames.append(self._idx_name)
-            
-            
-    async def PutVector(self, key: int, embedding, i: int) -> None:
+                        
+    async def PutVector(self, key: int, embedding, i: int, client: vectorASyncClient) -> None:
         try:
-            await self._client.put(namespace=self._namespace,
-                                        set_name=self._setName,
-                                        key=key,
-                                        record_data={
-                                            self._idx_binName:embedding.tolist(),
-                                            self._idx_binKeyName:key
-                                        }
+            await client.put(namespace=self._namespace,
+                                set_name=self._setName,
+                                key=key,
+                                record_data={
+                                    self._idx_binName:embedding.tolist(),
+                                    self._idx_binKeyName:key
+                                }
             )
         except Exception as e:
             print(f'\n** Count: {i} Key: {key} Exception: "{e}" **\r\n')
@@ -201,94 +187,101 @@ class Aerospike(BaseANN):
         print(f'Aerospike: fitAsync: {self} Shape: {X.shape}')
         
         populateIdx = True
-        
-        #If exists, no sense to try creation...
-        existingIndexes = await self._adminClient.index_list()
-        if(any(index["id"]["namespace"] == self._namespace
-                                and index["id"]["name"] == self._idx_name 
-                        for index in existingIndexes)):
-            print(f'Aerospike: Index {self._namespace}.{self._idx_name} Already Exists')
             
-            #since this can be an external DB (not in a container), we need to clean up from prior runs
-            #if the index name is in this list, we know it was created in this run group and don't need to drop the index.
-            #If it is a fresh run, this list will not contain the index and we know it needs to be dropped.
-            if self._idx_name in _AerospikeIdxNames:
-                print(f'Aerospike: Index {self._namespace}.{self._idx_name} being reused (not re-populated)')
-                populateIdx = False
-            elif self._idx_drop:
-                if await self.DropIndex():
-                    await self.CreateIndex()                   
-                else:
-                    populateIdx = False            
-        else:
-            await self.CreateIndex()
-            
+        async with vectorASyncAdminClient(
+                seeds=vectorTypes.HostPort(host=self._host, port=self._port, is_tls=self._verifyTLS),
+                listener_name=self._listern
+            ) as adminClient:
+
+            #If exists, no sense to try creation...
+            existingIndexes = await adminClient.index_list()
+            if(any(index["id"]["namespace"] == self._namespace
+                                    and index["id"]["name"] == self._idx_name 
+                            for index in existingIndexes)):
+                print(f'Aerospike: Index {self._namespace}.{self._idx_name} Already Exists')
+                logger.info(f"Index {self._namespace}.{self._idx_name} Already Exists")
+                
+                #since this can be an external DB (not in a container), we need to clean up from prior runs
+                #if the index name is in this list, we know it was created in this run group and don't need to drop the index.
+                #If it is a fresh run, this list will not contain the index and we know it needs to be dropped.
+                if self._idx_name in _AerospikeIdxNames:
+                    print(f'Aerospike: Index {self._namespace}.{self._idx_name} being reused (not re-populated)')
+                    logger.info(f'Index {self._namespace}.{self._idx_name} being reused (not re-populated)')
+                    populateIdx = False
+                elif self._idx_drop:
+                    if await self.DropIndex(adminClient):
+                        await self.CreateIndex(adminClient)
+                    else:
+                        populateIdx = False            
+            else:
+                await self.CreateIndex(adminClient)
+                
         if populateIdx:
             print(f'Aerospike: Populating Index {self._namespace}.{self._idx_name}')
             logger.info(f'Populating Index {self._namespace}.{self._idx_name}')
-            s = time.time()
-            taskPuts = []
-            i = 0
-            #async with asyncio. as tg: #only in 3.11
-            for key, embedding in enumerate(X):
-                i += 1
-                taskPuts.append(self.PutVector(key, embedding, i))
-                #await self.PutVector(key, embedding, i)                
-                print('Aerospike: Index Put Counter [%d]\r'%i, end="")
-            await asyncio.gather(*taskPuts)            
-            t = time.time()
-            print(f"\nAerospike: Index Put {i:,} Recs in {t - s} (secs)")
-            logger.info(f'Index Put Records {i,}')
-            print("Aerospike: waiting for indexing to complete")            
-            await self._client.wait_for_index_completion(namespace=self._namespace,
-                                                                name=self._idx_name)            
-            t = time.time()
-            print(f"Aerospike: Index Total Populating Time (sec) = {t - s}")
-            logger.info(f'Populating Index Completed')
+            async with vectorASyncClient(seeds=vectorTypes.HostPort(host=self._host, port=self._port, is_tls=self._verifyTLS),
+                                            listener_name=self._listern
+                        ) as client:
+                s = time.time()
+                taskPuts = []
+                i = 0
+                #async with asyncio. as tg: #only in 3.11
+                for key, embedding in enumerate(X):
+                    i += 1
+                    taskPuts.append(self.PutVector(key, embedding, i, client))
+                    #await self.PutVector(key, embedding, i)                
+                    print('Aerospike: Index Put Counter [%d]\r'%i, end="")
+                await asyncio.gather(*taskPuts)            
+                t = time.time()
+                print(f"\nAerospike: Index Put {i:,} Recs in {t - s} (secs)")
+                logger.info(f'Index Put Records {i,}')
+                print("Aerospike: waiting for indexing to complete")            
+                await client.wait_for_index_completion(namespace=self._namespace,
+                                                        name=self._idx_name)            
+                t = time.time()
+                print(f"Aerospike: Index Total Populating Time (sec) = {t - s}")
+                logger.info(f'Populating Index Completed')
             
     def fit(self, X: np.array) -> None:              
         
         if self._actions == OperationActions.QUERYONLY:
-            print(f'Aerospike: No Idx Population: {self} Shape: {X.shape} Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')        
+            print(f'Aerospike: No Idx Population: {self} Shape: {X.shape} Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
+            logger.info(f'No Idx Population: {self} Shape: {X.shape}')
             return
         
-        print(f'Aerospike: Start fit: {self} Shape: {X.shape} Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')        
-        loop = asyncio.get_event_loop()
-        try:
-            t = loop.create_task(self.fitAsync(X))
-            loop.run_until_complete(t)
-        finally:
-            loop.close
-        #asyncio.run()
+        print(f'Aerospike: Start fit: {self} Shape: {X.shape} Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
+        logger.info(f'Start fit: {self} Shape: {X.shape}')
+                
+        asyncio.run(self.fitAsync(X))
+        
         print(f'Aerospike: End fit: {self} Shape: {X.shape} Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
-    
+        logger.info(f"End fit: {self} Shape: {X.shape}")
+        
     def set_query_arguments(self, hnswParams: dict = None):
         if self._actions == OperationActions.IDXPOPULATEONLY:
             print(f'Aerospike: No Query: Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
+            logger.info("No Query")
         else:
             print(f'Aerospike: Set Query: Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
+            logger.info("Set Query")
             if hnswParams is not None and len(hnswParams) > 0:
                 self._query_hnswsearchparams = Aerospike.SetHnswParamsAttrs(
-                                                        types.HnswSearchParams(),
+                                                        vectorTypes.HnswSearchParams(),
                                                         hnswParams
                                                     )
-      
-    async def queryAsync(self, q, n):
-        result = await self._client.vector_search(namespace=self._namespace,
+          
+    def query(self, q, n):
+        if self._actions == OperationActions.IDXPOPULATEONLY:
+            return []
+        else:
+            result = self._syncClient.vector_search(namespace=self._namespace,
                                                     index_name=self._idx_name,
                                                     query=q.tolist(),
                                                     limit=n,
                                                     search_params=self._query_hnswsearchparams,
                                                     bin_names=[self._idx_binKeyName])
-        result_ids = [neighbor.bins[self._idx_binKeyName] for neighbor in result]
-        return result_ids
-    
-    def query(self, q, n):
-        if self._actions == OperationActions.IDXPOPULATEONLY:
-            return []
-        else:    
-            queryTask = self._queryLoopEvent.create_task(self.queryAsync(q,n))
-            return self._queryLoopEvent.run_until_complete(queryTask)                    
+            result_ids = [neighbor.bins[self._idx_binKeyName] for neighbor in result]
+            return result_ids                
         
     #def get_batch_results(self):
     #    return self.batch_results
