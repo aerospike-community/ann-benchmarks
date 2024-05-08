@@ -8,11 +8,11 @@ import logging
 from typing import Iterable, List, Any
 from pythonping import ping
 
-from aerospike_vector import vectordb_admin, vectordb_client, types
+from aerospike_vector_search import vectordb_admin, vectordb_client, types
 
 from ..base.module import BaseANN
 
-loggerASClient = logging.getLogger("aerospike_vector")
+loggerASClient = logging.getLogger("aerospike_vector_search")
 logger = logging.getLogger(__name__)
 
 _AerospikeIdxNames : list = []
