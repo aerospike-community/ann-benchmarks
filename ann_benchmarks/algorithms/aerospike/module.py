@@ -41,6 +41,8 @@ class Aerospike(BaseANN):
         
         if self._indocker:
             print("Aerospike: Running In Docker Container")
+        elif asLogFile is None:
+                asLogFile = "AerospikeANN.log"
         
         if not self._indocker and asLogFile is not None and asLogFile:
             print(f"Aerospike: Logging to file {os.getcwd()}/{asLogFile}")
@@ -74,7 +76,9 @@ class Aerospike(BaseANN):
         self._namespace = os.environ.get("PROXIMUS_NAMESPACE") or "test"
         self._setName = os.environ.get("PROXIMUS_SET") or "ANN-data"
         self._verifyTLS = os.environ.get("VERIFY_TLS") or True
-        self._idx_sleep = os.environ.get("INDEX_SLEEP") or 300        
+        self._idx_sleep = int(os.environ.get("INDEX_SLEEP") or 300)
+        self._populateTasks = int(os.environ.get("APP_POPULATE_TASKS") or 5000)
+        
         if not uniqueIdxName or self._idx_hnswparams is None:
             self._idx_name = f'{self._setName}_{self._idx_type}_Idx'
         else:
@@ -139,18 +143,19 @@ class Aerospike(BaseANN):
         existingIndexes = await adminClient.index_list()
         loopTimes = 0
         result = True
-        while (any(index["id"]["namespace"] == self._namespace
-                                and index["id"]["name"] == self._idx_name 
-                            for index in existingIndexes)):
-            if self._idx_sleep > 0 and loopTimes>= self._idx_sleep:
-                print(f"\nAerospike: Drop Index Timed Out!")
-                logger.info("Drop Index Timed Out")
-                result = False
-                break
-            loopTimes += 1
-            print('Aerospike: Waiting on Index Drop [%d]\r'%loopTimes, end="")
-            await asyncio.sleep(1)                       
-            existingIndexes = await adminClient.index_list()
+        if self._idx_sleep > 0:
+            while (any(index["id"]["namespace"] == self._namespace
+                                    and index["id"]["name"] == self._idx_name 
+                                for index in existingIndexes)):
+                if loopTimes>= self._idx_sleep:
+                    print(f"\nAerospike: Drop Index Timed Out!")
+                    logger.info("Drop Index Timed Out")
+                    result = False
+                    break
+                loopTimes += 1
+                print('Aerospike: Waiting on Index Drop [%d]\r'%loopTimes, end="")
+                await asyncio.sleep(1)                       
+                existingIndexes = await adminClient.index_list()
 
         t = time.time()
         print(f'\nAerospike: Result: {result}, Drop Index Time (sec) = {t - s}, Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
@@ -239,12 +244,24 @@ class Aerospike(BaseANN):
                 i = 0
                 #async with asyncio. as tg: #only in 3.11
                 for key, embedding in enumerate(X):
-                    i += 1
-                    taskPuts.append(self.PutVector(key, embedding, i, client))
-                    #await self.PutVector(key, embedding, i)
+                    i += 1                    
+                    if self._populateTasks == 1:
+                        await self.PutVector(key, embedding, i, client)
+                    elif self._populateTasks < 1:
+                        taskPuts.append(self.PutVector(key, embedding, i, client))
+                    else:
+                        taskPuts.append(self.PutVector(key, embedding, i, client))
+                        if len(taskPuts) >= self._populateTasks:
+                            logger.debug(f"Waiting for Put Tasks ({len(taskPuts)}) to Complete at {i}")
+                            await asyncio.gather(*taskPuts)
+                            logger.debug(f"Put Tasks Completed")
+                            taskPuts.clear()
+                                                                                 
                     if not self._indocker:
                         print('Aerospike: Index Put Counter [%d]\r'%i, end="")
-                await asyncio.gather(*taskPuts)            
+                logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")                            
+                await asyncio.gather(*taskPuts)
+                logger.debug(f"All Put Tasks Completed")
                 t = time.time()
                 print(f"\nAerospike: Index Put {i:,} Recs in {t - s} (secs)")
                 logger.info(f'Index Put Records {i,}')
@@ -305,4 +322,4 @@ class Aerospike(BaseANN):
     def __str__(self):
         batchingparams = f"maxrecs:{self._idx_hnswparams.batching_params.max_records}, interval:{self._idx_hnswparams.batching_params.interval}, disabled:{self._idx_hnswparams.batching_params.disabled}"
         hnswparams = f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}"
-        return f"Aerospike([{self._metric}, {self._host}, {self._port}, {self._namespace}, {self._setName}, {self._idx_name}, {self._idx_type}, {self._idx_value}, {self._dims}, {self._actions}, {{{hnswparams}}}, {{{self._query_hnswsearchparams}}}])"
+        return f"Aerospike([{self._metric}, {self._host}, {self._port}, {self._namespace}, {self._setName}, {self._idx_name}, {self._idx_type}, {self._idx_value}, {self._dims}, {self._actions}, {self._idx_sleep}, {self._populateTasks} {{{hnswparams}}}, {{{self._query_hnswsearchparams}}}])"
