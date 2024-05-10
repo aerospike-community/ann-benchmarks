@@ -7,7 +7,7 @@ import os
 import logging
 
 from typing import Iterable, List, Any
-from pythonping import ping
+from pythonping import ping as PingHost
 
 from aerospike_vector_search import types as vectorTypes, Client as vectorSyncClient
 from aerospike_vector_search.aio import AdminClient as vectorASyncAdminClient, Client as vectorASyncClient
@@ -33,10 +33,11 @@ class Aerospike(BaseANN):
                     hnswParams: dict,
                     uniqueIdxName: bool = True,
                     dropIdx: bool = True,
-                    actions: str = "ALLOPS",
-                    ping: bool = False):
+                    actions: str = "ALLOPS"):
         
         asLogFile = os.environ.get("APP_LOGFILE")
+        self._asLogLevel = os.environ.get("API_ASLOGLEVEL")
+        self._logLevel = os.environ.get("AAPP_LOGLEVEL") or "INFO"
         self._indocker = Aerospike.InDocker()
         
         if self._indocker:
@@ -49,10 +50,11 @@ class Aerospike(BaseANN):
             self._logFileHandler = logging.FileHandler(asLogFile, "w+")        
             logFormatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
             self._logFileHandler.setFormatter(logFormatter)
-            loggerASClient.addHandler(self._logFileHandler)
-            logger.addHandler(self._logFileHandler)
-            loggerASClient.setLevel(logging.DEBUG)
-            logger.setLevel(logging.DEBUG)                        
+            if self._asLogLevel is not None and self._asLogLevel:
+                loggerASClient.addHandler(self._logFileHandler)
+                loggerASClient.setLevel(logging.getLevelName(self._asLogLevel))
+            logger.addHandler(self._logFileHandler)            
+            logger.setLevel(logging.getLevelName(self._logLevel))
             logger.info('Start Aerospike ANN Client')
             
         self._metric = metric
@@ -76,8 +78,9 @@ class Aerospike(BaseANN):
         self._namespace = os.environ.get("PROXIMUS_NAMESPACE") or "test"
         self._setName = os.environ.get("PROXIMUS_SET") or "ANN-data"
         self._verifyTLS = os.environ.get("VERIFY_TLS") or True
-        self._idx_sleep = int(os.environ.get("INDEX_SLEEP") or 300)
+        self._idx_sleep = int(os.environ.get("APP_INDEX_SLEEP") or 300)
         self._populateTasks = int(os.environ.get("APP_POPULATE_TASKS") or 5000)
+        pingProximus = os.environ.get("APP_PINGPROXIMUS") or False
         
         if not uniqueIdxName or self._idx_hnswparams is None:
             self._idx_name = f'{self._setName}_{self._idx_type}_Idx'
@@ -87,9 +90,11 @@ class Aerospike(BaseANN):
         self._idx_binKeyName = "ANN_key"
         self._query_hnswsearchparams = None
         
-        if ping:
+        if pingProximus:
             print(f'Aerospike: Trying Ping to {self._host} {self._verifyTLS} {self._listern}')
-            print(ping(self._host, verbose=True))
+            pingresult = PingHost(self._host, verbose=True)
+            print(pingresult)
+            logger.info(pingresult)
                     
         print('Aerospike: Try Create Sync Client')
         self._syncClient = vectorSyncClient(
@@ -122,7 +127,13 @@ class Aerospike(BaseANN):
             else:
                 setattr(__obj, key, __dict[key])
         return __obj
-        
+    
+    @staticmethod
+    def FlushLog() -> None:
+        if(logger.handlers is not None):
+            for handler in logger.handlers:
+                handler.flush()                
+          
     def done(self) -> None:
         """Clean up BaseANN once it is finished being used."""
         print(f'Aerospike: done: {self} Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
@@ -130,6 +141,7 @@ class Aerospike(BaseANN):
         
         if self._syncClient is not None:
             clientCloseTask = self._syncClient.close()
+        logging.shutdown()
                     
     async def DropIndex(self, adminClient: vectorASyncAdminClient) -> bool:
         print(f'Aerospike: Dropping Index {self._namespace}.{self._idx_name}...')
@@ -192,7 +204,8 @@ class Aerospike(BaseANN):
             )
         except Exception as e:
             print(f'\n** Count: {i} Key: {key} Exception: "{e}" **\r\n')
-            logger.exception(f"Put Failure on Count: {i} Key: {key}")       
+            logger.exception(f"Put Failure on Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}")
+            Aerospike.FlushLog()
             raise e
         
     async def fitAsync(self, X: np.array) -> None:
@@ -244,11 +257,11 @@ class Aerospike(BaseANN):
                 i = 0
                 #async with asyncio. as tg: #only in 3.11
                 for key, embedding in enumerate(X):
-                    i += 1                    
-                    if self._populateTasks == 1:
-                        await self.PutVector(key, embedding, i, client)
-                    elif self._populateTasks < 1:
+                    i += 1
+                    if self._populateTasks < 0:
                         taskPuts.append(self.PutVector(key, embedding, i, client))
+                    elif self._populateTasks <= 1:
+                        await self.PutVector(key, embedding, i, client)                    
                     else:
                         taskPuts.append(self.PutVector(key, embedding, i, client))
                         if len(taskPuts) >= self._populateTasks:
@@ -261,10 +274,10 @@ class Aerospike(BaseANN):
                         print('Aerospike: Index Put Counter [%d]\r'%i, end="")
                 logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")                            
                 await asyncio.gather(*taskPuts)
-                logger.debug(f"All Put Tasks Completed")
+                logger.info(f"All Put Tasks Completed")
                 t = time.time()
                 print(f"\nAerospike: Index Put {i:,} Recs in {t - s} (secs)")
-                logger.info(f'Index Put Records {i,}')
+                logger.info(f'Index Put Records {i:,}. Waiting for Index Completion...')
                 print("Aerospike: waiting for indexing to complete")            
                 await client.wait_for_index_completion(namespace=self._namespace,
                                                         name=self._idx_name)            
@@ -286,19 +299,29 @@ class Aerospike(BaseANN):
         
         print(f'Aerospike: End fit: {self} Shape: {X.shape} Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
         logger.info(f"End fit: {self} Shape: {X.shape}")
+        Aerospike.FlushLog()
         
     def set_query_arguments(self, hnswParams: dict = None):
         if self._actions == OperationActions.IDXPOPULATEONLY:
             print(f'Aerospike: No Query: Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
-            logger.info("No Query")
+            logger.info(f"No Query {self}")
         else:
-            print(f'Aerospike: Set Query: Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
-            logger.info("Set Query")
+            if hnswParams is None:
+                print(f'Aerospike: Set Query: Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
+            else:    
+                print(f'Aerospike: Set Query: m: {hnswParams["m"]}, ef_construction: {hnswParams["ef_construction"]}, ef: {hnswParams["ef"]}, Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
+            
             if hnswParams is not None and len(hnswParams) > 0:
                 self._query_hnswsearchparams = Aerospike.SetHnswParamsAttrs(
                                                         vectorTypes.HnswSearchParams(),
                                                         hnswParams
                                                     )
+                if hnswParams is None:
+                    logger.info(f'Set Query {self}')
+                else:    
+                    logger.info(f'Set Query {self}, m: {hnswParams["m"]}, ef_construction: {hnswParams["ef_construction"]}, ef: {hnswParams["ef"]}')
+            else:
+                logger.info(f"Set Query {self}")
           
     def query(self, q, n):
         if self._actions == OperationActions.IDXPOPULATEONLY:
