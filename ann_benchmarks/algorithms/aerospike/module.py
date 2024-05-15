@@ -35,7 +35,7 @@ class Aerospike(BaseANN):
                     dimension: int,
                     idx_type: str,
                     hnswParams: dict,
-                    uniqueIdxName: bool = True,
+                    uniqueSetIdxName: bool = True,
                     dropIdx: bool = True,
                     actions: str = "ALLOPS"):
         
@@ -89,10 +89,17 @@ class Aerospike(BaseANN):
         self._listern = None #os.environ.get("PROXIMUS_ADVERTISED_LISTENER") or None          
         self._namespace = os.environ.get("PROXIMUS_NAMESPACE") or "test"
         self._setName = os.environ.get("PROXIMUS_SET") or "ANN-data"
+        
+        if not uniqueSetIdxName or self._idx_hnswparams is None:
+            self._setName = f'{self._setName}_{self._idx_type}'            
+        else:
+            self._setName = f'{self._setName}_{self._idx_type}_{self._dims}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}'
+        self._idx_name = f'{self._setName}_Idx'
+        
         self._verifyTLS = os.environ.get("VERIFY_TLS")
         if self._verifyTLS is None:
             self._verifyTLS = True
-        self._idx_sleep = int(os.environ.get("APP_INDEX_SLEEP") or 300)
+        self._idx_sleep = int(os.environ.get("APP_INDEX_SLEEP") or 0)
         self._populateTasks = int(os.environ.get("APP_POPULATE_TASKS") or 5000)
         pingProximus = os.environ.get("APP_PINGPROXIMUS")
         if pingProximus is None:
@@ -100,11 +107,7 @@ class Aerospike(BaseANN):
         self._checkResult = os.environ.get("APP_CHECKRESULT")
         if self._checkResult is None:
             self._checkResult = not self._indocker
-        
-        if not uniqueIdxName or self._idx_hnswparams is None:
-            self._idx_name = f'{self._setName}_{self._idx_type}_Idx'
-        else:
-            self._idx_name = f'{self._setName}_{self._idx_type}_{self._dims}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}_Idx'
+                
         self._idx_binName = "ANN_embedding"
         self._query_hnswsearchparams = None
         

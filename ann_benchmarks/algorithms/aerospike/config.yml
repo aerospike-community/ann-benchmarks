@@ -11,7 +11,7 @@ float:
         args: [
           [cosine], #Idx Type
           [{m: 8, ef_construction: 64, ef: 8}], #HnswParams for each run
-          [True], #Unique Index Name (optional, default True). The created index name is based on Idx Type, Dims, M, EF_const, and EF. If false, only Idx Type
+          [True], #Unique Set/Index Name (optional, default True). The created Set/index name is based on Idx Type, Dims, M, EF_const, and EF. If false, only Idx Type
           [True] #True to Drop Idx and Re-Populate, optional default true
           #[AllOps] #Default Performs all operations (populate idx and query). Values are IdxPopulateOnly, QueryOnly, AllOps (default)
           ]
@@ -22,7 +22,7 @@ float:
         args: [
           [dot_product], #Idx Type
           [{m: 8, ef_construction: 64, ef: 8}], #HnswParams for each run
-          [True], #Unique Index Name (optional, default True). The created index name is based on Idx Type, Dims, M, EF_const, and EF. If false, only Idx Type
+          [True], #Unique Set/Index Name (optional, default True). The created set/index name is based on Idx Type, Dims, M, EF_const, and EF. If false, only Idx Type
           [True] #True to Drop Idx and Re-Populate, optional default true
           #[AllOps] #Performs all operations (populate idx and query). Values are IdxPopulateOnly, QueryOnly, AllOps (default)
         ]
