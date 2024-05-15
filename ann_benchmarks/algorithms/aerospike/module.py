@@ -90,10 +90,15 @@ class Aerospike(BaseANN):
         self._namespace = os.environ.get("PROXIMUS_NAMESPACE") or "test"
         self._setName = os.environ.get("PROXIMUS_SET") or "ANN-data"
         
-        if not uniqueSetIdxName or self._idx_hnswparams is None:
-            self._setName = f'{self._setName}_{self._idx_type}'            
+        if self._idx_type.casefold() == self._metric.casefold():
+            setNameType = self._idx_type
         else:
-            self._setName = f'{self._setName}_{self._idx_type}_{self._dims}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}'
+            setNameType = f'{self._metric}_{self._idx_type}'
+            
+        if not uniqueSetIdxName or self._idx_hnswparams is None:
+            self._setName = f'{self._setName}_{setNameType}'            
+        else:
+            self._setName = f'{self._setName}_{setNameType}_{self._dims}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}'
         self._idx_name = f'{self._setName}_Idx'
         
         self._verifyTLS = os.environ.get("VERIFY_TLS")
