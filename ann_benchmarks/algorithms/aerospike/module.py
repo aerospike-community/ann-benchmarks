@@ -8,6 +8,7 @@ import logging
 
 from typing import Iterable, List, Any
 from pythonping import ping as PingHost
+from importlib.metadata import version
 
 from aerospike_vector_search import types as vectorTypes, Client as vectorSyncClient
 from aerospike_vector_search.aio import AdminClient as vectorASyncAdminClient, Client as vectorASyncClient
@@ -56,6 +57,7 @@ class Aerospike(BaseANN):
             logger.addHandler(self._logFileHandler)            
             logger.setLevel(logging.getLevelName(self._logLevel))
             logger.info('Start Aerospike ANN Client')
+            logger.info(f"  aerospike-vector-search: {version('aerospike_vector_search')}")
             
         self._metric = metric
         self._dims = dimension
@@ -345,4 +347,4 @@ class Aerospike(BaseANN):
     def __str__(self):
         batchingparams = f"maxrecs:{self._idx_hnswparams.batching_params.max_records}, interval:{self._idx_hnswparams.batching_params.interval}, disabled:{self._idx_hnswparams.batching_params.disabled}"
         hnswparams = f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}"
-        return f"Aerospike([{self._metric}, {self._host}, {self._port}, {self._namespace}, {self._setName}, {self._idx_name}, {self._idx_type}, {self._idx_value}, {self._dims}, {self._actions}, {self._idx_sleep}, {self._populateTasks} {{{hnswparams}}}, {{{self._query_hnswsearchparams}}}])"
+        return f"Aerospike([{self._metric}, {self._host}, {self._port}, {self._namespace}, {self._setName}, {self._idx_name}, {self._idx_type}, {self._idx_value}, {self._dims}, {self._actions}, {self._idx_sleep}, {self._populateTasks}, {{{hnswparams}}}, {{{self._query_hnswsearchparams}}}])"
