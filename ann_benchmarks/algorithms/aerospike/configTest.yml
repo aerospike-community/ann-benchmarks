@@ -1,0 +1,22 @@
+float:
+  angular:
+  - base_args: ['@metric',  '@dimension']
+    constructor: Aerospike
+    disabled: false
+    docker_tag: ann-benchmarks-aerospike
+    module: ann_benchmarks.algorithms.aerospike
+    name: aerospike
+    run_groups:
+      cosine:
+        args: [
+          [cosine], #Idx Type
+          [{m: 8, ef_construction: 64, ef: 8}], #HnswParams for each run
+          [True], #Unique Set/Index Name (optional, default True). The created Set/index name is based on Idx Type, Dims, M, EF_const, and EF. If false, only Idx Type
+          [True] #True to Drop Idx and Re-Populate, optional default true
+          #[AllOps] #Default Performs all operations (populate idx and query). Values are IdxPopulateOnly, QueryOnly, AllOps (default)
+          ]
+        query_args: [ #Query HnswSearchParams, e.g., [{ef: 3}], optional
+          []  
+      ]
+      
+      
