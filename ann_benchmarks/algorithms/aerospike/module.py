@@ -12,6 +12,7 @@ from importlib.metadata import version
 
 from aerospike_vector_search import types as vectorTypes, Client as vectorSyncClient
 from aerospike_vector_search.aio import AdminClient as vectorASyncAdminClient, Client as vectorASyncClient
+from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
 
 from ..base.module import BaseANN
 
@@ -81,7 +82,11 @@ class Aerospike(BaseANN):
                                         hnswParams
                                     )
 
-        self._idx_drop = dropIdx
+        self._idx_drop = dropIdx        
+        dropIdxOverride = os.environ.get("APP_DROP_IDX")
+        if dropIdxOverride is not None:
+            self._idx_drop = dropIdxOverride.lower() in ['true', '1', 't']
+        
         #self._username = os.environ.get("APP_USERNAME") or ""
         #self._password = os.environ.get("APP_PASSWORD") or ""
         self._host = os.environ.get("PROXIMUS_HOST") or "localhost"
@@ -221,18 +226,43 @@ class Aerospike(BaseANN):
         Aerospike.PrintLog(f'Index Creation Time (sec) = {t - s}')        
         aerospikeIdxNames.append(self._idx_name)
                         
-    async def PutVector(self, key: int, embedding, i: int, client: vectorASyncClient) -> None:
+    async def PutVector(self, key: int, embedding, i: int, client: vectorASyncClient, retry: bool = False) -> None:
         try:
-            await client.upsert(namespace=self._namespace,
-                                set_name=self._setName,
-                                key=key,
-                                record_data={
-                                    self._idx_binName:embedding.tolist()
-                                }
-            )
+            try:
+                await client.upsert(namespace=self._namespace,
+                                    set_name=self._setName,
+                                    key=key,
+                                    record_data={
+                                        self._idx_binName:embedding.tolist()
+                                    }
+                )        
+            except vectorTypes.AVSServerError as avse:
+                if not retry and avse.rpc_error.code() == vectorResultCodes.StatusCode.RESOURCE_EXHAUSTED:
+                    logLevel = logging.DEBUG
+                    if not self._puasePuts:
+                        self._puasePuts = True
+                        logLevel = logging.WARNING
+                        Aerospike.PrintLog(msg=f"\nResource Exhausted on Put Waiting for Idx Completion Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}",
+                                            logLevel=logging.WARNING)
+                    else:
+                        logger.debug(f"Resource Exhausted on Put Waiting for Idx Completion Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}")
+                    s = time.time()                    
+                    await client.wait_for_index_completion(namespace=self._namespace,
+                                                            name=self._idx_name)            
+                    t = time.time()
+                    if logLevel == logging.WARNING:
+                        Aerospike.PrintLog(msg=f"\nIndex Completed Time (sec) = {t - s}, Going to Reissue Put on Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}",
+                                            logLevel=logging.WARNING)
+                    else:
+                        logger.debug(msg=f"Index Completed Time (sec) = {t - s}, Going to Reissue Put on Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}")
+                        
+                    await self.PutVector(key, embedding, i, client, True)
+                    self._puasePuts = False
+                else:
+                    raise avse
         except Exception as e:
             print(f'\n** Count: {i} Key: {key} Exception: "{e}" **\r\n')
-            logger.exception(f"Put Failure on Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}")
+            logger.exception(f"Put Failure on Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}, Retry: {retry}")
             Aerospike.FlushLog()
             raise e
         
@@ -241,9 +271,9 @@ class Aerospike(BaseANN):
         
         if X.dtype != np.float32:
             X = X.astype(np.float32)
-                
+    
         Aerospike.PrintLog(f'fitAsync: {self} Shape: {X.shape}')
-        
+              
         populateIdx = True
             
         async with vectorASyncAdminClient(
@@ -273,6 +303,7 @@ class Aerospike(BaseANN):
                 await self.CreateIndex(adminClient)
                 
         if populateIdx:
+            self._puasePuts = False
             Aerospike.PrintLog(f'Populating Index {self._namespace}.{self._idx_name}')
             async with vectorASyncClient(seeds=vectorTypes.HostPort(host=self._host, port=self._port, is_tls=self._verifyTLS),
                                             listener_name=self._listern
@@ -282,6 +313,15 @@ class Aerospike(BaseANN):
                 i = 0
                 #async with asyncio. as tg: #only in 3.11
                 for key, embedding in enumerate(X):
+                    if self._puasePuts:
+                        loopTimes = 0
+                        while (self._puasePuts):
+                            if loopTimes>= 30:
+                                Aerospike.PrintLog("\nPaused Puts Timed Out at 30 mins!", logging.WARNING)
+                                break
+                            loopTimes += 1
+                            logger.debug(f"Putting Paused {loopTimes}")
+                            await asyncio.sleep(60)
                     i += 1
                     if self._populateTasks < 0:
                         taskPuts.append(self.PutVector(key, embedding, i, client))
