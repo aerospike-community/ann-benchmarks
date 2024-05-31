@@ -1,3 +1,18 @@
+# Backoff Logic when encountering Resource Exhausted
+
+# The “back-off” logic is as follows:
+
+-   When the exception is received:
+    -   First record in error will perform the following actions:
+        -   Signal the “main” populating task to go into “sleep mode” so that additional records will not be upserted.
+        -   A warning message is logged.
+    -   All records in error will do the following:
+        -   Call “wait for index completion.”
+        -   Once the index is built the following occurs:
+            -   Re-upsert the error records
+            -   If successful, signal the “main” populating task to re-start populating.
+            -   A warning message is logged, stating population has re-started.
+
 # Environmental Variables
 
 Below are the Environmental Variables:
