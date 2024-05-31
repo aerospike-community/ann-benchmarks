@@ -44,8 +44,8 @@ class Aerospike(BaseANN):
         global loggingEnabled
         
         asLogFile = os.environ.get("APP_LOGFILE")
-        self._asLogLevel = os.environ.get("API_ASLOGLEVEL")
-        self._logLevel = os.environ.get("AAPP_LOGLEVEL") or "INFO"
+        self._asLogLevel = os.environ.get("PROXIMUS_LOGLEVEL")
+        self._logLevel = os.environ.get("APP_LOGLEVEL") or "INFO"
         self._indocker = Aerospike.InDocker()
         
         if self._indocker:
@@ -53,7 +53,7 @@ class Aerospike(BaseANN):
         elif asLogFile is None:
                 asLogFile = "AerospikeANN.log"
         
-        if not self._indocker and asLogFile is not None and asLogFile:
+        if not self._indocker and asLogFile is not None and asLogFile and self._logLevel != "NOTSET":
             print(f"Aerospike: Logging to file {os.getcwd()}/{asLogFile}")
             if logFileHandler is None:
                 logFileHandler = logging.FileHandler(asLogFile, "w")                
@@ -92,6 +92,12 @@ class Aerospike(BaseANN):
         self._host = os.environ.get("PROXIMUS_HOST") or "localhost"
         self._port = int(os.environ.get("PROXIMUS_PORT") or 5000)
         self._listern = None #os.environ.get("PROXIMUS_ADVERTISED_LISTENER") or None          
+        self._isloadbalancer = os.environ.get("PROXIMUS_USELOADBALANCER")
+        if self._isloadbalancer is not None and self._isloadbalancer.lower() in ['true', '1', 't', '']:
+            self._isloadbalancer = True
+        else:
+            self._isloadbalancer = False
+        
         self._namespace = os.environ.get("PROXIMUS_NAMESPACE") or "test"
         self._setName = os.environ.get("PROXIMUS_SET") or "ANN-data"
         
@@ -106,18 +112,24 @@ class Aerospike(BaseANN):
             self._setName = f'{self._setName}_{setNameType}_{self._dims}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}'
         self._idx_name = f'{self._setName}_Idx'
         
-        self._verifyTLS = os.environ.get("VERIFY_TLS")
-        if self._verifyTLS is None:
+        self._verifyTLS = os.environ.get("PROXIMUS_VERIFY_TLS")
+        if self._verifyTLS is None or self._verifyTLS.lower() in ['true', '1', 't', '']:
             self._verifyTLS = True
+        else:
+            self._verifyTLS = False
+            
         self._idx_sleep = int(os.environ.get("APP_INDEX_SLEEP") or 0)
         self._populateTasks = int(os.environ.get("APP_POPULATE_TASKS") or 5000)
         pingProximus = os.environ.get("APP_PINGPROXIMUS")
-        if pingProximus is None:
+        if pingProximus is None or pingProximus.lower() in ['false', '0', 'f', '']:
             pingProximus = False
+        else:
+            pingProximus = True
         self._checkResult = os.environ.get("APP_CHECKRESULT")
-        if self._checkResult is None:
+        if self._checkResult is None or self._checkResult.lower() in ['true', '1', 't', '']:
             self._checkResult = not self._indocker
-                
+        else:
+            self._checkResult = False            
         self._idx_binName = "ANN_embedding"
         self._query_hnswsearchparams = None
         
@@ -132,7 +144,8 @@ class Aerospike(BaseANN):
                                     seeds=vectorTypes.HostPort(host=self._host,
                                                             port=self._port,
                                                             is_tls=self._verifyTLS), 
-                                    listener_name=self._listern)
+                                    listener_name=self._listern,
+                                    is_loadbalancer=self._isloadbalancer)
         
         Aerospike.PrintLog(f'init completed: {self}')        
         
@@ -242,22 +255,28 @@ class Aerospike(BaseANN):
                     if not self._puasePuts:
                         self._puasePuts = True
                         logLevel = logging.WARNING
-                        Aerospike.PrintLog(msg=f"\nResource Exhausted on Put Waiting for Idx Completion Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}",
+                        Aerospike.PrintLog(msg=f"\nResource Exhausted on Put first encounter on Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...",
                                             logLevel=logging.WARNING)
                     else:
-                        logger.debug(f"Resource Exhausted on Put Waiting for Idx Completion Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}")
+                        logger.debug(f"Resource Exhausted on Put on Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...")
                     s = time.time()                    
                     await client.wait_for_index_completion(namespace=self._namespace,
                                                             name=self._idx_name)            
                     t = time.time()
                     if logLevel == logging.WARNING:
-                        Aerospike.PrintLog(msg=f"\nIndex Completed Time (sec) = {t - s}, Going to Reissue Put on Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}",
+                        Aerospike.PrintLog(msg=f"Index Completed Time (sec) = {t - s}, Going to Reissue Puts for Idx: {self._namespace}.{self._setName}.{self._idx_name}",
                                             logLevel=logging.WARNING)
                     else:
-                        logger.debug(msg=f"Index Completed Time (sec) = {t - s}, Going to Reissue Put on Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}")
+                        logger.debug(msg=f"Index Completed Time (sec) = {t - s}, Going to Reissue Puts for Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}")
                         
                     await self.PutVector(key, embedding, i, client, True)
                     self._puasePuts = False
+                    
+                    if logLevel == logging.WARNING:
+                        Aerospike.PrintLog(msg=f"Resuming population for Idx: {self._namespace}.{self._setName}.{self._idx_name}",
+                                            logLevel=logging.WARNING)
+                    else:
+                        logger.debug(msg=f"Resuming population for Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}")                        
                 else:
                     raise avse
         except Exception as e:
@@ -278,7 +297,8 @@ class Aerospike(BaseANN):
             
         async with vectorASyncAdminClient(
                 seeds=vectorTypes.HostPort(host=self._host, port=self._port, is_tls=self._verifyTLS),
-                listener_name=self._listern
+                listener_name=self._listern,
+                is_loadbalancer=self._isloadbalancer
             ) as adminClient:
 
             #If exists, no sense to try creation...
@@ -306,7 +326,8 @@ class Aerospike(BaseANN):
             self._puasePuts = False
             Aerospike.PrintLog(f'Populating Index {self._namespace}.{self._idx_name}')
             async with vectorASyncClient(seeds=vectorTypes.HostPort(host=self._host, port=self._port, is_tls=self._verifyTLS),
-                                            listener_name=self._listern
+                                            listener_name=self._listern,
+                                            is_loadbalancer=self._isloadbalancer
                         ) as client:
                 s = time.time()
                 taskPuts = []
@@ -315,9 +336,10 @@ class Aerospike(BaseANN):
                 for key, embedding in enumerate(X):
                     if self._puasePuts:
                         loopTimes = 0
+                        print('\n')
                         while (self._puasePuts):
                             if loopTimes>= 30:
-                                Aerospike.PrintLog("\nPaused Puts Timed Out at 30 mins!", logging.WARNING)
+                                Aerospike.PrintLog(f"Paused Population still waiting for Idx Completion at {loopTimes} mins!", logging.WARNING)
                                 break
                             loopTimes += 1
                             logger.debug(f"Putting Paused {loopTimes}")
@@ -339,15 +361,15 @@ class Aerospike(BaseANN):
                         print('Aerospike: Index Put Counter [%d]\r'%i, end="")
                 logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")                            
                 await asyncio.gather(*taskPuts)
-                logger.info(f"All Put Tasks Completed")
                 t = time.time()
+                logger.info(f"All Put Tasks Completed")                
                 print('\n')
                 Aerospike.PrintLog(f"Index Put {i:,} Recs in {t - s} (secs)")
                 Aerospike.PrintLog("waiting for indexing to complete")            
                 await client.wait_for_index_completion(namespace=self._namespace,
                                                         name=self._idx_name)            
                 t = time.time()
-                Aerospike.PrintLog(f"Index Total Populating Time (sec) = {t - s}")
+                Aerospike.PrintLog(f"Index Total Populating Time and Idx Completed (sec) = {t - s}")
                 
     def fit(self, X: np.array) -> None:              
         
@@ -405,4 +427,4 @@ class Aerospike(BaseANN):
     def __str__(self):
         batchingparams = f"maxrecs:{self._idx_hnswparams.batching_params.max_records}, interval:{self._idx_hnswparams.batching_params.interval}, disabled:{self._idx_hnswparams.batching_params.disabled}"
         hnswparams = f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}"
-        return f"Aerospike([{self._metric}, {self._host}, {self._port}, {self._namespace}, {self._setName}, {self._idx_name}, {self._idx_type}, {self._idx_value}, {self._dims}, {self._actions}, {self._idx_sleep}, {self._populateTasks}, {{{hnswparams}}}, {{{self._query_hnswsearchparams}}}])"
+        return f"Aerospike([{self._metric}, {self._host}:{self._port}, {self._isloadbalancer}, {self._namespace}.{self._setName}.{self._idx_name}, {self._idx_type}, {self._idx_value}, {self._dims}, {self._actions}, {self._idx_sleep}, {self._populateTasks}, {{{hnswparams}}}, {{{self._query_hnswsearchparams}}}])"
