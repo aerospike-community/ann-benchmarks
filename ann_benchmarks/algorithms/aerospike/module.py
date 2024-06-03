@@ -338,12 +338,13 @@ class Aerospike(BaseANN):
                         loopTimes = 0
                         print('\n')
                         while (self._puasePuts):
-                            if loopTimes>= 30:
-                                Aerospike.PrintLog(f"Paused Population still waiting for Idx Completion at {loopTimes} mins!", logging.WARNING)
-                                break
+                            if loopTimes % 30 == 0:
+                                Aerospike.PrintLog(f"Paused Population still waiting for Idx Completion at {loopTimes} mins!", logging.WARNING)                                
                             loopTimes += 1
                             logger.debug(f"Putting Paused {loopTimes}")
                             await asyncio.sleep(60)
+                        Aerospike.PrintLog(f"Resuming Population at {loopTimes} mins", logging.WARNING)
+                        
                     i += 1
                     if self._populateTasks < 0:
                         taskPuts.append(self.PutVector(key, embedding, i, client))

@@ -35,24 +35,27 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Python Debugger: ann-benchmarks-aerospike All Sets Local",
+            "name": "Python Debugger: ann-benchmarks-aerospike Euclidean Local",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/run.py",
             "cwd": "${workspaceFolder}",
             "args": ["--algorithm", "aerospike",
+                     "--max-n-algorithms", "5",
+                     "--dataset", "gist-960-euclidean",
                      "--local",
                      "--force",
                      "--timeout", "7200"],
             "console": "integratedTerminal"
         },
         {
-            "name": "Python Debugger: ann-benchmarks-aerospike All Sets Docker",
+            "name": "Python Debugger: ann-benchmarks-aerospike Docker",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/run.py",
             "cwd": "${workspaceFolder}",
             "args": ["--algorithm", "aerospike",
+                     "--max-n-algorithms", "5",
                      "--force",
                      "--timeout", "7200"],
             "console": "integratedTerminal"

@@ -9,10 +9,26 @@ float:
     run_groups:
       cosine:
         args: [
-          [cosine], #Idx Type
-          [{m: 16, ef_construction: 100, ef: 100}]
-          ]
-        query_args: [
+          [cosine],
+          [{m: 16, ef_construction: 100, ef: 100}] 
+        ]
+        query_args: [ 
           []  
       ]
+  euclidean:
+  - base_args: ['@metric',  '@dimension']
+    constructor: Aerospike
+    disabled: false
+    docker_tag: ann-benchmarks-aerospike
+    module: ann_benchmarks.algorithms.aerospike
+    name: aerospike
+    run_groups:
+      SQUARED_EUCLIDEAN:
+              args: [
+                [SQUARED_EUCLIDEAN], #Idx Type
+                [{m: 16, ef_construction: 100, ef: 100}]
+              ]      
+              query_args: [ 
+                []  
+              ]
  
