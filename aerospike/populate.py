@@ -265,7 +265,7 @@ class Aerospike(BaseAerospike):
                                                 is_loadbalancer=self._useloadbalancer
                             ) as client:
                 if self._concurrency == 0:
-                    t = time.time()
+                    s = time.time()
                 else:
                     self._puasePuts = False
                     self.print_log(f'Populating Index {self._namespace}.{self._idx_name}')                    
