@@ -17,3 +17,5 @@ results/*
 venv
 
 .idea
+aerospike/data/glove-100-angular.hdf5
+aerospike/data/random-xs-20-angular.hdf5

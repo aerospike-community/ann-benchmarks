@@ -59,6 +59,21 @@
                      "--force",
                      "--timeout", "7200"],
             "console": "integratedTerminal"
-        }
+        },
+        {
+            "name": "Python Debugger: hdf_import",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_import.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "random-xs-20-angular",
+                    "--concurrency", "-1",
+                    "--logfile", "./hdfimport.log",
+                    "--idxnowait",
+                    "--idxdrop"
+                    ],
+            "console": "integratedTerminal"
+        },
     ]
 }
