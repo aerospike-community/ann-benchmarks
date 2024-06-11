@@ -75,5 +75,17 @@
                     ],
             "console": "integratedTerminal"
         },
+        {
+            "name": "Python Debugger: hdf_query",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_query.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "random-xs-20-angular",
+                    "--logfile", "./hdfquery.log",                
+                    ],
+            "console": "integratedTerminal"
+        },
     ]
 }

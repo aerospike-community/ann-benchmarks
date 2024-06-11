@@ -38,21 +38,26 @@ class BaseAerospike():
             default=5000
         )
         parser.add_argument(
-            '-a', "--vectoraddress",
-            metavar="adr",
+            '-a', "--host",
+            metavar="HOST",
             help="the Vector DB Ip Address or Host Name",
             default="localhost",
         )
         parser.add_argument(
+            '-A', '--hosts',
+            metavar="HOST:PORT",            
+            nargs='+',
+            help="A list of host and optionsl ports. Example: 'hosta:5000' or 'hostb'",
+            default=[],
+        )
+        parser.add_argument(
             '-l', "--vectorloadbalancer",            
             help="Use Vector's DB Load Balancer",
-            default=False,
             action='store_true'
         )
         parser.add_argument(
             '-T', "--vectortls",            
             help="Use TLS to connect to the Vector DB Server",
-            default=False,
             action='store_true'
         )
         parser.add_argument(
@@ -76,7 +81,6 @@ class BaseAerospike():
         parser.add_argument(
             '-g', "--generatedetailsetname",            
             help="Generates a Set name based on distance type, dimensions, index params, etc.",
-            default=False,
             action='store_true'
         )
         parser.add_argument(
@@ -99,6 +103,13 @@ class BaseAerospike():
             type=json.loads,
             help="The Vector's Index Params (HnswParams)",
             default='{"m": 16, "ef_construction": 100, "ef": 100}'
+        )
+        parser.add_argument(
+            '-S', "--searchparams",
+            metavar="PARM",
+            type=json.loads,
+            help="The Vector's Search Params (HnswParams)",
+            default=None
         )              
         parser.add_argument(
             '-L', "--logfile",
@@ -125,11 +136,22 @@ class BaseAerospike():
         
         global logFileHandler
         
-        self._host = runtimeArgs.vectoraddress
         self._port = runtimeArgs.vectorport
-        self._listern = None          
-        self._useloadbalancer = runtimeArgs.vectorloadbalancer
         self._verifyTLS = runtimeArgs.vectortls
+        
+        if runtimeArgs.hosts is None or len(runtimeArgs.hosts) == 0:            
+            self._host = [vectorTypes.HostPort(host=runtimeArgs.host,port=self._port,is_tls=self._verifyTLS)]
+        else:
+            self._host = []
+            for pos, host in enumerate(runtimeArgs.hosts):
+                parts = host.split(':')
+                if len(parts) == 1:
+                    self._host.append(vectorTypes.HostPort(host=host,port=self._port,is_tls=self._verifyTLS))
+                elif len(parts) == 2:
+                    self._host.append(vectorTypes.HostPort(host=parts[0],port=parts[1],is_tls=self._verifyTLS))
+                    
+        self._listern = None          
+        self._useloadbalancer = runtimeArgs.vectorloadbalancer        
         
         self._namespace = runtimeArgs.namespace
         self._setName = runtimeArgs.setname
@@ -148,6 +170,14 @@ class BaseAerospike():
                                         vectorTypes.HnswParams(),
                                         runtimeArgs.indexparams
                                     )
+        
+        if runtimeArgs.searchparams is None or len(runtimeArgs.searchparams) == 0:
+            self._query_hnswparams = None
+        else:
+            self._query_hnswparams = BaseAerospike.set_hnsw_params_attrs(
+                                        vectorTypes.HnswSearchParams(),
+                                        runtimeArgs.searchparams
+                                    )            
         
         self._logFilePath = runtimeArgs.logfile        
         self._asLogLevel = runtimeArgs.driverloglevel
@@ -195,6 +225,11 @@ class BaseAerospike():
     def print_log(self, msg :str, logLevel :int = logging.INFO) -> None:
         if self._loggingEnabled:
             self._logger.log(level=logLevel, msg=msg)
+            if logLevel == logging.INFO:
+                print(msg + f', Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
+            elif logLevel == logging.WARN or logLevel == logging.ERROR or logLevel == logging.CRITICAL:
+                levelName = "" if logLevel == logging.INFO else f" {logging.getLevelName(logLevel)}: "
+                print(levelName + msg + f', Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')
         else:
             levelName = "" if logLevel == logging.INFO else f" {logging.getLevelName(logLevel)}: "
             print(levelName + msg + f', Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')                    
@@ -212,7 +247,12 @@ class BaseAerospike():
     def basestring(self) -> str:
         batchingparams = f"maxrecs:{self._idx_hnswparams.batching_params.max_records}, interval:{self._idx_hnswparams.batching_params.interval}, disabled:{self._idx_hnswparams.batching_params.disabled}"
         hnswparams = f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}"
-        return f"BaseAerospike([{self._host}:{self._port}, {self._useloadbalancer}, {self._namespace}.{self._setName}.{self._idx_name}, {self._idx_distance}, {{{hnswparams}}}])"
+        if self._query_hnswparams is None:
+            searchhnswparams = None
+        else:
+            searchhnswparams = f", {{s_ef:{self._query_hnswparams.ef}}}"
+        
+        return f"BaseAerospike([{self._host}:{self._port}, {self._useloadbalancer}, {self._namespace}.{self._setName}.{self._idx_name}, {self._idx_distance}, {{{hnswparams}}}{searchhnswparams}])"
 
     def __str__(self):
         return self.basestring()

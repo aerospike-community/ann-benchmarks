@@ -8,7 +8,7 @@ from aerospikehdf import Aerospike, OperationActions as Actions
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
     
-    Aerospike.parse_arguments_population(parser)
+    Aerospike.parse_arguments_query(parser)
     
     args = parser.parse_args()
     
@@ -16,13 +16,11 @@ def parse_arguments() -> argparse.Namespace:
 
 async def main_loop() -> None:
     
-    with Aerospike(args, Actions.POPULATION) as asInstance:    
+    with Aerospike(args, Actions.QUERY) as asInstance:    
         await asInstance.get_dataset()
-        await asInstance.populate()
+        await asInstance.query()
     
 if __name__ == "__main__":
     args = parse_arguments()
     
     asyncio.run(main_loop())
-    
-    

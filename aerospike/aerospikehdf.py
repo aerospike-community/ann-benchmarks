@@ -5,7 +5,7 @@ import logging
 import argparse
 
 from enum import Flag, auto
-from typing import Iterable, List, Any
+from typing import Iterable, List, Union, Any
 from importlib.metadata import version
 
 from aerospike_vector_search import types as vectorTypes, Client as vectorSyncClient
@@ -31,13 +31,14 @@ class Aerospike(BaseAerospike):
         '''
         Adds the arguments required to populate an index. 
         '''
-        parser.add_argument(
-            '-d', "--dataset",
-            metavar="DS",
-            help="the dataset to load training points from",
-            default="glove-100-angular",
-            choices=DATASETS.keys(),
-        )
+        if len([x.dest for x in parser._actions if "dataset" == x.dest]) == 0:
+            parser.add_argument(
+                '-d', "--dataset",
+                metavar="DS",
+                help="the dataset to load training points from",
+                default="glove-100-angular",
+                choices=DATASETS.keys(),
+            )
         parser.add_argument(
             '-c', "--concurrency",
             metavar="N",
@@ -55,13 +56,11 @@ class Aerospike(BaseAerospike):
         parser.add_argument(
             "--idxdrop",        
             help="If the Vector Index existance, it will be dropped. Otherwise is is updated.",
-            default=False,
             action='store_true'
         )        
         parser.add_argument(
             "--idxnowait",        
             help="Waiting for Index Complation is disabled.",
-            default=False,
             action='store_true'
         )
         parser.add_argument(
@@ -79,8 +78,54 @@ class Aerospike(BaseAerospike):
     ''',
             default=-1,
         )
+        parser.add_argument(
+            '-m', "--maxrecs",
+            metavar="RECS",
+            type=int,
+            help="Determines the maximum number of records to populated. a value of -1 (default) all records in the HDF dataset are populated.",
+            default=-1,
+        )
+        BaseAerospike.parse_arguments(parser) 
+    
+    @staticmethod
+    def parse_arguments_query(parser: argparse.ArgumentParser) -> None:
+        '''
+        Adds the arguments required to query an index. 
+        '''
+        if len([x.dest for x in parser._actions if "dataset" == x.dest]) == 0:
+            parser.add_argument(
+                '-d', "--dataset",
+                metavar="DS",
+                help="the dataset to load training points from",
+                default="glove-100-angular",
+                choices=DATASETS.keys(),
+            )
+        parser.add_argument(
+            '-r', "--runs",
+            metavar="RUNS",
+            type=int,
+            help="The number of query runs",
+            default=10,
+        )
+        parser.add_argument(
+            '-N', "--limit",
+            metavar="LIMIT",
+            type=int,
+            help="The number of neighbors to return from the query",
+            default=100,
+        )
+        parser.add_argument(
+           "--parallel",        
+            help="Query runs are ran in parallel",
+            action='store_true'
+        )  
+        parser.add_argument(
+           "--check",        
+            help="Check Query Results",
+            action='store_true'
+        )        
         BaseAerospike.parse_arguments(parser)
-       
+    
     def __init__(self, runtimeArgs: argparse.Namespace, actions: OperationActions):
         
         super().__init__(runtimeArgs, logger)
@@ -89,6 +134,7 @@ class Aerospike(BaseAerospike):
         self._datasetname = runtimeArgs.dataset
         self._dimensions = None
         self._trainarray = None
+        self._queryarray = None
         self._dataset = None
         
         if OperationActions.POPULATION in actions:
@@ -97,7 +143,14 @@ class Aerospike(BaseAerospike):
             self._idx_nowait = runtimeArgs.idxnowait
             self._idx_resource_event = runtimeArgs.exhaustedevt
             self._idx_resource_cnt = 0
+            self._idx_maxrecs = runtimeArgs.maxrecs
         
+        if OperationActions.QUERY in actions:
+            self._query_runs = runtimeArgs.runs
+            self._query_parallel = runtimeArgs.parallel
+            self._query_check = runtimeArgs.check
+            self._query_limit = runtimeArgs.limit
+            
     def __enter__(self):
         return self
  
@@ -108,7 +161,7 @@ class Aerospike(BaseAerospike):
         
         self.print_log(f'get_dataset: {self}')
         
-        self._trainarray, query, distance, self._dataset, self._dimensions = load_and_transform_dataset(self._datasetname)
+        self._trainarray, self._queryarray, distance, self._dataset, self._dimensions = load_and_transform_dataset(self._datasetname)
 
         if self._idx_distance is None or not self._idx_distance:
             self._idx_distance = DistanceMaps.get(distance.lower())
@@ -124,7 +177,7 @@ class Aerospike(BaseAerospike):
             self._setName = f'{self._setName}_{setNameType}_{self._dimensions}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}'
             self._idx_name = f'{self._setName}_Idx'
         
-        self.print_log(f'get_dataset Exit: {self}, Train Array: {len(self._trainarray)}, Distance: {distance}, Dimensions: {self._dimensions}')
+        self.print_log(f'get_dataset Exit: {self}, Train Array: {len(self._trainarray)}, Query Array: {len(self._queryarray)}, Distance: {distance}, Dimensions: {self._dimensions}')
                 
     async def drop_index(self, adminClient: vectorASyncAdminClient) -> None:
         self.print_log(f'Dropping Index {self._namespace}.{self._idx_name}')
@@ -223,7 +276,16 @@ class Aerospike(BaseAerospike):
             self.flush_log()
             raise e
         
+    async def index_exist(self, adminClient: vectorASyncAdminClient) -> bool:
+        existingIndexes = await adminClient.index_list()
+        return any(index["id"]["namespace"] == self._namespace
+                    and index["id"]["name"] == self._idx_name 
+                        for index in existingIndexes)
+        
     async def populate(self) -> None:
+        '''
+        Polulates the vector index based on HDF dataset.
+        '''
         global aerospikeIdxNames
         
         if self._trainarray.dtype != np.float32:
@@ -233,17 +295,13 @@ class Aerospike(BaseAerospike):
               
         populateIdx = True
             
-        async with vectorASyncAdminClient(
-                seeds=vectorTypes.HostPort(host=self._host, port=self._port, is_tls=self._verifyTLS),
-                listener_name=self._listern,
-                is_loadbalancer=self._useloadbalancer
+        async with vectorASyncAdminClient(seeds=self._host,
+                                            listener_name=self._listern,
+                                            is_loadbalancer=self._useloadbalancer
             ) as adminClient:
-
-            #If exists, no sense to try creation...
-            existingIndexes = await adminClient.index_list()
-            if(any(index["id"]["namespace"] == self._namespace
-                                    and index["id"]["name"] == self._idx_name 
-                            for index in existingIndexes)):
+            
+            #If exists, no sense to try creation...            
+            if await self.index_exist(adminClient):
                 self.print_log(f'Index {self._namespace}.{self._idx_name} Already Exists')
                 
                 #since this can be an external DB (not in a container), we need to clean up from prior runs
@@ -260,11 +318,11 @@ class Aerospike(BaseAerospike):
                 await self.create_index(adminClient)
                 
         if populateIdx:
-            async with vectorASyncClient(seeds=vectorTypes.HostPort(host=self._host, port=self._port, is_tls=self._verifyTLS),
-                                                listener_name=self._listern,
-                                                is_loadbalancer=self._useloadbalancer
+            async with vectorASyncClient(seeds=self._host,
+                                            listener_name=self._listern,
+                                            is_loadbalancer=self._useloadbalancer
                             ) as client:
-                if self._concurrency == 0:
+                if self._concurrency == 0 or self._idx_maxrecs == 0:
                     s = time.time()
                 else:
                     self._puasePuts = False
@@ -297,12 +355,14 @@ class Aerospike(BaseAerospike):
                                 await asyncio.gather(*taskPuts)
                                 logger.debug(f"Put Tasks Completed")
                                 taskPuts.clear()                                                                                    
-                        print('Aerospike: Index Put Counter [%d]\r'%i, end="")
+                        print('Index Put Counter [%d]\r'%i, end="")
+                        if self._idx_maxrecs >= 0 and i >= self._idx_maxrecs:
+                            break
                     
                     logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")                            
                     await asyncio.gather(*taskPuts)
                     t = time.time()
-                    logger.info(f"All Put Tasks Completed")                
+                    logger.info(f"All Put Tasks ({i}) Completed")                
                     print('\n')
                     self.print_log(f"Index Put {i:,} Recs in {t - s} (secs), TPS: {i/(t - s):,}")
                 
@@ -318,11 +378,84 @@ class Aerospike(BaseAerospike):
                     self.print_log(f"Index Completion Time (secs) = {t - w} TPS = {len(self._trainarray)/(t - w):,}")
                     self.print_log(f"Index Population Completion with Idx Wait (sec) = {t - s}")
 
+    async def query(self) -> None:
+        '''
+        Performs a query using the query array from the HDF dataset. 
+        '''
+        
+        self.print_log(f'Query: {self} Shape: {self._trainarray.shape}')
+        
+        async with vectorASyncAdminClient(seeds=self._host,
+                                            listener_name=self._listern,
+                                            is_loadbalancer=self._useloadbalancer
+            ) as adminClient:
+           
+            if not await self.index_exist(adminClient):
+                self.print_log(f'Query: Vector Index: {self._namespace}.{self._idx_name}, not found')
+                raise FileNotFoundError(f"Vector Index {self._namespace}.{self._idx_name} not found")
+
+        self.print_log(f'Starting Query Runs ({self._query_runs}) on {self._namespace}.{self._idx_name}')
+        
+        async with vectorASyncClient(seeds=self._host,
+                                        listener_name=self._listern,
+                                        is_loadbalancer=self._useloadbalancer
+                            ) as client:
+            s = time.time()
+            taskPuts = []
+            queries = 0
+            i = 0
+            while i < self._query_runs:
+                i += 1
+                if self._query_parallel:
+                    taskPuts.append(self.query_run(client, i))
+                else:
+                    queries += await self.query_run(client, i)                                                    
+            results = await asyncio.gather(*taskPuts)
+            t = time.time()
+            if self._query_parallel:
+                queries =  sum(results)
+            print('\n')
+            self.print_log(f'Finished Query Runs on {self._namespace}.{self._idx_name}; Total queries {queries} in {t-s} secs, {queries/(t-s)} TPS')
+                        
+    async def query_run(self, client:vectorASyncClient, runNbr:int) -> int:
+        queryLen = 0
+        resultCnt = 0
+        queries = 0
+        for pos, searchValues in enumerate(self._queryarray):
+            queryLen += len(searchValues)
+            result = await self.vector_search(client, searchValues.tolist())
+            queries += 1
+            resultCnt += len(result)
+            print('Query Run [%d] Search [%d] Array [%d] Result [%d]                         \r'%(runNbr,pos+1,queryLen,resultCnt), end="")
+            result_ids = [neighbor.key.key for neighbor in result]
+            if self._query_check:
+                if len(result_ids) == 0:
+                    print('\n')
+                    Aerospike.PrintLog(f'No Query Results for {self._idx_name}', logging.WARNING)                    
+                zeroDist = [record.key.key for record in result if record.distance == 0]
+                if len(zeroDist) > 0:
+                    print('\n')
+                    Aerospike.PrintLog(f'Zero Distance Found for {self._idx_name} Keys: {zeroDist}', logging.WARNING)
+        return queries
+        
+    async def vector_search(self, client:vectorASyncClient, query:List[float]) -> List[vectorTypes.Neighbor]:
+        return await client.vector_search(namespace=self._namespace,
+                                                index_name=self._idx_name,
+                                                query=query,
+                                                limit=self._query_limit,
+                                                search_params=self._query_hnswparams)        
+
     def __str__(self):
         arrayLen = None
         if self._trainarray is not None:
             arrayLen = len(self._trainarray)
         if OperationActions.POPULATION in self._actions:
-            popstr = f", DropIdx: {self._idx_drop}, Concurrency: {self._concurrency}, WaitIdxCompletion: {not self._idx_nowait} Exhausted Evt: {self._idx_resource_event}"
+            popstr = f", DropIdx: {self._idx_drop}, Concurrency: {self._concurrency}, MaxRecs: {self._idx_maxrecs}, WaitIdxCompletion: {not self._idx_nowait} Exhausted Evt: {self._idx_resource_event}"
+        else:
+            popstr = None
+        if OperationActions.QUERY in self._actions:
+            qrystr = f", Runs: {self._query_runs}, Parallel: {self._query_parallel}, Check: {self._query_check}"
+        else:
+            qrystr = None
             
-        return f"Aerospike([{self.basestring()}, Actions: {self._actions}, Dimensions: {self._dimensions}, Array: {arrayLen} DS: {self._datasetname}{popstr}]"
+        return f"Aerospike([{self.basestring()}, Actions: {self._actions}, Dimensions: {self._dimensions}, Array: {arrayLen} DS: {self._datasetname}{popstr}{qrystr}]"
