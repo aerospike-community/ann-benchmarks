@@ -452,10 +452,10 @@ class Aerospike(BaseAerospike):
         if OperationActions.POPULATION in self._actions:
             popstr = f", DropIdx: {self._idx_drop}, Concurrency: {self._concurrency}, MaxRecs: {self._idx_maxrecs}, WaitIdxCompletion: {not self._idx_nowait} Exhausted Evt: {self._idx_resource_event}"
         else:
-            popstr = None
+            popstr = ""
         if OperationActions.QUERY in self._actions:
             qrystr = f", Runs: {self._query_runs}, Parallel: {self._query_parallel}, Check: {self._query_check}"
         else:
-            qrystr = None
+            qrystr = ""
             
         return f"Aerospike([{self.basestring()}, Actions: {self._actions}, Dimensions: {self._dimensions}, Array: {arrayLen} DS: {self._datasetname}{popstr}{qrystr}]"
