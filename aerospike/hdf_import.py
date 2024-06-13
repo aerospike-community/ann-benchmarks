@@ -6,7 +6,7 @@ from logging import _nameToLevel as LogLevels
 from aerospikehdf import Aerospike, OperationActions as Actions
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
     Aerospike.parse_arguments_population(parser)
     
