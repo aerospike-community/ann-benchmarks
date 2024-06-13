@@ -99,7 +99,7 @@
             "args": [
                     "--dataset", "random-xs-20-angular",
                     "--logfile", "./hdfquery.log",
-                    "-r", "100"
+                    "-r", "10"
                     ],
             "console": "integratedTerminal"
         },

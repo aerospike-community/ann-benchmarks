@@ -306,7 +306,7 @@
           "useBackend": false
         }
       ],
-      "title": "Dataset Size",
+      "title": "Dataset Size (records)",
       "type": "stat"
     },
     {
@@ -402,7 +402,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "axisWidth": 100,
+            "axisWidth": 60,
             "barAlignment": -1,
             "drawStyle": "line",
             "fillOpacity": 100,
@@ -413,7 +413,7 @@
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "linear",
+            "lineInterpolation": "stepAfter",
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -546,7 +546,7 @@
             "mode": "palette-classic"
           },
           "decimals": 0,
-          "fieldMinMax": true,
+          "fieldMinMax": false,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -624,6 +624,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisWidth": 60,
             "barAlignment": 0,
             "drawStyle": "line",
             "fillOpacity": 0,
@@ -634,7 +635,7 @@
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "linear",
+            "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -650,6 +651,7 @@
               "mode": "off"
             }
           },
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -657,10 +659,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -729,7 +727,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "axisWidth": 100,
+            "axisWidth": 60,
             "barAlignment": -1,
             "drawStyle": "line",
             "fillOpacity": 100,
@@ -997,6 +995,7 @@
           "color": {
             "mode": "palette-classic"
           },
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -1010,7 +1009,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "locale"
         },
         "overrides": []
       },
@@ -1070,6 +1070,7 @@
           "color": {
             "mode": "palette-classic"
           },
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -1150,6 +1151,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisWidth": 60,
             "barAlignment": 0,
             "drawStyle": "line",
             "fillOpacity": 0,
@@ -1160,7 +1162,7 @@
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "linear",
+            "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -1176,6 +1178,7 @@
               "mode": "off"
             }
           },
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -1183,10 +1186,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -1194,7 +1193,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
+        "h": 10,
         "w": 24,
         "x": 0,
         "y": 43
@@ -1234,7 +1233,7 @@
           "useBackend": false
         }
       ],
-      "title": "Indexd Vectors",
+      "title": "Vector Search",
       "type": "timeseries"
     }
   ],
@@ -1250,7 +1249,7 @@
     "list": [
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": "prometheus",
           "value": "edj97jcoudpfkd"
         },
@@ -1390,7 +1389,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {
@@ -1421,6 +1420,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 19,
+  "version": 25,
   "weekStart": ""
 }
