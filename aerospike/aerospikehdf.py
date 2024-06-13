@@ -345,13 +345,14 @@ class Aerospike(BaseAerospike):
                 if self._concurrency == 0 or self._idx_maxrecs == 0:
                     s = time.time()
                 else:
+                    trainsize = len(self._trainarray)
                     self._populate_counter.add(0, {"type": "upsert","ns":self._namespace,"set":self._setName})
-                    self._populate_recs_gauge.set(len(self._trainarray), {"ns":self._namespace,"set":self._setName})            
+                    self._populate_recs_gauge.set(trainsize, {"ns":self._namespace,"set":self._setName})            
                     self._puasePuts = False
                     self.print_log(f'Populating Index {self._idx_namespace}.{self._idx_name}')                    
                     s = time.time()
                     taskPuts = []
-                    i = 1
+                    i = 1                    
                     #async with asyncio. as tg: #only in 3.11
                     for key, embedding in enumerate(self._trainarray):
                         if self._puasePuts:
@@ -361,6 +362,7 @@ class Aerospike(BaseAerospike):
                                 if loopTimes % 30 == 0:
                                     self.print_log(f"Paused Population still waiting for Idx Completion at {loopTimes} mins!", logging.WARNING)                                
                                 loopTimes += 1
+                                self._populate_recs_gauge.set(trainsize-i,{"ns":self._namespace,"set":self._setName})
                                 logger.debug(f"Putting Paused {loopTimes}")
                                 await asyncio.sleep(60)
                             self.print_log(f"Resuming Population at {loopTimes} mins", logging.WARNING)
@@ -369,7 +371,7 @@ class Aerospike(BaseAerospike):
                             taskPuts.append(self.put_vector(key, embedding, i, client))
                         elif self._concurrency <= 1:
                             await self.put_vector(key, embedding, i, client)
-                            self._populate_recs_gauge.set(len(self._trainarray)-i,{"ns":self._namespace,"set":self._setName})                        
+                            self._populate_recs_gauge.set(trainsize-i,{"ns":self._namespace,"set":self._setName})
                         else:
                             taskPuts.append(self.put_vector(key, embedding, i, client))
                             if len(taskPuts) >= self._concurrency:
@@ -377,7 +379,7 @@ class Aerospike(BaseAerospike):
                                 await asyncio.gather(*taskPuts)
                                 logger.debug(f"Put Tasks Completed")
                                 taskPuts.clear()
-                                self._populate_recs_gauge.set(len(self._trainarray)-i,{"ns":self._namespace,"set":self._setName})                        
+                                self._populate_recs_gauge.set(trainsize-i,{"ns":self._namespace,"set":self._setName})                        
                         print('Index Put Counter [%d]\r'%i, end="")
                         if self._idx_maxrecs >= 0 and i >= self._idx_maxrecs:
                             break
@@ -451,13 +453,14 @@ class Aerospike(BaseAerospike):
         queryLen = 0
         resultCnt = 0
         queries = 1
-        self._query_recs_gauge.set(len(self._queryarray),{"ns":self._idx_namespace,"idx":self._idx_name})
+        queryArraysize = len(self._queryarray)
+        self._query_recs_gauge.set(queryArraysize,{"ns":self._idx_namespace,"idx":self._idx_name})
         for pos, searchValues in enumerate(self._queryarray):
             queryLen += len(searchValues)
             result = await self.vector_search(client, searchValues.tolist())            
             resultCnt += len(result)
             print('Query Run [%d] Search [%d] Array [%d] Result [%d]                         \r'%(runNbr,pos+1,queryLen,resultCnt), end="")
-            self._query_recs_gauge.set(len(self._queryarray)-queries,{"ns":self._idx_namespace,"idx":self._idx_name})
+            self._query_recs_gauge.set(queryArraysize-queries,{"ns":self._idx_namespace,"idx":self._idx_name})
             result_ids = [neighbor.key.key for neighbor in result]
             if self._query_check:
                 if len(result_ids) == 0:

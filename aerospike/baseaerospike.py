@@ -272,8 +272,11 @@ class BaseAerospike():
         self._actions = None
         self._datasetname : str = None
         self._dimensions = None
+        self._trainarray = None
+        self._queryarray = None
         self._puasePuts : bool = False
         self._heartbeat_thread : Thread = None
+        self._query_limit = None
         
         self._logFilePath = runtimeArgs.logfile        
         self._asLogLevel = runtimeArgs.driverloglevel
@@ -319,17 +322,21 @@ class BaseAerospike():
                 setattr(__obj, key, __dict[key])
         return __obj
     
-    def prometheus_status(self, i:int) -> None:
+    def prometheus_status(self, i:int) -> None:        
         self._prometheus_heartbeat_gauge.set(i, {"ns":self._namespace,
                                                         "set":self._setName,
                                                         "idxns":self._idx_namespace,
                                                         "idx":self._idx_name,
                                                         "idxbin":self._idx_binName,
-                                                        "idxdist":self._idx_distance,
+                                                        "idxdist": None if self._idx_distance is None else self._idx_distance.name,
                                                         "dims": self._dimensions,
+                                                        "poprecs": None if self._trainarray is None else len(self._trainarray),
+                                                        "queries": None if self._queryarray is None else len(self._queryarray),
+                                                        "querynbrlmt": self._query_limit,
                                                         "dataset":self._datasetname,
                                                         "paused": self._puasePuts,
-                                                        "action":self._actions})
+                                                        "action": None if self._actions is None else self._actions.name
+                                                        })
         
     def _prometheus_heartbeat(self) -> None:
         from time import sleep
