@@ -8,6 +8,15 @@ import argparse
 from typing import List, Dict
 from importlib.metadata import version
 from logging import _nameToLevel as LogLevels
+from threading import Thread
+
+from prometheus_client import start_http_server
+
+from opentelemetry import metrics
+from opentelemetry.exporter.prometheus import PrometheusMetricReader
+from opentelemetry.sdk.metrics import MeterProvider, Meter
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
 from aerospike_vector_search import types as vectorTypes
 
@@ -21,9 +30,8 @@ _distanceNameToAerospikeType: Dict[str, vectorTypes.VectorDistanceMetric] = {
 
 loggerASClient = logging.getLogger("aerospike_vector_search")
 logFileHandler = None
- 
-class BaseAerospike():
 
+class BaseAerospike():
 
     @staticmethod
     def parse_arguments(parser: argparse.ArgumentParser) -> None:
@@ -65,6 +73,13 @@ class BaseAerospike():
             metavar="NS",
             help="The Aerospike Namespace",
             default="test",
+        )
+        parser.add_argument(
+            '-N', "--idxnamespace",
+            metavar="NS",
+            help="Aerospike Namespace where the Vector Idx will be located. Defaults to --Namespace",
+            default=None,
+            type=str
         )
         parser.add_argument(
             '-s', "--setname",
@@ -128,14 +143,85 @@ class BaseAerospike():
             "--driverloglevel",
             metavar="DLEVEL",           
             help="The Driver's Logging level",
-            default="ERROR",
+            default="NOTSET",
             choices=LogLevels.keys(),
+        )
+        parser.add_argument(
+            "--prometheus",
+            metavar="PORT",           
+            help="Prometheus Port",
+            default=9464,
+            type=int
+        )
+        parser.add_argument(
+            "--prometheushb",
+            metavar="SECS",           
+            help="Prometheus Heart Beat in secs",
+            default=5,
+            type=int
         )
     
     def __init__(self, runtimeArgs: argparse.Namespace, logger: logging.Logger):
-        
+        '''
+        Meters:
+        aerospike.hdf.populate          -- Counter can be used for rate (records per sec)
+        aerospike.hdf.query             -- Counter can be used for rate (queries per sec)
+        aerospike.hdf.exception         -- Counter Exceptions
+        aerospike.hdf.waitidxcompletion -- Up/Down counter (inc one upon start of wait/dec on end of wait)
+        aerospike.hdf.dropidxtime       -- drop idx latency
+        aerospike.hdf.populate.recs     -- gauge used to determine how many recs have been processed
+        aerospike.hdf.query.recs        -- gauge used to determine how many queries will be processed
+        aerospike.hdf.query.runs        -- gague used on how many runs
+        '''
         global logFileHandler
         
+        # Service name is required for most backends
+        self._prometheus_resource = Resource(attributes={
+            SERVICE_NAME: "aerospike.hdf"
+        })
+
+        # Start Prometheus client
+        self._prometheus_http_server = start_http_server(port=runtimeArgs.prometheus, addr="0.0.0.0")
+        # Initialize PrometheusMetricReader which pulls metrics from the SDK
+        # on-demand to respond to scrape requests
+        self._prometheus_metric_reader = PrometheusMetricReader()
+        
+        self._prometheus_meter_provider = MeterProvider(resource=self._prometheus_resource,
+                                                            metric_readers=[self._prometheus_metric_reader])
+        metrics.set_meter_provider(self._prometheus_meter_provider)
+        
+        meter = metrics.get_meter("aerospike.hdf", meter_provider=self._prometheus_meter_provider)
+        
+        self._populate_counter = meter.create_counter("aerospike.hdf.populate", 
+                                                        unit="1",
+                                                        description="Cnts the recs upserted into the vector idx"
+                                                      )        
+        self._query_counter = meter.create_counter("aerospike.hdf.query", 
+                                                        unit="1",
+                                                        description="Cnts the nbr of queries performed"
+                                                      )        
+        self._exception_counter = meter.create_counter("aerospike.hdf.exception", 
+                                                        unit="1",
+                                                        description="Cnts the nbr exceptions"
+                                                      )
+        self._waitidx_counter = meter.create_up_down_counter("aerospike.hdf.waitidxcompletion",
+                                                        unit="1",
+                                                        description="Waiting Idx completions")
+        self._dropidx_histogram = meter.create_histogram("aerospike.hdf.dropidxtime",
+                                                            unit="sec",
+                                                            description="The amount of time it took t drop the idx")
+        self._populate_recs_gauge = meter.create_gauge("aerospike.hdf.populate.recs",
+                                                            unit="1",
+                                                            description="The number of records being populated")
+        self._query_recs_gauge = meter.create_gauge("aerospike.hdf.query.recs",
+                                                            unit="1",
+                                                            description="The number of records being queried")
+        self._query_runs_gauge = meter.create_gauge("aerospike.hdf.query.runs",
+                                                            unit="1",
+                                                            description="The number query runs")
+        self._prometheus_heartbeat_gauge = meter.create_gauge("aerospike.hdf.heartbeat")
+        
+        self._prometheus_hb : int = runtimeArgs.prometheushb
         self._port = runtimeArgs.vectorport
         self._verifyTLS = runtimeArgs.vectortls
         
@@ -154,6 +240,10 @@ class BaseAerospike():
         self._useloadbalancer = runtimeArgs.vectorloadbalancer        
         
         self._namespace = runtimeArgs.namespace
+        if runtimeArgs.idxnamespace is None or runtimeArgs.idxnamespace:
+            self._idx_namespace = self._namespace
+        else:
+            self._idx_namespace = runtimeArgs.idxnamespace
         self._setName = runtimeArgs.setname
         self._paramsetname = runtimeArgs.generatedetailsetname
         if runtimeArgs.idxname is None or not runtimeArgs.idxname:
@@ -179,6 +269,11 @@ class BaseAerospike():
                                         runtimeArgs.searchparams
                                     )            
         
+        self._actions = None
+        self._datasetname : str = None
+        self._dimensions = None
+        self._heartbeat_thread : Thread = None
+        
         self._logFilePath = runtimeArgs.logfile        
         self._asLogLevel = runtimeArgs.driverloglevel
         self._logLevel = runtimeArgs.loglevel
@@ -200,7 +295,13 @@ class BaseAerospike():
             self._loggingEnabled = True
             self._logger.info(f'Start Aerospike: Metric: {self.basestring()}')
             self._logger.info(f"  aerospike-vector-search: {version('aerospike_vector_search')}")
-         
+            self._logger.info(f"Prometheus HTTP Server: {self._prometheus_http_server[0].server_address}")
+            self._logger.info(f"  Metrics Name: {meter.name}")
+        elif self._asLogLevel is not None:
+            loggerASClient.setLevel(logging.getLevelName(self._asLogLevel))
+            
+        self._start_prometheus_heartbeat()
+        
     @staticmethod
     def set_hnsw_params_attrs(__obj :object, __dict: dict) -> object:
         for key in __dict: 
@@ -217,6 +318,31 @@ class BaseAerospike():
                 setattr(__obj, key, __dict[key])
         return __obj
     
+    def _prometheus_heartbeat(self) -> None:
+        from time import sleep
+        
+        self._logger.debug(f"Heartbeating Start")
+        i = 0
+        while self._prometheus_hb > 0:
+            i += 1
+            self._prometheus_heartbeat_gauge.set(i, {"ns":self._namespace,
+                                                        "set":self._setName,
+                                                        "idxns":self._idx_namespace,
+                                                        "idx":self._idx_name,
+                                                        "idxbin":self._idx_binName,
+                                                        "idxdist":self._idx_distance,
+                                                        "dims": self._dimensions,
+                                                        "dataset":self._datasetname,
+                                                        "job":self._actions})                        
+            sleep(self._prometheus_hb)
+        self._logger.debug(f"Heartbeating Ended")
+            
+    def _start_prometheus_heartbeat(self) -> None:
+        if self._heartbeat_thread is None and self._prometheus_hb > 0:
+            self._logger.info(f"Starting Heartbeat at {self._prometheus_hb} secs")
+            self._heartbeat_thread = Thread(target = self._prometheus_heartbeat)
+            self._heartbeat_thread.start()
+            
     def flush_log(self) -> None:
         if(self._logger.handlers is not None):
             for handler in self._logger.handlers:
@@ -234,10 +360,22 @@ class BaseAerospike():
             levelName = "" if logLevel == logging.INFO else f" {logging.getLevelName(logLevel)}: "
             print(levelName + msg + f', Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')                    
     
-    def done(self):
+    def shutdown(self):
         self.print_log(f'done: {self}')                
         self.flush_log()
-                
+        
+        if self._heartbeat_thread is not None:
+            hbt = self._prometheus_hb
+            self._prometheus_hb = 0
+            self._heartbeat_thread.join(timeout=hbt+1)
+            self._logger.info(f"Shutdown Heartbeat...")
+                        
+        self._prometheus_meter_provider.force_flush()
+        self._prometheus_metric_reader.force_flush()
+        self._prometheus_meter_provider.shutdown()
+        #self._prometheus_metric_reader.shutdown()
+        self._prometheus_http_server[0].shutdown()        
+        
     def populate_index(self, train:  np.array) -> None:
         pass
     
@@ -251,8 +389,13 @@ class BaseAerospike():
             searchhnswparams = None
         else:
             searchhnswparams = f", {{s_ef:{self._query_hnswparams.ef}}}"
-        
-        return f"BaseAerospike([{self._host}:{self._port}, {self._useloadbalancer}, {self._namespace}.{self._setName}.{self._idx_name}, {self._idx_distance}, {{{hnswparams}}}{searchhnswparams}])"
+            
+        if self._idx_namespace == self._namespace:
+            fullName = f"{self._namespace}.{self._setName}.{self._idx_name}"
+        else:
+            fullName = f"{self._namespace}.{self._setName}; {self._idx_namespace}.{self._idx_name}"
+            
+        return f"BaseAerospike([{self._host}:{self._port}, {self._useloadbalancer}, {fullName}, {self._idx_distance}, {{{hnswparams}}}{searchhnswparams}])"
 
     def __str__(self):
         return self.basestring()

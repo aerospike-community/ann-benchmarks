@@ -68,10 +68,25 @@
             "cwd": "${workspaceFolder}/aerospike",
             "args": [
                     "--dataset", "random-xs-20-angular",
-                    "--concurrency", "-1",
+                    "--concurrency", "5000",
+                    "--idxdrop",
                     "--logfile", "./hdfimport.log",
-                    "--idxnowait",
-                    "--idxdrop"
+                     "--loglevel", "DEBUG"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_import glove",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_import.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "glove-100-angular",
+                    "--concurrency", "10000",
+                    "--logfile", "./hdfimport.log",
+                    "--idxdrop",
+                    "--loglevel", "DEBUG"
                     ],
             "console": "integratedTerminal"
         },
@@ -83,7 +98,8 @@
             "cwd": "${workspaceFolder}/aerospike",
             "args": [
                     "--dataset", "random-xs-20-angular",
-                    "--logfile", "./hdfquery.log",                
+                    "--logfile", "./hdfquery.log",
+                    "-r", "100"
                     ],
             "console": "integratedTerminal"
         },
