@@ -258,6 +258,25 @@ class Aerospike(BaseAerospike):
             else:
                 logger.debug(msg=f"Resuming population for Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}")
 
+    async def _resourceexhaused_handler(self, key: int, embedding, i: int, client: vectorASyncClient) -> None:
+        self._exception_counter.add(1, {"exception_type": "Resource Exhausted", "handled_by_user": True,"ns":self._namespace,"set":self._setName})
+        try:
+            logLevel = logging.DEBUG
+            if not self._puasePuts:
+                self._puasePuts = True
+                logLevel = logging.WARNING
+                self.print_log(msg=f"\nResource Exhausted on Put first encounter on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...",
+                                    logLevel=logging.WARNING)
+            else:
+                logger.debug(f"Resource Exhausted on Put on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...")
+            
+            if self._idx_resource_event < 0:
+                await self._put_wait_completion_handler(key, embedding, i, client, logLevel)                        
+            else:
+                await self._put_wait_sleep_handler(key, embedding, i, client, logLevel)
+        finally:
+            self._exception_counter.add(-1, {"exception_type": "Resource Exhausted", "handled_by_user": True,"ns":self._namespace,"set":self._setName})
+
     async def put_vector(self, key: int, embedding, i: int, client: vectorASyncClient, retry: bool = False) -> None:
         try:
             try:
@@ -271,21 +290,7 @@ class Aerospike(BaseAerospike):
                 self._populate_counter.add(1, {"type": "upsert","ns":self._namespace,"set":self._setName})
             except vectorTypes.AVSServerError as avse:
                 if self._idx_resource_event != 0 and not retry and avse.rpc_error.code() == vectorResultCodes.StatusCode.RESOURCE_EXHAUSTED:
-                    self._exception_counter.add(1, {"exception_type": "Resource Exhausted", "handled_by_user": True,"ns":self._namespace,"set":self._setName})
-                    logLevel = logging.DEBUG
-                    if not self._puasePuts:
-                        self._puasePuts = True
-                        logLevel = logging.WARNING
-                        self.print_log(msg=f"\nResource Exhausted on Put first encounter on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...",
-                                            logLevel=logging.WARNING)
-                    else:
-                        logger.debug(f"Resource Exhausted on Put on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...")
-                    
-                    if self._idx_resource_event < 0:
-                        await self._put_wait_completion_handler(key, embedding, i, client, logLevel)                        
-                    else:
-                        await self._put_wait_sleep_handler(key, embedding, i, client, logLevel)
-                    self._exception_counter.add(-1, {"exception_type": "Resource Exhausted", "handled_by_user": True,"ns":self._namespace,"set":self._setName})                    
+                    await self._resourceexhaused_handler(key, embedding, i, client)
                 else:
                     raise
         except Exception as e:
@@ -345,8 +350,8 @@ class Aerospike(BaseAerospike):
                 if self._concurrency == 0 or self._idx_maxrecs == 0:
                     s = time.time()
                 else:
-                    trainsize = len(self._trainarray)
-                    self._populate_counter.add(0, {"type": "upsert","ns":self._namespace,"set":self._setName})
+                    trainsize = len(self._trainarray) if self._idx_maxrecs < 0 else self._idx_maxrecs >= 0 
+                    self._populate_counter.add(0.1, {"type": "upsert","ns":self._namespace,"set":self._setName})
                     self._populate_recs_gauge.set(trainsize, {"ns":self._namespace,"set":self._setName})            
                     self._puasePuts = False
                     self.print_log(f'Populating Index {self._idx_namespace}.{self._idx_name}')                    
@@ -388,7 +393,7 @@ class Aerospike(BaseAerospike):
                     logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")                            
                     await asyncio.gather(*taskPuts)                    
                     t = time.time()
-                    self._populate_recs_gauge.set(0,{"ns":self._namespace,"set":self._setName})                        
+                    self._populate_recs_gauge.set(0.1,{"ns":self._namespace,"set":self._setName})                        
                     logger.info(f"All Put Tasks ({i}) Completed")                
                     print('\n')
                     self.print_log(f"Index Put {i:,} Recs in {t - s} (secs), TPS: {i/(t - s):,}")
@@ -431,7 +436,7 @@ class Aerospike(BaseAerospike):
             taskPuts = []
             queries = 0
             i = 1
-            self._query_counter.add(0, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name})
+            self._query_counter.add(0.1, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name})
             self._query_runs_gauge.set(self._query_runs,{"ns":self._idx_namespace,"idx":self._idx_name})
             while i <= self._query_runs:                
                 if self._query_parallel:
@@ -445,7 +450,7 @@ class Aerospike(BaseAerospike):
             t = time.time()
             if self._query_parallel:
                 queries =  sum(results)
-            self._query_runs_gauge.set(0,{"ns":self._idx_namespace,"idx":self._idx_name}) 
+            self._query_runs_gauge.set(0.1,{"ns":self._idx_namespace,"idx":self._idx_name}) 
             print('\n')
             self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {queries} in {t-s} secs, {queries/(t-s)} TPS')
                         
@@ -474,7 +479,7 @@ class Aerospike(BaseAerospike):
                     Aerospike.PrintLog(f'Zero Distance Found for {self._idx_namespace}.{self._idx_name} Keys: {zeroDist}', logging.WARNING)
             queries += 1
         
-        self._query_recs_gauge.set(0,{"ns":self._idx_namespace,"idx":self._idx_name})
+        self._query_recs_gauge.set(0.1,{"ns":self._idx_namespace,"idx":self._idx_name})
         
         return queries
         
