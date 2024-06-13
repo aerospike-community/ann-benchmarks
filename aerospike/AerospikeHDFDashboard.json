@@ -90,11 +90,437 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "dark-yellow",
+            "mode": "fixed"
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "string"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 0,
+        "y": 1
+      },
+      "id": 643,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "firstNotNull"
+          ],
+          "fields": "/^dataset$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", ns=\"$namespace\", set=\"$set\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Dataset",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "light-blue",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 3,
+        "y": 1
+      },
+      "id": 644,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "firstNotNull"
+          ],
+          "fields": "/^idxdist$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", idxns=\"$idxns\", idx=\"$idxname\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Distance Type",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "light-blue",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 6,
+        "y": 1
+      },
+      "id": 642,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "firstNotNull"
+          ],
+          "fields": "/^poprecs$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", ns=\"$namespace\", set=\"$set\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Dataset Size",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "light-blue",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 9,
+        "y": 1
+      },
+      "id": 645,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "firstNotNull"
+          ],
+          "fields": "/^dims$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", ns=\"$namespace\", set=\"$set\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Diminsions",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisWidth": 100,
+            "barAlignment": -1,
+            "drawStyle": "line",
+            "fillOpacity": 100,
+            "gradientMode": "scheme",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  " - . Resource Exhausted"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 640,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "sum by(exception_type) (aerospike_hdf_exception{ns=\"$idxns\", instance=~\"$client\", set=\"$set\"})",
+          "format": "time_series",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "{{instance}} - {{ns}}.{{set}} {{exception_type}}",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Exceptions",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "gridPos": {
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 1
+        "y": 14
       },
       "id": 639,
       "options": {
@@ -120,7 +546,7 @@
             "mode": "palette-classic"
           },
           "decimals": 0,
-          "fieldMinMax": false,
+          "fieldMinMax": true,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -139,7 +565,7 @@
         "h": 5,
         "w": 3,
         "x": 0,
-        "y": 3
+        "y": 16
       },
       "id": 626,
       "options": {
@@ -151,7 +577,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^Value$/",
+          "fields": "",
           "values": false
         },
         "showPercentChange": false,
@@ -179,7 +605,7 @@
           "useBackend": false
         }
       ],
-      "title": "Population Status",
+      "title": "Population Status Reminding",
       "type": "stat"
     },
     {
@@ -245,13 +671,18 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 8
+        "y": 21
       },
       "id": 638,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "logmin",
+            "mean"
+          ],
+          "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
@@ -278,7 +709,7 @@
           "useBackend": false
         }
       ],
-      "title": "Panel Title",
+      "title": "Populateion (rate)",
       "type": "timeseries"
     },
     {
@@ -309,7 +740,7 @@
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "linear",
+            "lineInterpolation": "stepAfter",
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -344,7 +775,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 29
       },
       "id": 637,
       "options": {
@@ -373,7 +804,7 @@
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "{{instance}} - {{index}}",
+          "legendFormat": "{{instance}} - {{ns}}.{{idx}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -391,7 +822,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 36
       },
       "id": 622,
       "options": {
@@ -411,11 +842,15 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "fixedColor": "semi-dark-purple",
+            "mode": "fixed"
           },
+          "decimals": 0,
+          "fieldMinMax": false,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -423,13 +858,10 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
-          }
+          },
+          "unit": "locale"
         },
         "overrides": []
       },
@@ -437,23 +869,23 @@
         "h": 5,
         "w": 3,
         "x": 0,
-        "y": 25
+        "y": 38
       },
-      "id": 635,
+      "id": 646,
       "options": {
         "colorMode": "background",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "firstNotNull"
           ],
-          "fields": "",
+          "fields": "/^queries$/",
           "values": false
         },
         "showPercentChange": false,
-        "textMode": "auto",
+        "textMode": "value",
         "wideLayout": true
       },
       "pluginVersion": "10.4.2",
@@ -465,16 +897,94 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "aerospike_hdf_query_runs{ns=\"$idxns\", idx=\"$idxname\", instance=~\"$client\"}",
+          "exemplar": false,
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", idxns=\"$idxns\", idx=\"$idxname\"}",
+          "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
       ],
-      "title": "Query Runs",
+      "title": "Queries",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "semi-dark-purple",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 3,
+        "y": 38
+      },
+      "id": 647,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "firstNotNull"
+          ],
+          "fields": "/^querynbrlmt$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", idxns=\"$idxns\", idx=\"$idxname\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "How Many Neighbors",
       "type": "stat"
     },
     {
@@ -507,8 +1017,82 @@
       "gridPos": {
         "h": 5,
         "w": 3,
-        "x": 3,
-        "y": 25
+        "x": 6,
+        "y": 38
+      },
+      "id": 635,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": true,
+          "expr": "aerospike_hdf_query_runs{ns=\"$idxns\", idx=\"$idxname\", instance=~\"$client\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Query Runs Reminding",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 9,
+        "y": 38
       },
       "id": 636,
       "options": {
@@ -536,7 +1120,9 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
+          "exemplar": true,
           "expr": "aerospike_hdf_query_recs{ns=\"$idxns\", idx=\"$idxname\", instance=~\"$client\"}",
+          "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -545,7 +1131,7 @@
           "useBackend": false
         }
       ],
-      "title": "Queries",
+      "title": "Queries Reminding",
       "type": "stat"
     },
     {
@@ -611,12 +1197,17 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 43
       },
       "id": 610,
       "options": {
         "legend": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "logmin",
+            "mean"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -647,7 +1238,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "",
+  "refresh": "5s",
   "schemaVersion": 39,
   "tags": [
     "Monitoring",
@@ -670,6 +1261,7 @@
         "name": "DS_AEROSPIKE_PROMETHEUS",
         "options": [],
         "query": "prometheus",
+        "queryValue": "",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -829,6 +1421,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 7,
+  "version": 19,
   "weekStart": ""
 }

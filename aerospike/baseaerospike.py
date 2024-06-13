@@ -166,7 +166,7 @@ class BaseAerospike():
         Meters:
         aerospike.hdf.populate          -- Counter can be used for rate (records per sec)
         aerospike.hdf.query             -- Counter can be used for rate (queries per sec)
-        aerospike.hdf.exception         -- Counter Exceptions
+        aerospike.hdf.exception         -- Up/Down Counter Exceptions
         aerospike.hdf.waitidxcompletion -- Up/Down counter (inc one upon start of wait/dec on end of wait)
         aerospike.hdf.dropidxtime       -- drop idx latency
         aerospike.hdf.populate.recs     -- gauge used to determine how many recs have been processed
@@ -200,9 +200,9 @@ class BaseAerospike():
                                                         unit="1",
                                                         description="Cnts the nbr of queries performed"
                                                       )        
-        self._exception_counter = meter.create_counter("aerospike.hdf.exception", 
-                                                        unit="1",
-                                                        description="Cnts the nbr exceptions"
+        self._exception_counter = meter.create_up_down_counter("aerospike.hdf.exception", 
+                                                                unit="1",
+                                                                description="Cnts the nbr exceptions"
                                                       )
         self._waitidx_counter = meter.create_up_down_counter("aerospike.hdf.waitidxcompletion",
                                                         unit="1",
@@ -272,7 +272,11 @@ class BaseAerospike():
         self._actions = None
         self._datasetname : str = None
         self._dimensions = None
+        self._trainarray = None
+        self._queryarray = None
+        self._puasePuts : bool = False
         self._heartbeat_thread : Thread = None
+        self._query_limit = None
         
         self._logFilePath = runtimeArgs.logfile        
         self._asLogLevel = runtimeArgs.driverloglevel
@@ -318,22 +322,30 @@ class BaseAerospike():
                 setattr(__obj, key, __dict[key])
         return __obj
     
-    def _prometheus_heartbeat(self) -> None:
-        from time import sleep
-        
-        self._logger.debug(f"Heartbeating Start")
-        i = 0
-        while self._prometheus_hb > 0:
-            i += 1
-            self._prometheus_heartbeat_gauge.set(i, {"ns":self._namespace,
+    def prometheus_status(self, i:int) -> None:        
+        self._prometheus_heartbeat_gauge.set(i, {"ns":self._namespace,
                                                         "set":self._setName,
                                                         "idxns":self._idx_namespace,
                                                         "idx":self._idx_name,
                                                         "idxbin":self._idx_binName,
-                                                        "idxdist":self._idx_distance,
+                                                        "idxdist": None if self._idx_distance is None else self._idx_distance.name,
                                                         "dims": self._dimensions,
+                                                        "poprecs": None if self._trainarray is None else len(self._trainarray),
+                                                        "queries": None if self._queryarray is None else len(self._queryarray),
+                                                        "querynbrlmt": self._query_limit,
                                                         "dataset":self._datasetname,
-                                                        "job":self._actions})                        
+                                                        "paused": self._puasePuts,
+                                                        "action": None if self._actions is None else self._actions.name
+                                                        })
+        
+    def _prometheus_heartbeat(self) -> None:
+        from time import sleep
+        
+        self._logger.debug(f"Heartbeating Start")
+        i : int = 0
+        while self._prometheus_hb > 0:
+            i += 1
+            self.prometheus_status(i)
             sleep(self._prometheus_hb)
         self._logger.debug(f"Heartbeating Ended")
             
