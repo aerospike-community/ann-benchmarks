@@ -17,3 +17,4 @@ results/*
 venv
 
 .idea
+aerospike/data/*.hdf5

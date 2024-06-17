@@ -1,0 +1,107 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: ann-benchmarks-aerospike",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run.py",
+            "cwd": "${workspaceFolder}",
+            "args": ["--algorithm", "aerospike",
+                     "--max-n-algorithms", "4",
+                     "--runs", "5",
+                     "--dataset", "random-xs-20-angular",
+                     "--local",
+                     "--force",
+                     "--timeout", "300"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: ann-benchmarks-aerospike Glove Angular",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run.py",
+            "cwd": "${workspaceFolder}",
+            "args": ["--algorithm", "aerospike",
+                     "--max-n-algorithms", "4",
+                     "--runs", "5",
+                     "--dataset", "glove-100-angular",
+                     "--local",
+                     "--force",
+                     "--timeout", "300"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: ann-benchmarks-aerospike Euclidean Local",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run.py",
+            "cwd": "${workspaceFolder}",
+            "args": ["--algorithm", "aerospike",
+                     "--max-n-algorithms", "5",
+                     "--dataset", "gist-960-euclidean",
+                     "--local",
+                     "--force",
+                     "--timeout", "7200"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: ann-benchmarks-aerospike Docker",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run.py",
+            "cwd": "${workspaceFolder}",
+            "args": ["--algorithm", "aerospike",
+                     "--max-n-algorithms", "5",
+                     "--force",
+                     "--timeout", "7200"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_import",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_import.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "random-xs-20-angular",
+                    "--concurrency", "5000",
+                    "--idxdrop",
+                    "--logfile", "./hdfimport.log",
+                     "--loglevel", "DEBUG"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_import glove",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_import.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "glove-100-angular",
+                    "--concurrency", "10000",
+                    "--logfile", "./hdfimport.log",
+                    "--idxdrop",
+                    "--loglevel", "DEBUG"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_query",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_query.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "random-xs-20-angular",
+                    "--logfile", "./hdfquery.log",
+                    "-r", "10"
+                    ],
+            "console": "integratedTerminal"
+        },
+    ]
+}
