@@ -34,6 +34,7 @@ Evaluated
 * [Vearch](https://github.com/vearch/vearch) ![https://img.shields.io/github/stars/vearch/vearch?style=social](https://img.shields.io/github/stars/vearch/vearch?style=social)
 * [Elasticsearch](https://github.com/elastic/elasticsearch) ![https://img.shields.io/github/stars/elastic/elasticsearch?style=social](https://img.shields.io/github/stars/elastic/elasticsearch?style=social): HNSW
 * [Elastiknn](https://github.com/alexklibisz/elastiknn) ![https://img.shields.io/github/stars/alexklibisz/elastiknn?style=social](https://img.shields.io/github/stars/alexklibisz/elastiknn?style=social)
+* [ExpANN](https://github.com/jacketsj/expANN) ![https://img.shields.io/github/stars/jacketsj/expANN?style=social](https://img.shields.io/github/stars/jacketsj/expANN?style=social)
 * [OpenSearch KNN](https://github.com/opensearch-project/k-NN) ![https://img.shields.io/github/stars/opensearch-project/k-NN?style=social](https://img.shields.io/github/stars/opensearch-project/k-NN?style=social)
 * [DiskANN](https://github.com/microsoft/diskann) ![https://img.shields.io/github/stars/microsoft/diskann?style=social](https://img.shields.io/github/stars/microsoft/diskann?style=social): Vamana, Vamana-PQ
 * [Vespa](https://github.com/vespa-engine/vespa) ![https://img.shields.io/github/stars/vespa-engine/vespa?style=social](https://img.shields.io/github/stars/vespa-engine/vespa?style=social)
@@ -44,9 +45,11 @@ Evaluated
 * [Milvus](https://github.com/milvus-io/milvus) ![https://img.shields.io/github/stars/milvus-io/milvus?style=social](https://img.shields.io/github/stars/milvus-io/milvus?style=social): [Knowhere](https://github.com/milvus-io/knowhere)
 * [Zilliz(Glass)](https://github.com/hhy3/pyglass)
 * [pgvector](https://github.com/pgvector/pgvector) ![https://img.shields.io/github/stars/pgvector/pgvector?style=social](https://img.shields.io/github/stars/pgvector/pgvector?style=social)
+* [pgvecto.rs](https://github.com/tensorchord/pgvecto.rs) ![https://img.shields.io/github/stars/tensorchord/pgvecto.rs?style=social](https://img.shields.io/github/stars/tensorchord/pgvecto.rs?style=social)
 * [RediSearch](https://github.com/redisearch/redisearch) ![https://img.shields.io/github/stars/redisearch/redisearch?style=social](https://img.shields.io/github/stars/redisearch/redisearch?style=social)
   * [pg_embedding](https://github.com/neondatabase/pg_embedding) ![https://img.shields.io/github/stars/pg_embedding/pg_embedding?style=social](https://img.shields.io/github/stars/neondatabase/pg_embedding?style=social)
 * [Descartes(01AI)](https://github.com/xiaoming-01ai/descartes)
+* [kgn](https://github.com/Henry-yan/kgn)
 
 Data sets
 =========
