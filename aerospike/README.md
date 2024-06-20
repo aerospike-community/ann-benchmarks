@@ -45,7 +45,7 @@ be merged into the Aerospike DB (default: False)
 
 \-E EVT, --exhaustedevt EVT
 
-This determines how the Resource Exhausted event is handled.   
+This determines how the Resource Exhausted event is handled.  
 This event occurs with the Vector Server merge queue is filled and cannot process any additional  
 population requests.
 
@@ -117,7 +117,7 @@ Defaults to the Set Name (--setname) with the suffix of '_idx'
 
 \-g, --generatedetailsetname
 
-Generates a unique Set Name (--setname) based on distance type, dimensions, index params, etc.   
+Generates a unique Set Name (--setname) based on distance type, dimensions, index params, etc.  
 (default: False)
 
 \-b BIN, --vectorbinname BIN
@@ -137,8 +137,8 @@ The Vector's Index Params (HnswParams) as defined by the Vector Phyton API.
 
 \-L LOG, --logfile LOG
 
-The logging file path, if provided.   
- The default is to stdout.
+The logging file path, if provided.  
+The default is to stdout.
 
 \--loglevel LEVEL
 
@@ -201,7 +201,7 @@ Each “run” is conducted concurrently
 \--check
 
 Each query result is checked to determine if the result is correct.  
- {default False)
+{default False)
 
 \-p port, --vectorport port
 
@@ -251,18 +251,18 @@ Defaults to the Set Name (--setname) with the suffix of '_idx'
 
 \-g, --generatedetailsetname
 
-Generates a unique Set Name (--setname) based on distance type, dimensions, index params, etc.   
+Generates a unique Set Name (--setname) based on distance type, dimensions, index params, etc.  
 (default: False)
 
 \-S PARM, --searchparams PARM
 
 The Vector's Search Params (HnswParams) as defined by the Vector Phyton API.  
- Defaults to --indexparams
+Defaults to --indexparams
 
 \-L LOG, --logfile LOG
 
-The logging file path, if provided.   
- The default is to stdout.
+The logging file path, if provided.  
+The default is to stdout.
 
 \--loglevel LEVEL
 
@@ -290,8 +290,7 @@ Upon exist, the module will sleep ensuring all Prometheus events are captured
 
 The module outputs certain meters to Prometheus. They are:
 
--   `aerospike.hdf.heartbeat
-    This event is defined as a gauge. It provides information about the status of the module including the following attributes:`
+-   `aerospike.hdf.heartbeat This event is defined as a gauge. It provides information about the status of the module including the following attributes:`
     -   `"ns” – Aerospike Namespace`
     -   `"set” – Aerospike Set                                                   `
     -   `"idxns” – Aerospike Vector Index Namespace`
@@ -300,51 +299,37 @@ The module outputs certain meters to Prometheus. They are:
     -   `"idxdist" – The Vector’s API Distance Type`
     -   `"dims" – Vector’s dimensions`
     -   `"poprecs" – The number of records in the ANN dataset that will be populated`
-    -   `"querynbrlmt" – The number of neighbors returned in a query                                                       `
+    -   `"queries": The total number of queries used for this dataset `
+    -   `“querynbrlmt” – The number of possible neighbors to return for the query`
+    -   `“queryruns” – The number of query runs. Each run will perform a set of define queries. The number is defined in “queries”. `
+    -   `"querycurrun" – The current query run                                                  `
     -   `"dataset” – The ANN dataset`
-    -   `"paused" – True if the population because of an event like “resource exhausted”`
+    -   `"paused" – The run status. Values are:`
+        -   `Waiting – waiting for index completion`
+        -   `Paused – paused due to resource exhausted`
+        -   `Running - Populating`
+        -   `Idle – before population, after, or after waiting…`
+        -   `Done – Population/Wait done`
     -   `"action” – If importing (populating) or querying`
--   `aerospike.hdf.populate
-    Current record rate that have been upserted. Defined as a counter.
-    Attributes:`
+    -   "remainingRecs" – The current number of records that have not been populated
+    -   "remainingquerynbrs” - The total number of queries (includes all runs) that have not been executed
+-   `aerospike.hdf.populate Current record rate that have been upserted. Defined as a counter. Attributes:`
     -   `"type" -- upsert`
     -   `"ns" -- Namespace`
     -   `"set" – Set Name`
--   `aerospike.hdf.query
-    Current query rate. Defined as a counter.
-    Attributes:`
+-   `aerospike.hdf.query Current query rate. Defined as a counter. Attributes:`
     -   `"ns" -- Namespace`
     -   `"` `idx" – Index Name`
--   `aerospike.hdf.exception
-    Current exception rate. Defined as a counter.
-    Attributes:`
+    -   `“run” – The run associated with this query`
+-   `aerospike.hdf.exception Current exception rate. Defined as a counter. Attributes:`
     -   `"exception_type" – Type of exception`
     -   `"handled_by_user" – if handled by user code`
     -   `"ns" -- Namespace`
     -   `"set" – Set`
     -   `“idx” – Index name`
--   `aerospike.hdf.waitidxcompletion
-    Current number of waiting for index merge completions being conducted. Defined as a counter.
-    Attributes:`
+-   `aerospike.hdf.waitidxcompletion Current number of waiting for index merge completions being conducted. Defined as a counter. Attributes:`
     -   `"ns" – Index Namespace`
     -   `"idx" – Index Name`
--   `aerospike.hdf.dropidxtime
-    The amount of time to perform an index drop. Defined as a histogram.
-    Attributes:`
+-   `aerospike.hdf.dropidxtime The amount of time to perform an index drop. Defined as a histogram. Attributes:`
     -   `"ns" – Index Namepsace`
-    -   `"idx" – Index Name`
--   `aerospike.hdf.populate.recs
-    The current number of records upserted. Defaulted as a gauge.
-    Attributes:`
-    -   `"ns" -- Namespace`
-    -   `"set" – Set Name`
--   `aerospike.hdf.query.recs
-    The current number of queries performed. Defined as a gauge.
-    Attributes:`
-    -   `"ns" – Index Namespace`
-    -   `"idx" – Index Name`
--   `aerospike.hdf.query.runs
-    The current number of runs for a query. Defined as a gauge.
-    Attributes:`
-    -   `"ns" – Index Namespace`
     -   `"idx" – Index Name`
