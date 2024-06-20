@@ -1,10 +1,12 @@
 import asyncio
+import os
 import numpy as np
 import time
 import logging
 import json
 import argparse
 
+from enum import Flag, auto
 from typing import List, Dict
 from importlib.metadata import version
 from logging import _nameToLevel as LogLevels
@@ -31,6 +33,11 @@ _distanceNameToAerospikeType: Dict[str, vectorTypes.VectorDistanceMetric] = {
 loggerASClient = logging.getLogger("aerospike_vector_search")
 logFileHandler = None
 
+class OperationActions(Flag):    
+    POPULATION = auto()
+    QUERY = auto()
+    POPQUERY = POPULATION | QUERY
+    
 class BaseAerospike():
 
     @staticmethod
@@ -55,7 +62,7 @@ class BaseAerospike():
             '-A', '--hosts',
             metavar="HOST:PORT",            
             nargs='+',
-            help="A list of host and optionsl ports. Example: 'hosta:5000' or 'hostb'",
+            help="A list of host and optional ports. Example: 'hosta:5000' or 'hostb'",
             default=[],
         )
         parser.add_argument(
@@ -141,7 +148,7 @@ class BaseAerospike():
         )
         parser.add_argument(
             "--driverloglevel",
-            metavar="DLEVEL",           
+            metavar="LEVEL",           
             help="The Driver's Logging level",
             default="NOTSET",
             choices=LogLevels.keys(),
@@ -175,10 +182,7 @@ class BaseAerospike():
         aerospike.hdf.query             -- Counter can be used for rate (queries per sec)
         aerospike.hdf.exception         -- Up/Down Counter Exceptions
         aerospike.hdf.waitidxcompletion -- Up/Down counter (inc one upon start of wait/dec on end of wait)
-        aerospike.hdf.dropidxtime       -- drop idx latency
-        aerospike.hdf.populate.recs     -- gauge used to determine how many recs have been processed
-        aerospike.hdf.query.recs        -- gauge used to determine how many queries will be processed
-        aerospike.hdf.query.runs        -- gague used on how many runs
+        aerospike.hdf.dropidxtime       -- drop idx latency        
         '''
                 
         self._prometheus_init(runtimeArgs)
@@ -231,14 +235,19 @@ class BaseAerospike():
                                     )
             
         self._sleepexit = runtimeArgs.exitdelay
-        self._actions = None
+        self._actions : OperationActions = None
+        self._waitidx : bool = None
         self._datasetname : str = None
         self._dimensions = None
         self._trainarray = None
         self._queryarray = None
-        self._puasePuts : bool = False
+        self._pausedPuts : bool = False
         self._heartbeat_thread : Thread = None
         self._query_limit = None
+        self._query_runs : int = None
+        self._remainingrecs : int = None
+        self._remainingquerynbrs : int = None
+        self._query_current_run : int = None
         
         self._logging_init(runtimeArgs, logger)
             
@@ -280,22 +289,13 @@ class BaseAerospike():
                                                         description="Waiting Idx completions")
         self._dropidx_histogram = self._meter.create_histogram("aerospike.hdf.dropidxtime",
                                                             unit="sec",
-                                                            description="The amount of time it took t drop the idx")
-        self._populate_recs_gauge = self._meter.create_gauge("aerospike.hdf.populate.recs",
-                                                            unit="1",
-                                                            description="The number of records being populated")
-        self._query_recs_gauge = self._meter.create_gauge("aerospike.hdf.query.recs",
-                                                            unit="1",
-                                                            description="The number of records being queried")
-        self._query_runs_gauge = self._meter.create_gauge("aerospike.hdf.query.runs",
-                                                            unit="1",
-                                                            description="The number query runs")
+                                                            description="The amount of time it took t drop the idx")                
         self._prometheus_heartbeat_gauge = self._meter.create_gauge("aerospike.hdf.heartbeat")
         
         self._prometheus_hb : int = runtimeArgs.prometheushb
 
     def _logging_init(self, runtimeArgs: argparse.Namespace, logger: logging.Logger) -> None:
-        
+       
         global logFileHandler
         
         self._logFilePath = runtimeArgs.logfile        
@@ -310,7 +310,7 @@ class BaseAerospike():
                 logFileHandler = logging.FileHandler(self._logFilePath, "w")                
                 logFormatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
                 logFileHandler.setFormatter(logFormatter)
-                if self._asLogLevel is not None and self._asLogLevel:
+                if self._asLogLevel is not None:
                     loggerASClient.addHandler(logFileHandler)
                     loggerASClient.setLevel(logging.getLevelName(self._asLogLevel))
                 self._logger.addHandler(logFileHandler)            
@@ -321,8 +321,11 @@ class BaseAerospike():
             self._logger.info(f"  aerospike-vector-search: {version('aerospike_vector_search')}")
             self._logger.info(f"Prometheus HTTP Server: {self._prometheus_http_server[0].server_address}")
             self._logger.info(f"  Metrics Name: {self._meter.name}")
-        elif self._asLogLevel is not None:
-            loggerASClient.setLevel(logging.getLevelName(self._asLogLevel))
+        elif self._asLogLevel is not None:            
+            if self._asLogLevel == "NOTSET":                
+                loggerASClient.setLevel(logging.CRITICAL)
+            else:
+                loggerASClient.setLevel(logging.getLevelName(self._asLogLevel))
 
     @staticmethod
     def set_hnsw_params_attrs(__obj :object, __dict: dict) -> object:
@@ -340,7 +343,20 @@ class BaseAerospike():
                 setattr(__obj, key, __dict[key])
         return __obj
     
-    def prometheus_status(self, i:int) -> None:        
+    def prometheus_status(self, i:int, done:bool = False) -> None:
+        pausestate : str = None
+        if done:
+            pausestate = "Done"
+        elif OperationActions.POPULATION in self._actions:
+            if self._waitidx:
+                pausestate = "Waiting"
+            elif self._pausedPuts:
+                pausestate = "Paused"
+            elif self._remainingrecs is not None and self._remainingrecs > 0:
+                pausestate = "Running"
+            else:
+                pausestate = "Idle"
+        
         self._prometheus_heartbeat_gauge.set(i, {"ns":self._namespace,
                                                         "set":self._setName,
                                                         "idxns":self._idx_namespace,
@@ -351,9 +367,13 @@ class BaseAerospike():
                                                         "poprecs": None if self._trainarray is None else len(self._trainarray),
                                                         "queries": None if self._queryarray is None else len(self._queryarray),
                                                         "querynbrlmt": self._query_limit,
+                                                        "queryruns": self._query_runs,
+                                                        "querycurrun": self._query_current_run,
                                                         "dataset":self._datasetname,
-                                                        "paused": self._puasePuts,
-                                                        "action": None if self._actions is None else self._actions.name
+                                                        "paused": pausestate,
+                                                        "action": None if self._actions is None else self._actions.name,
+                                                        "remainingRecs" : self._remainingrecs,
+                                                        "remainingquerynbrs" : self._remainingquerynbrs
                                                         })
         
     def _prometheus_heartbeat(self) -> None:
@@ -394,6 +414,7 @@ class BaseAerospike():
         from time import sleep
         
         if self._sleepexit > 0:
+            self.prometheus_status(0, True)
             self.print_log(f'existing sleeping {self._sleepexit}') 
             sleep(self._sleepexit)
                 
@@ -410,7 +431,9 @@ class BaseAerospike():
         self._prometheus_metric_reader.force_flush()
         self._prometheus_meter_provider.shutdown()
         #self._prometheus_metric_reader.shutdown()
-        self._prometheus_http_server[0].shutdown()        
+        self._prometheus_http_server[0].shutdown()
+        if logFileHandler is not None:
+            loggerASClient.removeHandler(logFileHandler)
         
     def populate_index(self, train:  np.array) -> None:
         pass
@@ -422,7 +445,7 @@ class BaseAerospike():
         batchingparams = f"maxrecs:{self._idx_hnswparams.batching_params.max_records}, interval:{self._idx_hnswparams.batching_params.interval}, disabled:{self._idx_hnswparams.batching_params.disabled}"
         hnswparams = f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}"
         if self._query_hnswparams is None:
-            searchhnswparams = None
+            searchhnswparams = ""
         else:
             searchhnswparams = f", {{s_ef:{self._query_hnswparams.ef}}}"
             
@@ -430,8 +453,13 @@ class BaseAerospike():
             fullName = f"{self._namespace}.{self._setName}.{self._idx_name}"
         else:
             fullName = f"{self._namespace}.{self._setName}; {self._idx_namespace}.{self._idx_name}"
+        
+        if self._host is None:
+            hosts = "NoHosts"
+        else:
+            hosts = ','.join(str(hp.host) + ':' + str(hp.port) for hp in self._host)
             
-        return f"BaseAerospike([{self._host}:{self._port}, {self._useloadbalancer}, {fullName}, {self._idx_distance}, {{{hnswparams}}}{searchhnswparams}])"
+        return f"BaseAerospike([[{hosts}], {self._useloadbalancer}, {fullName}, {self._idx_distance}, {{{hnswparams}}}{searchhnswparams}])"
 
     def __str__(self):
         return self.basestring()
