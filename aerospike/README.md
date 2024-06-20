@@ -333,3 +333,49 @@ The module outputs certain meters to Prometheus. They are:
 -   `aerospike.hdf.dropidxtime The amount of time to perform an index drop. Defined as a histogram. Attributes:`
     -   `"ns" – Index Namepsace`
     -   `"idx" – Index Name`
+
+# Supported Datasets
+
+-   deep-image-96-angular
+-   fashion-mnist-784-euclidean
+-   gist-960-euclidean
+-   glove-25-angular
+-   glove-50-angular
+-   glove-100-angular
+-   glove-200-angular
+-   mnist-784-euclidean
+-   random-xs-20-euclidean
+-   random-s-100-euclidean
+-   random-xs-20-angular
+-   random-s-100-angular
+-   random-xs-16-hamming
+-   random-s-128-hamming
+-   random-l-256-hamming
+-   random-s-jaccard
+-   random-l-jaccard
+-   sift-128-euclidean
+-   nytimes-256-angular
+-   nytimes-16-angular
+-   sift-256-hamming
+-   kosarak-jaccard
+-   movielens1m-jaccard
+-   movielens10m-jaccard
+-   movielens20m-jaccard
+-   dbpedia-openai-100k-angular
+-   dbpedia-openai-200k-angular
+-   dbpedia-openai-300k-angular
+-   dbpedia-openai-400k-angular
+-   dbpedia-openai-500k-angular
+-   dbpedia-openai-600k-angular
+-   dbpedia-openai-700k-angular
+-   dbpedia-openai-800k-angular
+-   dbpedia-openai-900k-angular
+-   dbpedia-openai-1000k-angular
+
+## Possible additional sites (can be more)
+
+Any new dataset needs to be defined to mini-ANN.
+
+-   <https://archive.ics.uci.edu/>
+-   <http://fimi.uantwerpen.be/data/>
+-   <http://files.grouplens.org/datasets/movielens/>
