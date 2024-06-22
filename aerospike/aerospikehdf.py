@@ -3,6 +3,7 @@ import numpy as np
 import time
 import logging
 import argparse
+import statistics
 
 from enum import Flag, auto
 from typing import Iterable, List, Union, Any
@@ -14,6 +15,7 @@ from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  
 
 from baseaerospike import BaseAerospike, _distanceNameToAerospikeType as DistanceMaps, OperationActions
 from datasets import DATASETS, load_and_transform_dataset
+from metrics import all_metrics as METRICS, DummyMetric
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +120,16 @@ class Aerospike(BaseAerospike):
            "--check",        
             help="Check Query Results",
             action='store_true'
-        )        
+        )
+        parser.add_argument(
+                "--metric",
+                metavar="TYPE",
+                help="Which metric to use to calculate Recall",
+                default="knn",
+                type=str,
+                choices=METRICS.keys(),
+            )
+        
         BaseAerospike.parse_arguments(parser)
     
     def __init__(self, runtimeArgs: argparse.Namespace, actions: OperationActions):
@@ -147,7 +158,8 @@ class Aerospike(BaseAerospike):
             self._query_parallel = runtimeArgs.parallel
             self._query_check = runtimeArgs.check
             self._query_nbrlimit = runtimeArgs.limit
-            
+            self._query_metric = METRICS[runtimeArgs.metric]
+                    
     async def __aenter__(self):
         return self
  
@@ -432,6 +444,7 @@ class Aerospike(BaseAerospike):
                 raise FileNotFoundError(f"Vector Index {self._idx_namespace}.{self._idx_name} not found")
 
         self.print_log(f'Starting Query Runs ({self._query_runs}) on {self._idx_namespace}.{self._idx_name}')
+        metricfunc = None if self._query_metric is None else self._query_metric["function"]
         
         async with vectorASyncClient(seeds=self._host,
                                         listener_name=self._listern,
@@ -439,7 +452,7 @@ class Aerospike(BaseAerospike):
                             ) as client:
             s = time.time()
             taskPuts = []
-            queries = 0
+            queries = []
             i = 1
             checkNbrs = self._neighbors is not None and len(self._neighbors) > 0
             self._remainingquerynbrs = len(self._queryarray) * self._query_runs
@@ -447,63 +460,83 @@ class Aerospike(BaseAerospike):
                 if self._query_parallel:
                     taskPuts.append(self.query_run(client, i, checkNbrs))
                 else:
-                    queries += await self.query_run(client, i, checkNbrs)
-                i += 1
-                
+                    resultnbrs = await self.query_run(client, i, checkNbrs)
+                    queries.append(resultnbrs)
+                    if metricfunc is not None:
+                        self._query_metric_value = metricfunc(self._neighbors, resultnbrs, DummyMetric(), i-1, len(resultnbrs[0]))
+            
+                i += 1                
             results = await asyncio.gather(*taskPuts)
             t = time.time()
             if self._query_parallel:
-                queries =  sum(results)
+                queries =  results
             print('\n')
-            self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {queries} in {t-s} secs, {queries/(t-s)} TPS')
+            totqueries = sum([len(x) for x in queries])
+            if metricfunc is not None:
+                metricValues = []
+                i = 0
+                for mvrun in queries:
+                    metricValues.append(metricfunc(self._neighbors, mvrun, DummyMetric(), i, len(mvrun[0])))
+                    i += 1
+                self._query_metric_value = statistics.mean(metricValues)
+                
+            self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {totqueries} in {t-s} secs, {totqueries/(t-s)} TPS, {None if self._query_metric is None else self._query_metric["type"]}: {self._query_metric_value}')        
 
     async def _check_query_results(self, results:List[Any], idx:int) -> bool:
     
+        compareresult = None                
+        
         if len(results) == len(self._neighbors[idx]):
-            if [x for x in results + self._neighbors[idx] if x not in results or x not in self._neighbors[idx]]:
-                print('\n')
-                self._exception_counter.add(1, {"exception_type":"Results don't Match Expected Neighbors", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
-                self.print_log(f'Results do not Match Expected Neighbors for {self._idx_namespace}.{self._idx_name}', logging.WARNING)
-                return False
-            return True
-        elif [x for x in results if x not in self._neighbors[idx]]:
-                print('\n')
-                self._exception_counter.add(1, {"exception_type":"Results don't Match Expected Neighbors", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
-                self.print_log(f'Results do not Match Expected Neighbors for {self._idx_namespace}.{self._idx_name}', logging.WARNING)
-                return False
-        return True
+            compareresult = results == self._neighbors[idx]
+            if all(compareresult):
+                return True
+        elif self._query_nbrlimit > len(self._neighbors[idx]):
+            compareresult = results[:len(self._neighbors[idx])] == self._neighbors[idx]
+            if all(compareresult):
+                return True
+        else:
+            compareresult = results == self._neighbors[idx][:self._query_nbrlimit]
+            if all(compareresult):
+                return True
+        self._exception_counter.add(1, {"exception_type":"Results don't Match Expected Neighbors", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
+        logger.warn(f"Results do not Match Expected Neighbors for {self._idx_namespace}.{self._idx_name} for Query {idx}")
+        logger.warn(f"Comparison Results: {compareresult}")
+        
+        return False
             
-    async def query_run(self, client:vectorASyncClient, runNbr:int, checkNbrs:bool) -> int:
+    async def query_run(self, client:vectorASyncClient, runNbr:int, checkNbrs:bool) -> List:
         queryLen = 0
         resultCnt = 0
-        queries = 1
+        rundistance = []
         self._query_current_run = runNbr
         self._query_counter.add(0, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name, "run": runNbr})
-            
+        msg = "                                   "
         for pos, searchValues in enumerate(self._queryarray):
             queryLen += len(searchValues)
             result = await self.vector_search(client, searchValues.tolist())
             self._query_counter.add(1, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name, "run": runNbr})            
             resultCnt += len(result)
-            print('Query Run [%d] Search [%d] Array [%d] Result [%d]                         \r'%(runNbr,pos+1,queryLen,resultCnt), end="")
+            print('Query Run [%d] Search [%d] Array [%d] Result [%d] %s\r'%(runNbr,pos+1,queryLen,resultCnt,msg), end="")
             self._remainingquerynbrs -= 1
             result_ids = [neighbor.key.key for neighbor in result]
+            rundistance.append(result_ids)
+            
             if self._query_check:
                 if len(result_ids) == 0:
-                    print('\n')
                     self._exception_counter.add(1, {"exception_type":"No Query Results", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
-                    self.print_log(f'No Query Results for {self._idx_namespace}.{self._idx_name}', logging.WARNING)
-                elif checkNbrs and len(self._neighbors[queries-1]) > 0:
-                    await self._check_query_results(result_ids, queries-1)
+                    logger.warn(f'No Query Results for {self._idx_namespace}.{self._idx_name}', logging.WARNING)
+                    msg = "Warn: No Results"
+                elif checkNbrs and len(self._neighbors[len(rundistance)-1]) > 0:
+                    if not await self._check_query_results(result_ids, len(rundistance)-1):
+                        msg = "Warn: Compare Failed"
                 else:                        
                     zeroDist = [record.key.key for record in result if record.distance == 0]
                     if len(zeroDist) > 0:
-                        print('\n')
                         self._exception_counter.add(1, {"exception_type":"Zero Distance Found", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
-                        self.print_log(f'Zero Distance Found for {self._idx_namespace}.{self._idx_name} Keys: {zeroDist}', logging.WARNING)
-            queries += 1
-        
-        return queries
+                        logger.warn(f'Zero Distance Found for {self._idx_namespace}.{self._idx_name} Keys: {zeroDist}', logging.WARNING)
+                        msg = "Warn: Zero Distance Found"
+            
+        return rundistance
         
     async def vector_search(self, client:vectorASyncClient, query:List[float]) -> List[vectorTypes.Neighbor]:
         try:
@@ -535,5 +568,9 @@ class Aerospike(BaseAerospike):
             qrystr = f", Runs: {self._query_runs}, Parallel: {self._query_parallel}, Check: {self._query_check}"
         else:
             qrystr = ""
-            
-        return f"Aerospike([{self.basestring()}, Actions: {self._actions}, Dimensions: {self._dimensions}, Array: {arrayLen}, NbrResult: {nbrArrayLen}, DS: {self._datasetname}{popstr}{qrystr}]"
+        if self._query_metric is None:
+            metricstr = ""
+        else:
+            typestr = self._query_metric["type"]
+            metricstr = f", recall:{typestr}"
+        return f"Aerospike([{self.basestring()}, Actions: {self._actions}, Dimensions: {self._dimensions}, Array: {arrayLen}, NbrResult: {nbrArrayLen}, DS: {self._datasetname}{popstr}{qrystr}{metricstr}]"

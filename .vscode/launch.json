@@ -140,9 +140,22 @@
             "args": [
                     "--dataset", "random-xs-20-angular",
                     "--logfile", "./hdfquery.log",
-                    "--idxnamespace", "test1",
                     "--check",
                     "-r", "10"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_query (glove check)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_query.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "glove-100-angular",
+                    "--logfile", "./hdfquery.log",
+                    "--check",
+                    "-r", "5"
                     ],
             "console": "integratedTerminal"
         },

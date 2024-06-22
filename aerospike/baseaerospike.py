@@ -21,6 +21,7 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
 from aerospike_vector_search import types as vectorTypes
+from metrics import all_metrics as METRICS
 
 _distanceNameToAerospikeType: Dict[str, vectorTypes.VectorDistanceMetric] = {
     'angular': vectorTypes.VectorDistanceMetric.COSINE,
@@ -249,6 +250,8 @@ class BaseAerospike(object):
         self._remainingrecs : int = None
         self._remainingquerynbrs : int = None
         self._query_current_run : int = None
+        self._query_metric_value : float = None
+        self._query_metric : dict[str,any] = None
         
         self._logging_init(runtimeArgs, logger)
             
@@ -374,7 +377,9 @@ class BaseAerospike(object):
                                                         "paused": pausestate,
                                                         "action": None if self._actions is None else self._actions.name,
                                                         "remainingRecs" : self._remainingrecs,
-                                                        "remainingquerynbrs" : self._remainingquerynbrs
+                                                        "remainingquerynbrs" : self._remainingquerynbrs,
+                                                        "querymetric": None if self._query_metric is None else self._query_metric["type"],
+                                                        "querymetricvalue": self._query_metric_value
                                                         })
         
     def _prometheus_heartbeat(self) -> None:
