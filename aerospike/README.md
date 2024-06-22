@@ -345,18 +345,6 @@ The module outputs certain meters to Prometheus. They are:
     -   `"ns" – Index Namepsace`
     -   `"idx" – Index Name`
 
-## Dashboard
-
-You can import the dashboard from [here](https://github.com/aerospike-community/ann-benchmarks/blob/main/aerospike/AerospikeHDFDashboard.json) (AerospikeHDFDashboard.json).
-
-### hdf-import dashboard example
-
-![dashboard import](./readme-HDFImportDashboard.png)
-
-### hdf-query dashboard example
-
-![dashboard query](./readme-HDFQueryDashboard.png)
-
 # Supported Datasets
 
 -   deep-image-96-angular
@@ -402,3 +390,16 @@ Any new dataset needs to be defined to mini-ANN.
 -   <https://archive.ics.uci.edu/>
 -   <http://fimi.uantwerpen.be/data/>
 -   <http://files.grouplens.org/datasets/movielens/>
+
+
+## Dashboard
+
+You can import the dashboard from [here](https://github.com/aerospike-community/ann-benchmarks/blob/main/aerospike/AerospikeHDFDashboard.json) (AerospikeHDFDashboard.json).
+
+### hdf-import dashboard example
+
+![dashboard import](./readme-HDFImportDashboard.png)
+
+### hdf-query dashboard example
+
+![dashboard query](./readme-HDFQueryDashboard.png)
