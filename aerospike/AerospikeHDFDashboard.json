@@ -393,8 +393,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "red",
-            "mode": "fixed"
+            "mode": "palette-classic"
           },
           "custom": {
             "axisBorderShow": false,
@@ -402,18 +401,17 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "axisWidth": 60,
             "barAlignment": -1,
             "drawStyle": "line",
-            "fillOpacity": 100,
-            "gradientMode": "scheme",
+            "fillOpacity": 16,
+            "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "stepAfter",
+            "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -436,41 +434,17 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "green",
                 "value": null
               }
             ]
-          }
+          },
+          "unit": "locale"
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  " - . Resource Exhausted"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 8,
         "w": 24,
         "x": 0,
         "y": 6
@@ -478,16 +452,20 @@
       "id": 640,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -497,7 +475,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "sum by(exception_type) (aerospike_hdf_exception{ns=\"$idxns\", instance=~\"$client\", set=\"$set\"})",
+          "expr": "aerospike_hdf_exception{ns=\"$idxns\", instance=~\"$client\", set=\"$set\"}",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -517,7 +495,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 11
+        "y": 14
       },
       "id": 651,
       "panels": [],
@@ -580,7 +558,7 @@
         "h": 5,
         "w": 3,
         "x": 0,
-        "y": 12
+        "y": 15
       },
       "id": 649,
       "options": {
@@ -655,7 +633,7 @@
         "h": 5,
         "w": 3,
         "x": 3,
-        "y": 12
+        "y": 15
       },
       "id": 626,
       "options": {
@@ -828,10 +806,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 20
       },
       "id": 638,
       "options": {
@@ -847,7 +825,7 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -895,7 +873,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 29
       },
       "id": 652,
       "panels": [],
@@ -934,7 +912,7 @@
         "h": 5,
         "w": 3,
         "x": 0,
-        "y": 26
+        "y": 30
       },
       "id": 646,
       "options": {
@@ -1009,7 +987,7 @@
         "h": 5,
         "w": 3,
         "x": 3,
-        "y": 26
+        "y": 30
       },
       "id": 650,
       "options": {
@@ -1084,7 +1062,7 @@
         "h": 5,
         "w": 3,
         "x": 6,
-        "y": 26
+        "y": 30
       },
       "id": 647,
       "options": {
@@ -1160,7 +1138,7 @@
         "h": 5,
         "w": 3,
         "x": 9,
-        "y": 26
+        "y": 30
       },
       "id": 648,
       "options": {
@@ -1280,7 +1258,7 @@
         "h": 5,
         "w": 3,
         "x": 12,
-        "y": 26
+        "y": 30
       },
       "id": 653,
       "options": {
@@ -1334,7 +1312,7 @@
           "color": {
             "mode": "thresholds"
           },
-          "fieldMinMax": true,
+          "fieldMinMax": false,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -1369,7 +1347,7 @@
         "h": 5,
         "w": 3,
         "x": 15,
-        "y": 26
+        "y": 30
       },
       "id": 654,
       "options": {
@@ -1469,38 +1447,13 @@
           },
           "unit": "reqps"
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "172.28.86.158:9464-test.HDF-data_Idx Run 8"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 13,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 35
       },
       "id": 610,
       "options": {
@@ -1516,7 +1469,7 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -1544,7 +1497,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "5s",
+  "refresh": "",
   "schemaVersion": 39,
   "tags": [
     "Monitoring",
@@ -1556,9 +1509,9 @@
     "list": [
       {
         "current": {
-          "selected": false,
-          "text": "prometheus",
-          "value": "edj97jcoudpfkd"
+          "selected": true,
+          "text": "default",
+          "value": "default"
         },
         "hide": 0,
         "includeAll": false,
@@ -1696,8 +1649,8 @@
     ]
   },
   "time": {
-    "from": "now-5m",
-    "to": "now"
+    "from": "2024-06-22T17:47:33.252Z",
+    "to": "2024-06-22T17:49:17.458Z"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -1727,6 +1680,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 39,
+  "version": 41,
   "weekStart": ""
 }

@@ -273,23 +273,20 @@ class Aerospike(BaseAerospike):
 
     async def _resourceexhaused_handler(self, key: int, embedding, i: int, client: vectorASyncClient) -> None:
         self._exception_counter.add(1, {"exception_type": "Resource Exhausted", "handled_by_user": True,"ns":self._namespace,"set":self._setName})
-        try:
-            logLevel = logging.DEBUG
-            if not self._pausePuts:
-                self._pausePuts = True
-                logLevel = logging.WARNING
-                self.print_log(msg=f"\nResource Exhausted on Put first encounter on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...",
-                                    logLevel=logging.WARNING)
-            else:
-                logger.debug(f"Resource Exhausted on Put on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...")
-            
-            if self._idx_resource_event < 0:
-                await self._put_wait_completion_handler(key, embedding, i, client, logLevel)                        
-            else:
-                await self._put_wait_sleep_handler(key, embedding, i, client, logLevel)
-        finally:
-            self._exception_counter.add(-1, {"exception_type": "Resource Exhausted", "handled_by_user": True,"ns":self._namespace,"set":self._setName})
-
+        logLevel = logging.DEBUG
+        if not self._pausePuts:
+            self._pausePuts = True
+            logLevel = logging.WARNING
+            self.print_log(msg=f"\nResource Exhausted on Put first encounter on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...",
+                                logLevel=logging.WARNING)
+        else:
+            logger.debug(f"Resource Exhausted on Put on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...")
+        
+        if self._idx_resource_event < 0:
+            await self._put_wait_completion_handler(key, embedding, i, client, logLevel)                        
+        else:
+            await self._put_wait_sleep_handler(key, embedding, i, client, logLevel)
+        
     async def put_vector(self, key: int, embedding, i: int, client: vectorASyncClient, retry: bool = False) -> None:
         try:
             try:
