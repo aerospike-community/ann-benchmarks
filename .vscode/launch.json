@@ -74,7 +74,23 @@
                      "--loglevel", "DEBUG"
                     ],
             "console": "integratedTerminal"
-        },
+        },  
+        {
+            "name": "Python Debugger: hdf_import LB",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_import.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "random-xs-20-angular",
+                    "--concurrency", "5000",
+                    "--idxdrop",
+                    "--logfile", "./hdfimport.log",
+                     "--loglevel", "DEBUG",
+                     "--vectorloadbalancer"
+                    ],
+            "console": "integratedTerminal"
+        },        
         {
             "name": "Python Debugger: hdf_import glove (no log)",
             "type": "debugpy",
@@ -112,6 +128,34 @@
                     "--dataset", "random-xs-20-angular",
                     "--logfile", "./hdfquery.log",
                     "-r", "10"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_query (check)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_query.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "random-xs-20-angular",
+                    "--logfile", "./hdfquery.log",
+                    "--check",
+                    "-r", "10"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_query (glove check)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_query.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "glove-100-angular",
+                    "--logfile", "./hdfquery.log",
+                    "--check",
+                    "-r", "5"
                     ],
             "console": "integratedTerminal"
         },

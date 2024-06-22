@@ -7,7 +7,7 @@ import json
 import argparse
 
 from enum import Flag, auto
-from typing import List, Dict
+from typing import List, Dict, Union
 from importlib.metadata import version
 from logging import _nameToLevel as LogLevels
 from threading import Thread
@@ -21,6 +21,7 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
 from aerospike_vector_search import types as vectorTypes
+from metrics import all_metrics as METRICS
 
 _distanceNameToAerospikeType: Dict[str, vectorTypes.VectorDistanceMetric] = {
     'angular': vectorTypes.VectorDistanceMetric.COSINE,
@@ -38,7 +39,7 @@ class OperationActions(Flag):
     QUERY = auto()
     POPQUERY = POPULATION | QUERY
     
-class BaseAerospike():
+class BaseAerospike(object):
 
     @staticmethod
     def parse_arguments(parser: argparse.ArgumentParser) -> None:
@@ -205,7 +206,7 @@ class BaseAerospike():
         self._useloadbalancer = runtimeArgs.vectorloadbalancer        
         
         self._namespace = runtimeArgs.namespace
-        if runtimeArgs.idxnamespace is None or runtimeArgs.idxnamespace:
+        if runtimeArgs.idxnamespace is None or not runtimeArgs.idxnamespace:
             self._idx_namespace = self._namespace
         else:
             self._idx_namespace = runtimeArgs.idxnamespace
@@ -239,15 +240,18 @@ class BaseAerospike():
         self._waitidx : bool = None
         self._datasetname : str = None
         self._dimensions = None
-        self._trainarray = None
-        self._queryarray = None
+        self._trainarray : Union[np.ndarray, List[np.ndarray]] = None
+        self._queryarray : Union[np.ndarray, List[np.ndarray]] = None
+        self._neighbors : Union[np.ndarray, List[np.ndarray]] = None
         self._pausedPuts : bool = False
         self._heartbeat_thread : Thread = None
-        self._query_limit = None
+        self._query_nbrlimit : int = None
         self._query_runs : int = None
         self._remainingrecs : int = None
         self._remainingquerynbrs : int = None
         self._query_current_run : int = None
+        self._query_metric_value : float = None
+        self._query_metric : dict[str,any] = None
         
         self._logging_init(runtimeArgs, logger)
             
@@ -347,7 +351,7 @@ class BaseAerospike():
         pausestate : str = None
         if done:
             pausestate = "Done"
-        elif OperationActions.POPULATION in self._actions:
+        elif  self._actions is not None and OperationActions.POPULATION in self._actions:
             if self._waitidx:
                 pausestate = "Waiting"
             elif self._pausedPuts:
@@ -366,14 +370,16 @@ class BaseAerospike():
                                                         "dims": self._dimensions,
                                                         "poprecs": None if self._trainarray is None else len(self._trainarray),
                                                         "queries": None if self._queryarray is None else len(self._queryarray),
-                                                        "querynbrlmt": self._query_limit,
+                                                        "querynbrlmt": self._query_nbrlimit,
                                                         "queryruns": self._query_runs,
                                                         "querycurrun": self._query_current_run,
                                                         "dataset":self._datasetname,
                                                         "paused": pausestate,
                                                         "action": None if self._actions is None else self._actions.name,
                                                         "remainingRecs" : self._remainingrecs,
-                                                        "remainingquerynbrs" : self._remainingquerynbrs
+                                                        "remainingquerynbrs" : self._remainingquerynbrs,
+                                                        "querymetric": None if self._query_metric is None else self._query_metric["type"],
+                                                        "querymetricvalue": self._query_metric_value
                                                         })
         
     def _prometheus_heartbeat(self) -> None:
@@ -410,13 +416,12 @@ class BaseAerospike():
             levelName = "" if logLevel == logging.INFO else f" {logging.getLevelName(logLevel)}: "
             print(levelName + msg + f', Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')                    
     
-    def shutdown(self):
-        from time import sleep
+    async def shutdown(self):
         
         if self._sleepexit > 0:
             self.prometheus_status(0, True)
             self.print_log(f'existing sleeping {self._sleepexit}') 
-            sleep(self._sleepexit)
+            await asyncio.sleep(self._sleepexit)
                 
         self.print_log(f'done: {self}')                
         self.flush_log()

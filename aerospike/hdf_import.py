@@ -14,15 +14,15 @@ def parse_arguments() -> argparse.Namespace:
     
     return args
 
-async def main_loop() -> None:
+async def main_loop(args : argparse.Namespace) -> None:
     
-    with Aerospike(args, Actions.POPULATION) as asInstance:    
+    async with Aerospike(args, Actions.POPULATION) as asInstance:    
         await asInstance.get_dataset()
         await asInstance.populate()
     
 if __name__ == "__main__":
     args = parse_arguments()
     
-    asyncio.run(main_loop())
+    asyncio.run(main_loop(args))
     
     

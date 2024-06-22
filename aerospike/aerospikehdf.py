@@ -3,6 +3,7 @@ import numpy as np
 import time
 import logging
 import argparse
+import statistics
 
 from enum import Flag, auto
 from typing import Iterable, List, Union, Any
@@ -14,6 +15,7 @@ from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  
 
 from baseaerospike import BaseAerospike, _distanceNameToAerospikeType as DistanceMaps, OperationActions
 from datasets import DATASETS, load_and_transform_dataset
+from metrics import all_metrics as METRICS, DummyMetric
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +120,16 @@ class Aerospike(BaseAerospike):
            "--check",        
             help="Check Query Results",
             action='store_true'
-        )        
+        )
+        parser.add_argument(
+                "--metric",
+                metavar="TYPE",
+                help="Which metric to use to calculate Recall",
+                default="knn",
+                type=str,
+                choices=METRICS.keys(),
+            )
+        
         BaseAerospike.parse_arguments(parser)
     
     def __init__(self, runtimeArgs: argparse.Namespace, actions: OperationActions):
@@ -128,8 +139,9 @@ class Aerospike(BaseAerospike):
         self._actions: OperationActions = actions
         self._datasetname: str = runtimeArgs.dataset
         self._dimensions = None
-        self._trainarray = None
-        self._queryarray = None
+        self._trainarray : Union[np.ndarray, List[np.ndarray]] = None
+        self._queryarray : Union[np.ndarray, List[np.ndarray]] = None
+        self._neighbors : Union[np.ndarray, List[np.ndarray]] = None
         self._dataset = None
         self._pausePuts : bool = False
         
@@ -145,19 +157,20 @@ class Aerospike(BaseAerospike):
             self._query_runs = runtimeArgs.runs
             self._query_parallel = runtimeArgs.parallel
             self._query_check = runtimeArgs.check
-            self._query_limit = runtimeArgs.limit
-            
-    def __enter__(self):
+            self._query_nbrlimit = runtimeArgs.limit
+            self._query_metric = METRICS[runtimeArgs.metric]
+                    
+    async def __aenter__(self):
         return self
  
-    def __exit__(self, *args):
-        super().shutdown()
+    async def __aexit__(self, *args):
+        await super().shutdown()
         
     async def get_dataset(self) -> None:
         
         self.print_log(f'get_dataset: {self}')
         
-        self._trainarray, self._queryarray, distance, self._dataset, self._dimensions = load_and_transform_dataset(self._datasetname)
+        self._trainarray, self._queryarray, self._neighbors, distance, self._dataset, self._dimensions = load_and_transform_dataset(self._datasetname)
         
         if self._idx_distance is None or not self._idx_distance:
             self._idx_distance = DistanceMaps.get(distance.lower())
@@ -260,23 +273,20 @@ class Aerospike(BaseAerospike):
 
     async def _resourceexhaused_handler(self, key: int, embedding, i: int, client: vectorASyncClient) -> None:
         self._exception_counter.add(1, {"exception_type": "Resource Exhausted", "handled_by_user": True,"ns":self._namespace,"set":self._setName})
-        try:
-            logLevel = logging.DEBUG
-            if not self._pausePuts:
-                self._pausePuts = True
-                logLevel = logging.WARNING
-                self.print_log(msg=f"\nResource Exhausted on Put first encounter on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...",
-                                    logLevel=logging.WARNING)
-            else:
-                logger.debug(f"Resource Exhausted on Put on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...")
-            
-            if self._idx_resource_event < 0:
-                await self._put_wait_completion_handler(key, embedding, i, client, logLevel)                        
-            else:
-                await self._put_wait_sleep_handler(key, embedding, i, client, logLevel)
-        finally:
-            self._exception_counter.add(-1, {"exception_type": "Resource Exhausted", "handled_by_user": True,"ns":self._namespace,"set":self._setName})
-
+        logLevel = logging.DEBUG
+        if not self._pausePuts:
+            self._pausePuts = True
+            logLevel = logging.WARNING
+            self.print_log(msg=f"\nResource Exhausted on Put first encounter on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...",
+                                logLevel=logging.WARNING)
+        else:
+            logger.debug(f"Resource Exhausted on Put on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...")
+        
+        if self._idx_resource_event < 0:
+            await self._put_wait_completion_handler(key, embedding, i, client, logLevel)                        
+        else:
+            await self._put_wait_sleep_handler(key, embedding, i, client, logLevel)
+        
     async def put_vector(self, key: int, embedding, i: int, client: vectorASyncClient, retry: bool = False) -> None:
         try:
             try:
@@ -300,7 +310,7 @@ class Aerospike(BaseAerospike):
             self._pausePuts = False
             raise
         
-    async def index_exist(self, adminClient: vectorASyncAdminClient) -> bool:
+    async def index_exist(self, adminClient: vectorASyncAdminClient) -> bool:        
         existingIndexes = await adminClient.index_list()
         return any(index["id"]["namespace"] == self._idx_namespace
                     and index["id"]["name"] == self._idx_name 
@@ -316,9 +326,7 @@ class Aerospike(BaseAerospike):
             self._trainarray = self._trainarray.astype(np.float32)
     
         self.print_log(f'populate: {self} Shape: {self._trainarray.shape}')
-              
-        populateIdx = True
-            
+                    
         async with vectorASyncAdminClient(seeds=self._host,
                                             listener_name=self._listern,
                                             is_loadbalancer=self._useloadbalancer
@@ -340,81 +348,80 @@ class Aerospike(BaseAerospike):
                     self.print_log(f'Index {self._idx_namespace}.{self._idx_name} being updated')
             else:
                 await self.create_index(adminClient)
-                
-        if populateIdx:
-            async with vectorASyncClient(seeds=self._host,
-                                            listener_name=self._listern,
-                                            is_loadbalancer=self._useloadbalancer
-                            ) as client:
-                self._remainingrecs = len(self._trainarray) if self._idx_maxrecs < 0 else self._idx_maxrecs >= 0
-                if self._concurrency == 0 or self._idx_maxrecs == 0:
-                    s = time.time()
-                else:
-                    self._pausePuts = False
-                    self.print_log(f'Populating Index {self._idx_namespace}.{self._idx_name}')                    
-                    s = time.time()
-                    taskPuts = []
-                    i = 1
-                    self._populate_counter.add(0, {"type": "upsert","ns":self._namespace,"set":self._setName})
-                        
-                    #async with asyncio. as tg: #only in 3.11
-                    for key, embedding in enumerate(self._trainarray):
-                        if self._pausePuts:
-                            loopTimes = 0
+
+        async with vectorASyncClient(seeds=self._host,
+                                        listener_name=self._listern,
+                                        is_loadbalancer=self._useloadbalancer
+                        ) as client: 
+            
+            self._remainingrecs = len(self._trainarray) if self._idx_maxrecs < 0 else self._idx_maxrecs >= 0
+            if self._concurrency == 0 or self._idx_maxrecs == 0:
+                s = time.time()
+            else:
+                self._pausePuts = False
+                self.print_log(f'Populating Index {self._idx_namespace}.{self._idx_name}')                    
+                s = time.time()
+                taskPuts = []
+                i = 1
+                self._populate_counter.add(0, {"type": "upsert","ns":self._namespace,"set":self._setName})
+                                   
+                for key, embedding in enumerate(self._trainarray):
+                    if self._pausePuts:
+                        loopTimes = 0
+                        await asyncio.gather(*taskPuts)
+                        self._populate_counter.add(len(taskPuts), {"type": "upsert","ns":self._namespace,"set":self._setName})                        
+                        logger.debug(f"Put Tasks Completed for Paused Population")
+                        self._remainingrecs -= len(taskPuts)
+                        taskPuts.clear()
+                        print('\n')
+                        while (self._pausePuts):
+                            if loopTimes % 30 == 0:
+                                self.print_log(f"Paused Population still waiting for Idx Completion at {loopTimes} mins!", logging.WARNING)                                
+                            loopTimes += 1                                
+                            logger.debug(f"Putting Paused {loopTimes}")
+                            await asyncio.sleep(60)
+                        self.print_log(f"Resuming Population at {loopTimes} mins", logging.WARNING)
+                                                
+                    if self._concurrency < 0:
+                        taskPuts.append(self.put_vector(key, embedding, i, client))
+                    elif self._concurrency <= 1:
+                        await self.put_vector(key, embedding, i, client)
+                        self._populate_counter.add(1, {"type": "upsert","ns":self._namespace,"set":self._setName})
+                        self._remainingrecs -= 1
+                    else:
+                        taskPuts.append(self.put_vector(key, embedding, i, client))
+                        if len(taskPuts) >= self._concurrency:
+                            logger.debug(f"Waiting for Put Tasks ({len(taskPuts)}) to Complete at {i}")
                             await asyncio.gather(*taskPuts)
-                            self._populate_counter.add(len(taskPuts), {"type": "upsert","ns":self._namespace,"set":self._setName})                        
-                            logger.debug(f"Put Tasks Completed for Paused Population")
+                            self._populate_counter.add(len(taskPuts), {"type": "upsert","ns":self._namespace,"set":self._setName})
+                            logger.debug(f"Put Tasks Completed")
                             self._remainingrecs -= len(taskPuts)
                             taskPuts.clear()
-                            print('\n')
-                            while (self._pausePuts):
-                                if loopTimes % 30 == 0:
-                                    self.print_log(f"Paused Population still waiting for Idx Completion at {loopTimes} mins!", logging.WARNING)                                
-                                loopTimes += 1                                
-                                logger.debug(f"Putting Paused {loopTimes}")
-                                await asyncio.sleep(60)
-                            self.print_log(f"Resuming Population at {loopTimes} mins", logging.WARNING)
-                                                    
-                        if self._concurrency < 0:
-                            taskPuts.append(self.put_vector(key, embedding, i, client))
-                        elif self._concurrency <= 1:
-                            await self.put_vector(key, embedding, i, client)
-                            self._populate_counter.add(1, {"type": "upsert","ns":self._namespace,"set":self._setName})
-                            self._remainingrecs -= 1
-                        else:
-                            taskPuts.append(self.put_vector(key, embedding, i, client))
-                            if len(taskPuts) >= self._concurrency:
-                                logger.debug(f"Waiting for Put Tasks ({len(taskPuts)}) to Complete at {i}")
-                                await asyncio.gather(*taskPuts)
-                                self._populate_counter.add(len(taskPuts), {"type": "upsert","ns":self._namespace,"set":self._setName})
-                                logger.debug(f"Put Tasks Completed")
-                                self._remainingrecs -= len(taskPuts)
-                                taskPuts.clear()
-                                
-                        print('Index Put Counter [%d]\r'%i, end="")
-                        if self._idx_maxrecs >= 0 and i >= self._idx_maxrecs:
-                            break
-                        i += 1
-                        
-                    logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")                            
-                    await asyncio.gather(*taskPuts)
-                    self._populate_counter.add(len(taskPuts), {"type": "upsert","ns":self._namespace,"set":self._setName})
-                    t = time.time()
-                    self._remainingrecs -= len(taskPuts)
-                    logger.info(f"All Put Tasks ({i}) Completed")                
-                    print('\n')
-                    self.print_log(f"Index Put {i:,} Recs in {t - s} (secs), TPS: {i/(t - s):,}")
-                
-                if self._idx_nowait:
-                    self.print_log(f"Index Population Completed")
-                else:
-                    #Wait for Idx to complete                                
-                    self.print_log("waiting for indexing to complete")
-                    w = time.time()
-                    await self._wait_for_idx_completion(client)
-                    t = time.time()
-                    self.print_log(f"Index Completion Time (secs) = {t - w} TPS = {len(self._trainarray)/(t - w):,}")
-                    self.print_log(f"Index Population Completion with Idx Wait (sec) = {t - s}")
+                            
+                    print('Index Put Counter [%d]\r'%i, end="")
+                    if self._idx_maxrecs >= 0 and i >= self._idx_maxrecs:
+                        break
+                    i += 1
+                    
+                logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")                            
+                await asyncio.gather(*taskPuts)
+                self._populate_counter.add(len(taskPuts), {"type": "upsert","ns":self._namespace,"set":self._setName})
+                t = time.time()
+                self._remainingrecs -= len(taskPuts)
+                logger.info(f"All Put Tasks ({i}) Completed")                
+                print('\n')
+                self.print_log(f"Index Put {i:,} Recs in {t - s} (secs), TPS: {i/(t - s):,}")
+            
+            if self._idx_nowait:
+                self.print_log(f"Index Population Completed")
+            else:
+                #Wait for Idx to complete                                
+                self.print_log("waiting for indexing to complete")
+                w = time.time()
+                await self._wait_for_idx_completion(client)
+                t = time.time()
+                self.print_log(f"Index Completion Time (secs) = {t - w} TPS = {len(self._trainarray)/(t - w):,}")
+                self.print_log(f"Index Population Completion with Idx Wait (sec) = {t - s}")
 
     async def query(self) -> None:
         '''
@@ -434,6 +441,7 @@ class Aerospike(BaseAerospike):
                 raise FileNotFoundError(f"Vector Index {self._idx_namespace}.{self._idx_name} not found")
 
         self.print_log(f'Starting Query Runs ({self._query_runs}) on {self._idx_namespace}.{self._idx_name}')
+        metricfunc = None if self._query_metric is None else self._query_metric["function"]
         
         async with vectorASyncClient(seeds=self._host,
                                         listener_name=self._listern,
@@ -441,58 +449,98 @@ class Aerospike(BaseAerospike):
                             ) as client:
             s = time.time()
             taskPuts = []
-            queries = 0
+            queries = []
             i = 1
+            checkNbrs = self._neighbors is not None and len(self._neighbors) > 0
             self._remainingquerynbrs = len(self._queryarray) * self._query_runs
-            while i <= self._query_runs:                
+            while i <= self._query_runs:
                 if self._query_parallel:
-                    taskPuts.append(self.query_run(client, i))
+                    taskPuts.append(self.query_run(client, i, checkNbrs))
                 else:
-                    queries += await self.query_run(client, i)                    
-                i += 1
-                
+                    resultnbrs = await self.query_run(client, i, checkNbrs)
+                    queries.append(resultnbrs)
+                    if metricfunc is not None:
+                        self._query_metric_value = metricfunc(self._neighbors, resultnbrs, DummyMetric(), i-1, len(resultnbrs[0]))
+            
+                i += 1                
             results = await asyncio.gather(*taskPuts)
             t = time.time()
             if self._query_parallel:
-                queries =  sum(results)
+                queries =  results
             print('\n')
-            self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {queries} in {t-s} secs, {queries/(t-s)} TPS')
-                        
-    async def query_run(self, client:vectorASyncClient, runNbr:int) -> int:
+            totqueries = sum([len(x) for x in queries])
+            if metricfunc is not None:
+                metricValues = []
+                i = 0
+                for mvrun in queries:
+                    metricValues.append(metricfunc(self._neighbors, mvrun, DummyMetric(), i, len(mvrun[0])))
+                    i += 1
+                self._query_metric_value = statistics.mean(metricValues)
+                
+            self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {totqueries} in {t-s} secs, {totqueries/(t-s)} TPS, {None if self._query_metric is None else self._query_metric["type"]}: {self._query_metric_value}')        
+
+    async def _check_query_results(self, results:List[Any], idx:int) -> bool:
+    
+        compareresult = None                
+        
+        if len(results) == len(self._neighbors[idx]):
+            compareresult = results == self._neighbors[idx]
+            if all(compareresult):
+                return True
+        elif self._query_nbrlimit > len(self._neighbors[idx]):
+            compareresult = results[:len(self._neighbors[idx])] == self._neighbors[idx]
+            if all(compareresult):
+                return True
+        else:
+            compareresult = results == self._neighbors[idx][:self._query_nbrlimit]
+            if all(compareresult):
+                return True
+        self._exception_counter.add(1, {"exception_type":"Results don't Match Expected Neighbors", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
+        logger.warn(f"Results do not Match Expected Neighbors for {self._idx_namespace}.{self._idx_name} for Query {idx}")
+        logger.warn(f"Comparison Results: {compareresult}")
+        
+        return False
+            
+    async def query_run(self, client:vectorASyncClient, runNbr:int, checkNbrs:bool) -> List:
         queryLen = 0
         resultCnt = 0
-        queries = 1
+        rundistance = []
         self._query_current_run = runNbr
         self._query_counter.add(0, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name, "run": runNbr})
-            
+        msg = "                                   "
         for pos, searchValues in enumerate(self._queryarray):
             queryLen += len(searchValues)
             result = await self.vector_search(client, searchValues.tolist())
             self._query_counter.add(1, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name, "run": runNbr})            
             resultCnt += len(result)
-            print('Query Run [%d] Search [%d] Array [%d] Result [%d]                         \r'%(runNbr,pos+1,queryLen,resultCnt), end="")
+            print('Query Run [%d] Search [%d] Array [%d] Result [%d] %s\r'%(runNbr,pos+1,queryLen,resultCnt,msg), end="")
             self._remainingquerynbrs -= 1
             result_ids = [neighbor.key.key for neighbor in result]
+            rundistance.append(result_ids)
+            
             if self._query_check:
                 if len(result_ids) == 0:
-                    print('\n')
                     self._exception_counter.add(1, {"exception_type":"No Query Results", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
-                    Aerospike.PrintLog(f'No Query Results for {self._idx_namespace}.{self._idx_name}', logging.WARNING)                    
-                zeroDist = [record.key.key for record in result if record.distance == 0]
-                if len(zeroDist) > 0:
-                    print('\n')
-                    self._exception_counter.add(1, {"exception_type":"Zero Distance Found", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
-                    Aerospike.PrintLog(f'Zero Distance Found for {self._idx_namespace}.{self._idx_name} Keys: {zeroDist}', logging.WARNING)
-            queries += 1
-        
-        return queries
+                    logger.warn(f'No Query Results for {self._idx_namespace}.{self._idx_name}', logging.WARNING)
+                    msg = "Warn: No Results"
+                elif checkNbrs and len(self._neighbors[len(rundistance)-1]) > 0:
+                    if not await self._check_query_results(result_ids, len(rundistance)-1):
+                        msg = "Warn: Compare Failed"
+                else:                        
+                    zeroDist = [record.key.key for record in result if record.distance == 0]
+                    if len(zeroDist) > 0:
+                        self._exception_counter.add(1, {"exception_type":"Zero Distance Found", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
+                        logger.warn(f'Zero Distance Found for {self._idx_namespace}.{self._idx_name} Keys: {zeroDist}', logging.WARNING)
+                        msg = "Warn: Zero Distance Found"
+            
+        return rundistance
         
     async def vector_search(self, client:vectorASyncClient, query:List[float]) -> List[vectorTypes.Neighbor]:
         try:
             result = await client.vector_search(namespace=self._idx_namespace,
                                                 index_name=self._idx_name,
                                                 query=query,
-                                                limit=self._query_limit,
+                                                limit=self._query_nbrlimit,
                                                 search_params=self._query_hnswparams)            
         except Exception as e:
             self._exception_counter.add(1, {"exception_type":e, "handled_by_user":False,"ns":self._namespace,"set":self._setName})
@@ -501,8 +549,14 @@ class Aerospike(BaseAerospike):
 
     def __str__(self):
         arrayLen = None
+        nbrArrayLen = None
         if self._trainarray is not None:
             arrayLen = len(self._trainarray)
+        if self._neighbors is not None:
+            if len(self._neighbors) > 0:                
+                nbrArrayLen = f"{len(self._neighbors)}x{len(self._neighbors[0])}"
+            else:
+                nbrArrayLen = "0x0"
         if OperationActions.POPULATION in self._actions:
             popstr = f", DropIdx: {self._idx_drop}, Concurrency: {self._concurrency}, MaxRecs: {self._idx_maxrecs}, WaitIdxCompletion: {not self._idx_nowait} Exhausted Evt: {self._idx_resource_event}"
         else:
@@ -511,5 +565,9 @@ class Aerospike(BaseAerospike):
             qrystr = f", Runs: {self._query_runs}, Parallel: {self._query_parallel}, Check: {self._query_check}"
         else:
             qrystr = ""
-            
-        return f"Aerospike([{self.basestring()}, Actions: {self._actions}, Dimensions: {self._dimensions}, Array: {arrayLen} DS: {self._datasetname}{popstr}{qrystr}]"
+        if self._query_metric is None:
+            metricstr = ""
+        else:
+            typestr = self._query_metric["type"]
+            metricstr = f", recall:{typestr}"
+        return f"Aerospike([{self.basestring()}, Actions: {self._actions}, Dimensions: {self._dimensions}, Array: {arrayLen}, NbrResult: {nbrArrayLen}, DS: {self._datasetname}{popstr}{qrystr}{metricstr}]"

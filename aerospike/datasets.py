@@ -69,6 +69,7 @@ def get_dataset(dataset_name: str) -> Tuple[h5py.File, int]:
 def load_and_transform_dataset(dataset_name: str) -> Tuple[
         Union[numpy.ndarray, List[numpy.ndarray]],
         Union[numpy.ndarray, List[numpy.ndarray]],
+        Union[numpy.ndarray, List[numpy.ndarray]],
         str,
         h5py.File,
         int]:
@@ -88,10 +89,10 @@ def load_and_transform_dataset(dataset_name: str) -> Tuple[
     print(f"Got a train set of size ({X_train.shape[0]} * {dimension})")
     print(f"Got {len(X_test)} queries")
 
-    train, test = dataset_transform(D)
-    return train, test, distance, D, dimension
+    train, test, neighbors = dataset_transform(D)
+    return train, test, neighbors, distance, D, dimension
 
-def dataset_transform(dataset: h5py.Dataset) -> Tuple[Union[numpy.ndarray, List[numpy.ndarray]], Union[numpy.ndarray, List[numpy.ndarray]]]:
+def dataset_transform(dataset: h5py.Dataset) -> Tuple[Union[numpy.ndarray, List[numpy.ndarray]], Union[numpy.ndarray, List[numpy.ndarray]], Union[numpy.ndarray, List[numpy.ndarray]]]:
     """
     Transforms the dataset from the HDF5 format to conventional numpy format.
 
@@ -107,13 +108,18 @@ def dataset_transform(dataset: h5py.Dataset) -> Tuple[Union[numpy.ndarray, List[
     from distance import convert_sparse_to_list    
     
     if dataset.attrs.get("type", "dense") != "sparse":
-        return numpy.array(dataset["train"]), numpy.array(dataset["test"])
+        return (
+            numpy.array(dataset["train"]),
+            numpy.array(dataset["test"]),
+            numpy.array(dataset.get("neighbors"))
+        )
 
     # we store the dataset as a list of integers, accompanied by a list of lengths in hdf5
     # so we transform it back to the format expected by the algorithms here (array of array of ints)
     return (
         convert_sparse_to_list(dataset["train"], dataset["size_train"]),
-        convert_sparse_to_list(dataset["test"], dataset["size_test"])
+        convert_sparse_to_list(dataset["test"], dataset["size_test"]),
+        numpy.array(dataset.get("neighbors")) if dataset.get("size_neighbors") is None else convert_sparse_to_list(dataset["neighbors"], dataset["size_neighbors"])
     )
 
 def write_output(train: numpy.ndarray, test: numpy.ndarray, fn: str, distance: str, point_type: str = "float", count: int = 100) -> None:
