@@ -259,6 +259,15 @@ Generates a unique Set Name (--setname) based on distance type, dimensions, inde
 The Vector's Search Params (HnswParams) as defined by the Vector Phyton API.  
 Defaults to --indexparams
 
+\--metric TYPE
+
+Determines how recall is calculated. Defaults to “KNN”. Possible values are:
+
+-   knn (default)
+-   epsilon -- Epsilon 0.01 Recall
+-   largeepsilon -- Epsilon 0.1 Recall
+-   rel -- Relative Error
+
 \-L LOG, --logfile LOG
 
 The logging file path, if provided.  
@@ -303,6 +312,8 @@ The module outputs certain meters to Prometheus. They are:
     -   `“querynbrlmt” – The number of possible neighbors to return for the query`
     -   `“queryruns” – The number of query runs. Each run will perform a set of define queries. The number is defined in “queries”. `
     -   `"querycurrun" – The current query run                                                  `
+    -   `"querymetric – The recall method used`
+    -   `"querymetricvalue" – The recall calculated value based on recall method`
     -   `"dataset” – The ANN dataset`
     -   `"paused" – The run status. Values are:`
         -   `Waiting – waiting for index completion`
@@ -333,6 +344,18 @@ The module outputs certain meters to Prometheus. They are:
 -   `aerospike.hdf.dropidxtime The amount of time to perform an index drop. Defined as a histogram. Attributes:`
     -   `"ns" – Index Namepsace`
     -   `"idx" – Index Name`
+
+## Dashboard
+
+You can import the dashboard from [here](https://github.com/aerospike-community/ann-benchmarks/blob/main/aerospike/AerospikeHDFDashboard.json) (AerospikeHDFDashboard.json).
+
+### hdf-import dashboard example
+
+![dashboard import](./readme-HDFImportDashboard.png)
+
+### hdf-query dashboard example
+
+![dashboard query](./readme-HDFQueryDashboard.png)
 
 # Supported Datasets
 
