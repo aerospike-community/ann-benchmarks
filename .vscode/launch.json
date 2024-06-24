@@ -155,7 +155,22 @@
                     "--dataset", "glove-100-angular",
                     "--logfile", "./hdfquery.log",
                     "--check",
-                    "-r", "5"
+                    "-r", "10"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_query (glove check limit)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_query.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "glove-100-angular",
+                    "--logfile", "./hdfquery.log",
+                    "--check",
+                    "-r", "10",
+                    "--limit", "10"
                     ],
             "console": "integratedTerminal"
         },

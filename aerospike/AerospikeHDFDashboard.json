@@ -411,7 +411,7 @@
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "stepAfter",
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -444,7 +444,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 13,
         "w": 24,
         "x": 0,
         "y": 6
@@ -453,8 +453,8 @@
       "options": {
         "legend": {
           "calcs": [
-            "lastNotNull",
-            "max"
+            "max",
+            "lastNotNull"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -473,16 +473,33 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
+          "editorMode": "code",
           "exemplar": false,
-          "expr": "aerospike_hdf_exception{ns=\"$idxns\", instance=~\"$client\", set=\"$set\"}",
+          "expr": "aerospike_hdf_exception{ns=\"$idxns\", instance=~\"$client\", idx=\"$idxname\"}",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "{{instance}} - {{ns}}.{{set}} {{exception_type}}",
+          "legendFormat": "{{instance}} - {{ns}}.{{idx}} Run: {{run}} {{exception_type}}",
           "range": true,
           "refId": "A",
+          "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "aerospike_hdf_exception{ns=\"$namespace\", instance=~\"$client\", set=\"$set\"}",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "{{instance}} - {{ns}}.{{set}} {{exception_type}}",
+          "range": true,
+          "refId": "B",
           "useBackend": false
         }
       ],
@@ -495,7 +512,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 19
       },
       "id": 651,
       "panels": [],
@@ -558,7 +575,7 @@
         "h": 5,
         "w": 3,
         "x": 0,
-        "y": 15
+        "y": 20
       },
       "id": 649,
       "options": {
@@ -633,7 +650,7 @@
         "h": 5,
         "w": 3,
         "x": 3,
-        "y": 15
+        "y": 20
       },
       "id": 626,
       "options": {
@@ -809,7 +826,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 25
       },
       "id": 638,
       "options": {
@@ -873,7 +890,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 29
+        "y": 34
       },
       "id": 652,
       "panels": [],
@@ -912,7 +929,7 @@
         "h": 5,
         "w": 3,
         "x": 0,
-        "y": 30
+        "y": 35
       },
       "id": 646,
       "options": {
@@ -987,7 +1004,7 @@
         "h": 5,
         "w": 3,
         "x": 3,
-        "y": 30
+        "y": 35
       },
       "id": 650,
       "options": {
@@ -1062,7 +1079,7 @@
         "h": 5,
         "w": 3,
         "x": 6,
-        "y": 30
+        "y": 35
       },
       "id": 647,
       "options": {
@@ -1138,7 +1155,7 @@
         "h": 5,
         "w": 3,
         "x": 9,
-        "y": 30
+        "y": 35
       },
       "id": 648,
       "options": {
@@ -1258,7 +1275,7 @@
         "h": 5,
         "w": 3,
         "x": 12,
-        "y": 30
+        "y": 35
       },
       "id": 653,
       "options": {
@@ -1347,7 +1364,7 @@
         "h": 5,
         "w": 3,
         "x": 15,
-        "y": 30
+        "y": 35
       },
       "id": 654,
       "options": {
@@ -1453,7 +1470,7 @@
         "h": 13,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 40
       },
       "id": 610,
       "options": {
@@ -1497,7 +1514,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "",
+  "refresh": "5s",
   "schemaVersion": 39,
   "tags": [
     "Monitoring",
@@ -1649,8 +1666,8 @@
     ]
   },
   "time": {
-    "from": "2024-06-22T17:47:33.252Z",
-    "to": "2024-06-22T17:49:17.458Z"
+    "from": "now-6h",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -1680,6 +1697,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 41,
+  "version": 44,
   "weekStart": ""
 }
