@@ -108,8 +108,8 @@ class Aerospike(BaseAerospike):
            "--limit",
             metavar="NEIGHBORS",
             type=int,
-            help="The number of neighbors to return from the query",
-            default=100,
+            help="The number of neighbors to return from the query. If <= 0, defaults to the the dataset's neighbor result array length.",
+            default=-1,
         )
         parser.add_argument(
            "--parallel",        
@@ -186,6 +186,10 @@ class Aerospike(BaseAerospike):
             self._setName = f'{self._setName}_{setNameType}_{self._dimensions}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}'
             self._idx_name = f'{self._setName}_Idx'             
         
+        self._canchecknbrs = self._neighbors is not None and len(self._neighbors) > 0
+        if self._canchecknbrs and (self._query_nbrlimit is None or self._query_nbrlimit <= 0 or self._query_nbrlimit > len(self._neighbors[0])):
+            self._query_nbrlimit = len(self._neighbors[0])
+            
         self._remainingrecs = 0           
         self._remainingquerynbrs = 0
           
@@ -437,11 +441,13 @@ class Aerospike(BaseAerospike):
            
             if not await self.index_exist(adminClient):
                 self.print_log(f'Query: Vector Index: {self._idx_namespace}.{self._idx_name}, not found')
-                self._exception_counter.add(1, {"exception_type":"Index not found", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
+                self._exception_counter.add(1, {"exception_type":"Index not found", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name})
                 raise FileNotFoundError(f"Vector Index {self._idx_namespace}.{self._idx_name} not found")
 
         self.print_log(f'Starting Query Runs ({self._query_runs}) on {self._idx_namespace}.{self._idx_name}')
-        metricfunc = None if self._query_metric is None else self._query_metric["function"]
+        metricfunc = None
+        if self._canchecknbrs:
+            metricfunc = None if self._query_metric is None else self._query_metric["function"]
         
         async with vectorASyncClient(seeds=self._host,
                                         listener_name=self._listern,
@@ -451,13 +457,12 @@ class Aerospike(BaseAerospike):
             taskPuts = []
             queries = []
             i = 1
-            checkNbrs = self._neighbors is not None and len(self._neighbors) > 0
             self._remainingquerynbrs = len(self._queryarray) * self._query_runs
             while i <= self._query_runs:
                 if self._query_parallel:
-                    taskPuts.append(self.query_run(client, i, checkNbrs))
+                    taskPuts.append(self.query_run(client, i))
                 else:
-                    resultnbrs = await self.query_run(client, i, checkNbrs)
+                    resultnbrs = await self.query_run(client, i)
                     queries.append(resultnbrs)
                     if metricfunc is not None:
                         self._query_metric_value = metricfunc(self._neighbors, resultnbrs, DummyMetric(), i-1, len(resultnbrs[0]))
@@ -479,7 +484,7 @@ class Aerospike(BaseAerospike):
                 
             self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {totqueries} in {t-s} secs, {totqueries/(t-s)} TPS, {None if self._query_metric is None else self._query_metric["type"]}: {self._query_metric_value}')        
 
-    async def _check_query_results(self, results:List[Any], idx:int) -> bool:
+    async def _check_query_results(self, results:List[Any], idx:int, runNbr:int) -> bool:
     
         compareresult = None                
         
@@ -495,13 +500,13 @@ class Aerospike(BaseAerospike):
             compareresult = results == self._neighbors[idx][:self._query_nbrlimit]
             if all(compareresult):
                 return True
-        self._exception_counter.add(1, {"exception_type":"Results don't Match Expected Neighbors", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
+        self._exception_counter.add(1, {"exception_type":"Results don't Match Expected Neighbors", "handled_by_user":False,"ns":self._idx_namespace,"idx":self._idx_name,"run":runNbr})
         logger.warn(f"Results do not Match Expected Neighbors for {self._idx_namespace}.{self._idx_name} for Query {idx}")
         logger.warn(f"Comparison Results: {compareresult}")
         
         return False
             
-    async def query_run(self, client:vectorASyncClient, runNbr:int, checkNbrs:bool) -> List:
+    async def query_run(self, client:vectorASyncClient, runNbr:int) -> List:
         queryLen = 0
         resultCnt = 0
         rundistance = []
@@ -510,7 +515,7 @@ class Aerospike(BaseAerospike):
         msg = "                                   "
         for pos, searchValues in enumerate(self._queryarray):
             queryLen += len(searchValues)
-            result = await self.vector_search(client, searchValues.tolist())
+            result = await self.vector_search(client, searchValues.tolist(),runNbr)
             self._query_counter.add(1, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name, "run": runNbr})            
             resultCnt += len(result)
             print('Query Run [%d] Search [%d] Array [%d] Result [%d] %s\r'%(runNbr,pos+1,queryLen,resultCnt,msg), end="")
@@ -520,22 +525,22 @@ class Aerospike(BaseAerospike):
             
             if self._query_check:
                 if len(result_ids) == 0:
-                    self._exception_counter.add(1, {"exception_type":"No Query Results", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
+                    self._exception_counter.add(1, {"exception_type":"No Query Results", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
                     logger.warn(f'No Query Results for {self._idx_namespace}.{self._idx_name}', logging.WARNING)
                     msg = "Warn: No Results"
-                elif checkNbrs and len(self._neighbors[len(rundistance)-1]) > 0:
-                    if not await self._check_query_results(result_ids, len(rundistance)-1):
+                elif self._canchecknbrs and len(self._neighbors[len(rundistance)-1]) > 0:
+                    if not await self._check_query_results(result_ids, len(rundistance)-1, runNbr):
                         msg = "Warn: Compare Failed"
                 else:                        
                     zeroDist = [record.key.key for record in result if record.distance == 0]
                     if len(zeroDist) > 0:
-                        self._exception_counter.add(1, {"exception_type":"Zero Distance Found", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
+                        self._exception_counter.add(1, {"exception_type":"Zero Distance Found", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
                         logger.warn(f'Zero Distance Found for {self._idx_namespace}.{self._idx_name} Keys: {zeroDist}', logging.WARNING)
                         msg = "Warn: Zero Distance Found"
             
         return rundistance
         
-    async def vector_search(self, client:vectorASyncClient, query:List[float]) -> List[vectorTypes.Neighbor]:
+    async def vector_search(self, client:vectorASyncClient, query:List[float], runNbr:int) -> List[vectorTypes.Neighbor]:
         try:
             result = await client.vector_search(namespace=self._idx_namespace,
                                                 index_name=self._idx_name,
@@ -543,7 +548,7 @@ class Aerospike(BaseAerospike):
                                                 limit=self._query_nbrlimit,
                                                 search_params=self._query_hnswparams)            
         except Exception as e:
-            self._exception_counter.add(1, {"exception_type":e, "handled_by_user":False,"ns":self._namespace,"set":self._setName})
+            self._exception_counter.add(1, {"exception_type":e, "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
             raise
         return result
 

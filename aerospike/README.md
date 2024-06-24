@@ -190,8 +190,8 @@ For example: If the ANN dataset request 1,000 queries and if this value is 10; T
 
 \--limit NEEIGHBORS
 
-The number of neighbors to return from each query request  
-(default: 100)
+The number of neighbors to return from each query request. If this value is less than or equal to 0, the dataset's neighbor result array length will be used.
+(default: -1)
 
 \--parallel
 

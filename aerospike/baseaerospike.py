@@ -252,6 +252,7 @@ class BaseAerospike(object):
         self._query_current_run : int = None
         self._query_metric_value : float = None
         self._query_metric : dict[str,any] = None
+        self._canchecknbrs : bool = False
         
         self._logging_init(runtimeArgs, logger)
             
@@ -325,11 +326,12 @@ class BaseAerospike(object):
             self._logger.info(f"  aerospike-vector-search: {version('aerospike_vector_search')}")
             self._logger.info(f"Prometheus HTTP Server: {self._prometheus_http_server[0].server_address}")
             self._logger.info(f"  Metrics Name: {self._meter.name}")
+            self._logger.info(f"Arguments: {runtimeArgs}")
         elif self._asLogLevel is not None:            
             if self._asLogLevel == "NOTSET":                
                 loggerASClient.setLevel(logging.CRITICAL)
             else:
-                loggerASClient.setLevel(logging.getLevelName(self._asLogLevel))
+                loggerASClient.setLevel(logging.getLevelName(self._asLogLevel))       
 
     @staticmethod
     def set_hnsw_params_attrs(__obj :object, __dict: dict) -> object:
