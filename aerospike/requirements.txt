@@ -1,3 +1,6 @@
+h5py
+numpy
+aerospike
 aerospike-vector-search
 opentelemetry-api
 opentelemetry-sdk

@@ -119,9 +119,9 @@ class DummyMetric:
         return self.d[name]
 
 all_metrics = {
-    "knn": {
+    "k-nn": {
         "type":"knn",
-        "description": "Recall",
+        "description": "k-NN Recall",
         "function": lambda true_distances, run_distances, metrics, times, distance_count: knn(
             true_distances, run_distances, distance_count, metrics
         ).attrs[

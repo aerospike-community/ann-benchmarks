@@ -14,7 +14,7 @@ from aerospike_vector_search.aio import AdminClient as vectorASyncAdminClient, C
 from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
 
 from baseaerospike import BaseAerospike, _distanceNameToAerospikeType as DistanceMaps, OperationActions
-from datasets import DATASETS, load_and_transform_dataset
+from datasets import DATASETS, load_and_transform_dataset, get_dataset_fn
 from metrics import all_metrics as METRICS, DummyMetric
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,14 @@ class Aerospike(BaseAerospike):
                 metavar="DS",
                 help="the dataset to load training points from",
                 default="glove-100-angular",
-                choices=DATASETS.keys(),
+                choices=DATASETS.keys(),                
+            )
+            parser.add_argument(
+                "--hdf",
+                metavar="HDFFILE",
+                help="A HDF file that will be the dataset to load training points from... Defaults to 'data' folder",
+                default=None,
+                type=str                
             )
         parser.add_argument(
             '-c', "--concurrency",
@@ -93,9 +100,16 @@ class Aerospike(BaseAerospike):
             parser.add_argument(
                 '-d', "--dataset",
                 metavar="DS",
-                help="the dataset to load training points from",
+                help="the dataset to load the search points from",
                 default="glove-100-angular",
                 choices=DATASETS.keys(),
+            )
+            parser.add_argument(
+                "--hdf",
+                metavar="HDFFILE",
+                help="A HDF file that will be the dataset to load search points from... Defaults to 'data' folder",
+                default=None,
+                type=str                
             )
         parser.add_argument(
             '-r', "--runs",
@@ -125,7 +139,7 @@ class Aerospike(BaseAerospike):
                 "--metric",
                 metavar="TYPE",
                 help="Which metric to use to calculate Recall",
-                default="knn",
+                default="k-nn",
                 type=str,
                 choices=METRICS.keys(),
             )
@@ -144,6 +158,11 @@ class Aerospike(BaseAerospike):
         self._neighbors : Union[np.ndarray, List[np.ndarray]] = None
         self._dataset = None
         self._pausePuts : bool = False
+        self._pks : Union[np.ndarray, List[np.ndarray]] = None
+        self._hdf_file : str = None
+        
+        if runtimeArgs.hdf is not None:
+            self._hdf_file, self._datasetname = get_dataset_fn(runtimeArgs.hdf)
         
         if OperationActions.POPULATION in actions:
             self._idx_drop = runtimeArgs.idxdrop
@@ -170,7 +189,13 @@ class Aerospike(BaseAerospike):
         
         self.print_log(f'get_dataset: {self}')
         
-        self._trainarray, self._queryarray, self._neighbors, distance, self._dataset, self._dimensions = load_and_transform_dataset(self._datasetname)
+        (self._trainarray,
+            self._queryarray,
+            self._neighbors,
+            distance,
+            self._dataset,
+            self._dimensions,
+            self._pks) = load_and_transform_dataset(self._datasetname, self._hdf_file)
         
         if self._idx_distance is None or not self._idx_distance:
             self._idx_distance = DistanceMaps.get(distance.lower())
@@ -291,9 +316,11 @@ class Aerospike(BaseAerospike):
         else:
             await self._put_wait_sleep_handler(key, embedding, i, client, logLevel)
         
-    async def put_vector(self, key: int, embedding, i: int, client: vectorASyncClient, retry: bool = False) -> None:
+    async def put_vector(self, key, embedding, i: int, client: vectorASyncClient, retry: bool = False) -> None:
         try:
             try:
+                if type(key).__module__ == np.__name__:
+                    key = key.item()
                 await client.upsert(namespace=self._namespace,
                                     set_name=self._setName,
                                     key=key,
@@ -368,8 +395,11 @@ class Aerospike(BaseAerospike):
                 taskPuts = []
                 i = 1
                 self._populate_counter.add(0, {"type": "upsert","ns":self._namespace,"set":self._setName})
-                                   
+                usePKValues : bool = self._pks is not None
+                
                 for key, embedding in enumerate(self._trainarray):
+                    if usePKValues:
+                        key = self._pks[key]
                     if self._pausePuts:
                         loopTimes = 0
                         await asyncio.gather(*taskPuts)
