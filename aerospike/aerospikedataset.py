@@ -67,7 +67,7 @@ class AerospikeDS():
         parser.add_argument(
             '-idxns', "--indexnamespace",
             metavar="INDEXNAME",
-            help="Vector's Index Namespace. Defaults to the Aerospike namepsace",
+            help="Vector's Index Namespace.",
             required=False,
             default="test",
             type=str
@@ -82,7 +82,7 @@ class AerospikeDS():
             '-S', "--searchparams",
             metavar="PARM",
             type=json.loads,
-            help="The Vector's Search Params (HnswParams) used to obtained the neighbors",
+            help="The Vector's Search Params (HnswParams), as Json, used to obtained the neighbors",
             default=None
         ) 
         parser.add_argument(

@@ -18,6 +18,12 @@ Show this help message and exit
 
 The ANN dataset (DS) to load training points from (default: glove-100-angular)
 
+\--hdf HDFFILE
+
+A HDF file that can be an ANN HDF file, or one created by “[hdf_create_dataset.py](#hdf_create_datasetpy)”.
+
+You can provide a path to this HDF file. If a path is not provided, the “data” folder is assumed.
+
 \-c N, --concurrency N
 
 The maximum number of concurrent tasks (N) used to population the index.
@@ -182,6 +188,12 @@ Show this help message and exit
 
 The ANN dataset (DS) to load training points from (default: glove-100-angular)
 
+\--hdf HDFFILE
+
+A HDF file that can be an ANN HDF file, or one created by “[hdf_create_dataset.py](#hdf_create_datasetpy)”.
+
+You can provide a path to this HDF file. If a path is not provided, the “data” folder is assumed.
+
 \-r RUNS, --runs RUNS
 
 The number of times the query requests will run based on the ANN dataset.  
@@ -190,8 +202,7 @@ For example: If the ANN dataset request 1,000 queries and if this value is 10; T
 
 \--limit NEEIGHBORS
 
-The number of neighbors to return from each query request. If this value is less than or equal to 0, the dataset's neighbor result array length will be used.
-(default: -1)
+The number of neighbors to return from each query request. If this value is less than or equal to 0, the dataset's neighbor result array length will be used. (default: -1)
 
 \--parallel
 
@@ -295,6 +306,118 @@ Prometheus heartbeat in secs. The heartbeat updates common information to Promet
 Upon exist, the module will sleep ensuring all Prometheus events are captured  
 (default: 20)
 
+# hdf_create_dataset.py
+
+This module creates an HDF file from an existing vector dataset. This dataset can be an ANN or a user defined dataset.
+
+\-h, --help show this help message and exit
+
+\-idx INDEXNAME, --indexname INDEXNAME
+
+Vector's Index Name. 
+Required
+
+\--hdf HDFFILE A HDF file that will be created in the 'data' folder by default. 
+
+You can provide a path, if for a different folder.
+Required
+
+\-a HOST:PORT [HOST:PORT ...], --hosts HOST:PORT [HOST:PORT ...]
+
+A list of Aerospike host and optional ports (defaults to 3000). Example:
+
+'hosta:3000' or 'hostb' (default: ['localhost:3000'])
+
+\--policies POLICIES Aerospike connection policies
+
+(default: {"read": {"total_timeout":
+
+1000}})
+
+\-A HOST:PORT [HOST:PORT ...], --vectorhosts HOST:PORT [HOST:PORT ...]
+
+A list of Aerospike Vector host and optional ports (defaults to 5000).
+
+Example: 'hosta:5000' or 'hostb' (default: ['localhost:5000'])
+
+\-l, --vectorloadbalancer
+
+Use Vector's DB Load Balancer (default: False)
+
+\-T, --vectortls Use TLS to connect to the Vector DB Server (default: False)
+
+\-idxns INDEXNAME, --indexnamespace INDEXNAME
+
+Vector's Index Namespace.
+
+(default test)
+
+\-S PARM, --searchparams PARM
+
+The Vector's Search Params (HnswParams) as a Json value used to obtain the neighbors
+
+\-pk BINNAME, --pkbinname BINNAME
+
+The Bin Name that represents the Primary Key for a record. If not provided the Aerospike PK will try to be used, if the PK value is returned.
+
+If the Aerospike PK is not a value (digest), PK array will not be part of the HDF dataset. (default: \_proximus_uk_)
+
+\-n NEIGHBORS, --neighbors NEIGHBORS
+
+The number of neighbors to return from the query. (default: 100)
+
+\--testsize VALUE
+
+If float, should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
+
+If int, represents the absolute number of test samples.
+
+If None, the value is set to the complement of the train size. If \`\`trainsize\`\` is also None, it will be set to 0.25
+
+(default: 0.1)
+
+\--trainsize VALUE
+
+If float, should be between 0.0 and 1.0 and represent the proportion on the dataset to include in the train split.
+
+If int, represents absolute number of train samples. If None, the value is automatically set to the complement of the test size.
+
+(default: None)
+
+\--randomstate VALUE
+
+Controls the shuffling applied to the data before applying the split. Pass an int for reproducible output across multiple function calls.
+
+Can be an int, RandomState instance or None.
+
+Using a default of 1 as defined in the ANN benchmark. See this [link](https://scikit-learn.org/dev/modules/generated/sklearn.model_selection.tr) for more information.
+
+(default: 1)
+
+\--usetrainingds
+
+Creates the training dataset based on the actual vectors from the DB. This will use the Bruteforce/k-nn method to calculate the neighbors. The default is to use all vector records in the DB and a sampling is taken to conduct the searches using the Aerospike implementation.
+
+(default: False)
+
+\--metric TYPE
+
+Which metric to use to calculate Recall.
+
+(default: k-nn)
+
+\-L LOG, --logfile LOG
+
+The logging file path. The default is no logging to a file.
+
+(default: None)
+
+\--loglevel LEVEL
+
+The Logging level
+
+(default: INFO)
+
 # Prometheus
 
 The module outputs certain meters to Prometheus. They are:
@@ -390,7 +513,6 @@ Any new dataset needs to be defined to mini-ANN.
 -   <https://archive.ics.uci.edu/>
 -   <http://fimi.uantwerpen.be/data/>
 -   <http://files.grouplens.org/datasets/movielens/>
-
 
 ## Dashboard
 
