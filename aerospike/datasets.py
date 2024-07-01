@@ -21,7 +21,7 @@ def download(source_url: str, destination_path: str) -> None:
         urlretrieve(source_url, destination_path)
 
 
-def get_dataset_fn(dataset_name: str) -> str:
+def get_dataset_fn(dataset_name: str) -> Tuple[str,str]:
     """
     Returns the full file path for a given dataset name in the data directory.
     
@@ -29,14 +29,26 @@ def get_dataset_fn(dataset_name: str) -> str:
         dataset_name (str): The name of the dataset.
     
     Returns:
-        str: The full file path of the dataset.
+        str: The full file path of the dataset and the dataset name.
     """
     if not os.path.exists("data"):
         os.mkdir("data")
-    return os.path.join("data", f"{dataset_name}.hdf5")
+        
+    filename, fileext = os.path.splitext(dataset_name)
+    filenamewext : str = dataset_name
+    
+    if fileext is None or not fileext:
+        filenamewext = f"{filename}.hdf5"
+        
+    if (filenamewext[0] == os.path.sep
+            or filenamewext.startswith(f"data{os.path.sep}")
+            or filenamewext.startswith(f".{os.path.sep}")):
+        splitpath = os.path.split(filename)
+        return filenamewext, splitpath[1]
+    
+    return os.path.join("data", filenamewext), filename
 
-
-def get_dataset(dataset_name: str) -> Tuple[h5py.File, int]:
+def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int]:
     """
     Fetches a dataset by downloading it from a known URL or creating it locally
     if it's not already present. The dataset file is then opened for reading, 
@@ -49,16 +61,25 @@ def get_dataset(dataset_name: str) -> Tuple[h5py.File, int]:
         Tuple[h5py.File, int]: A tuple containing the opened HDF5 file object and
             the dimension of the dataset.
     """
-    hdf5_filename = get_dataset_fn(dataset_name)
-    try:
-        dataset_url = f"https://ann-benchmarks.com/{dataset_name}.hdf5"
-        download(dataset_url, hdf5_filename)
-    except:
-        print(f"Cannot download {dataset_url}")
-        if dataset_name in DATASETS:
-            print("Creating dataset locally")
-            DATASETS[dataset_name](hdf5_filename)
-
+    if hdfpath is None:
+        hdf5_filename, dataset_name = get_dataset_fn(dataset_name)
+    else:
+        hdf5_filename = hdfpath
+        
+    if dataset_name in DATASETS.keys():
+        try:
+            dataset_url = f"https://ann-benchmarks.com/{dataset_name}.hdf5"
+            download(dataset_url, hdf5_filename)
+        except:
+            print(f"Cannot download {dataset_url}")
+            if dataset_name in DATASETS:
+                print("Creating dataset locally")
+                DATASETS[dataset_name](hdf5_filename)
+    elif os.path.isfile(hdf5_filename):
+        DATASETS.update({dataset_name:hdf5_filename})
+    else:
+        raise FileNotFoundError(f"HDF File '{hdf5_filename}' doesn't exist.")
+    
     hdf5_file = h5py.File(hdf5_filename, "r")
 
     # here for backward compatibility, to ensure old datasets can still be used with newer versions
@@ -66,13 +87,14 @@ def get_dataset(dataset_name: str) -> Tuple[h5py.File, int]:
     dimension = int(hdf5_file.attrs["dimension"]) if "dimension" in hdf5_file.attrs else len(hdf5_file["train"][0])
     return hdf5_file, dimension
 
-def load_and_transform_dataset(dataset_name: str) -> Tuple[
+def load_and_transform_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[
         Union[numpy.ndarray, List[numpy.ndarray]],
         Union[numpy.ndarray, List[numpy.ndarray]],
         Union[numpy.ndarray, List[numpy.ndarray]],
         str,
         h5py.File,
-        int]:
+        int,
+        Union[numpy.ndarray, List[numpy.ndarray]]]:
     """Loads and transforms the dataset.
 
     Args:
@@ -80,8 +102,8 @@ def load_and_transform_dataset(dataset_name: str) -> Tuple[
 
     Returns:
         Tuple: Transformed datasets.
-    """
-    D, dimension = get_dataset(dataset_name)
+    """    
+    D, dimension = get_dataset(dataset_name, hdfpath)
     X_train = numpy.array(D["train"])
     X_test = numpy.array(D["test"])
     distance = D.attrs["distance"]
@@ -89,8 +111,10 @@ def load_and_transform_dataset(dataset_name: str) -> Tuple[
     print(f"Got a train set of size ({X_train.shape[0]} * {dimension})")
     print(f"Got {len(X_test)} queries")
 
-    train, test, neighbors = dataset_transform(D)
-    return train, test, neighbors, distance, D, dimension
+    train, test, neighbors, primarykeys = dataset_transform(D)
+    if primarykeys is not None and primarykeys.dtype == numpy.dtype('O'):
+        primarykeys = None
+    return train, test, neighbors, distance, D, dimension, primarykeys
 
 def dataset_transform(dataset: h5py.Dataset) -> Tuple[Union[numpy.ndarray, List[numpy.ndarray]], Union[numpy.ndarray, List[numpy.ndarray]], Union[numpy.ndarray, List[numpy.ndarray]]]:
     """
@@ -111,7 +135,8 @@ def dataset_transform(dataset: h5py.Dataset) -> Tuple[Union[numpy.ndarray, List[
         return (
             numpy.array(dataset["train"]),
             numpy.array(dataset["test"]),
-            numpy.array(dataset.get("neighbors"))
+            numpy.array(dataset.get("neighbors")),
+            numpy.array(dataset.get("primarykeys"))
         )
 
     # we store the dataset as a list of integers, accompanied by a list of lengths in hdf5
@@ -119,7 +144,8 @@ def dataset_transform(dataset: h5py.Dataset) -> Tuple[Union[numpy.ndarray, List[
     return (
         convert_sparse_to_list(dataset["train"], dataset["size_train"]),
         convert_sparse_to_list(dataset["test"], dataset["size_test"]),
-        numpy.array(dataset.get("neighbors")) if dataset.get("size_neighbors") is None else convert_sparse_to_list(dataset["neighbors"], dataset["size_neighbors"])
+        numpy.array(dataset.get("neighbors")) if dataset.get("size_neighbors") is None else convert_sparse_to_list(dataset["neighbors"], dataset["size_neighbors"]),
+        None
     )
 
 def write_output(train: numpy.ndarray, test: numpy.ndarray, fn: str, distance: str, point_type: str = "float", count: int = 100) -> None:
@@ -250,7 +276,7 @@ def train_test_split(X: numpy.ndarray, test_size: int = 10000, dimension: int = 
     """
     from sklearn.model_selection import train_test_split as sklearn_train_test_split
 
-    dimension = dimension if not None else X.shape[1]
+    dimension = dimension if dimension is not None else X.shape[1]
     print(f"Splitting {X.shape[0]}*{dimension} into train/test")
     return sklearn_train_test_split(X, test_size=test_size, random_state=1)
 
