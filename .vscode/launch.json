@@ -190,22 +190,21 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Python Debugger: hdf_create_dataset",
+            "name": "Python Debugger: hdf_create_dataset (prompt)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/aerospike/hdf_create_dataset.py",
             "cwd": "${workspaceFolder}/aerospike",
             "args": [
                     "--hosts", "localhost:3000",
-                    "--dataset", "test",
+                    "--hdf", "${input:enterHDFFile}",
                     "--logfile", "./hdfcreatedataset.log",
                     "--indexname", "HDF-data_Idx",
                     
                     ],
-            "justMyCode": true,
+            "justMyCode": false,
             "console": "integratedTerminal"
         },
-    
     ],
     "inputs": [
     {
@@ -213,6 +212,12 @@
       "type": "promptString",
       "description": "Enter Dataset",
       "default": "random-xs-20-angular"
-    }
+    },
+    {
+        "id": "enterHDFFile",
+        "type": "promptString",
+        "description": "Enter HDF Path",
+        "default": "test"
+      }
   ]
 }

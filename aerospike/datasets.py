@@ -62,7 +62,7 @@ def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int
             the dimension of the dataset.
     """
     if hdfpath is None:
-        hdf5_filename = get_dataset_fn(dataset_name)
+        hdf5_filename, dataset_name = get_dataset_fn(dataset_name)
     else:
         hdf5_filename = hdfpath
         
@@ -85,7 +85,7 @@ def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int
     # here for backward compatibility, to ensure old datasets can still be used with newer versions
     # cast to integer because the json parser (later on) cannot interpret numpy integers
     dimension = int(hdf5_file.attrs["dimension"]) if "dimension" in hdf5_file.attrs else len(hdf5_file["train"][0])
-    return hdf5_file, dimension, dataset_name
+    return hdf5_file, dimension
 
 def load_and_transform_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[
         Union[numpy.ndarray, List[numpy.ndarray]],

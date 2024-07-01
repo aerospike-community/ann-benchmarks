@@ -217,7 +217,10 @@ class Aerospike(BaseAerospike):
             
         self._remainingrecs = 0           
         self._remainingquerynbrs = 0
-          
+        
+        if self._dataset.attrs.get("recall", None) is not None:
+            self.print_log(f"Precalculated Recall value found {self._dataset.attrs['recall']}")
+
         self.prometheus_status(0)
         self.print_log(f'get_dataset Exit: {self}, Train Array: {len(self._trainarray)}, Query Array: {len(self._queryarray)}, Distance: {distance}, Dimensions: {self._dimensions}')
                 
@@ -433,10 +436,11 @@ class Aerospike(BaseAerospike):
                             taskPuts.clear()
                             
                     print('Index Put Counter [%d]\r'%i, end="")
-                    if self._idx_maxrecs >= 0 and i >= self._idx_maxrecs:
-                        break
                     i += 1
+                    if self._idx_maxrecs >= 0 and i > self._idx_maxrecs:
+                        break
                     
+                i -= 1
                 logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")                            
                 await asyncio.gather(*taskPuts)
                 self._populate_counter.add(len(taskPuts), {"type": "upsert","ns":self._namespace,"set":self._setName})
@@ -496,6 +500,7 @@ class Aerospike(BaseAerospike):
                     queries.append(resultnbrs)
                     if metricfunc is not None:
                         self._query_metric_value = metricfunc(self._neighbors, resultnbrs, DummyMetric(), i-1, len(resultnbrs[0]))
+                        self._logger.info(f"Run: {i}, Neighbors: {len(resultnbrs)}, {self._query_metric["type"]}: {self._query_metric_value}")
             
                 i += 1                
             results = await asyncio.gather(*taskPuts)
