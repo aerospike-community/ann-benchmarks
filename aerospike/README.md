@@ -20,9 +20,7 @@ The ANN dataset (DS) to load training points from (default: glove-100-angular)
 
 \--hdf HDFFILE
 
-A HDF file that can be an ANN HDF file, or one created by “[hdf_create_dataset.py](#hdf_create_datasetpy)”.
-
-You can provide a path to this HDF file. If a path is not provided, the “data” folder is assumed.
+A HDF file that can be an ANN HDF file, or one created by “[hdf_create_dataset.py](#hdf_create_datasetpy)”. You can provide a path to this HDF file. If a path is not provided, the “data” folder is assumed.
 
 \-c N, --concurrency N
 
@@ -46,14 +44,11 @@ If the Vector Index existence, it will be dropped. Otherwise, it is updated. (de
 
 \--idxnowait
 
-Waiting for index completion is disabled. The module will continue without waiting for the index records to  
-be merged into the Aerospike DB (default: False)
+Waiting for index completion is disabled. The module will continue without waiting for the index records to be merged into the Aerospike DB (default: False)
 
 \-E EVT, --exhaustedevt EVT
 
-This determines how the Resource Exhausted event is handled.  
-This event occurs with the Vector Server merge queue is filled and cannot process any additional  
-population requests.
+This determines how the Resource Exhausted event is handled. This event occurs with the Vector Server merge queue is filled and cannot process any additional population requests.
 
 “EVT” Values are:
 
@@ -61,12 +56,11 @@ population requests.
 -   0 -- Disable event handling (just re-throws the exception)
 -   \>= 1 – All population events are stopped, and the module will wait for “EVT” seconds. Once the interval is reached, the population will be restarted.
 
-(default: -1)
+    (default: -1)
 
 \-m RECS, --maxrecs RECS
 
-Determines the maximum number of records to populated. A value of -1 (default) all records in  
-the HDF dataset are populated.
+Determines the maximum number of records to populated. A value of -1 (default) all records in the HDF dataset are populated.
 
 (default: -1)
 
@@ -143,8 +137,7 @@ The Vector's Index Params (HnswParams) as defined by the Vector Phyton API.
 
 \-L LOG, --logfile LOG
 
-The logging file path, if provided.  
-The default is to stdout.
+The logging file path, if provided. The default is to stdout.
 
 \--loglevel LEVEL
 
@@ -160,13 +153,11 @@ The Prometheus Port (default: 9464)
 
 \--prometheushb SECS
 
-Prometheus heartbeat in secs. The heartbeat updates common information to Prometheus  
-(default: 5 seconds)
+Prometheus heartbeat in secs. The heartbeat updates common information to Prometheus (default: 5 seconds)
 
 \--exitdelay wait
 
-Upon exist, the module will sleep ensuring all Prometheus events are captured  
-(default: 20)
+Upon exist, the module will sleep ensuring all Prometheus events are captured (default: 20)
 
 # hdf_query.py
 
@@ -190,9 +181,7 @@ The ANN dataset (DS) to load training points from (default: glove-100-angular)
 
 \--hdf HDFFILE
 
-A HDF file that can be an ANN HDF file, or one created by “[hdf_create_dataset.py](#hdf_create_datasetpy)”.
-
-You can provide a path to this HDF file. If a path is not provided, the “data” folder is assumed.
+A HDF file that can be an ANN HDF file, or one created by “[hdf_create_dataset.py](#hdf_create_datasetpy)”. You can provide a path to this HDF file. If a path is not provided, the “data” folder is assumed.
 
 \-r RUNS, --runs RUNS
 
@@ -281,8 +270,7 @@ Determines how recall is calculated. Defaults to “KNN”. Possible values are:
 
 \-L LOG, --logfile LOG
 
-The logging file path, if provided.  
-The default is to stdout.
+The logging file path, if provided. The default is to stdout.
 
 \--loglevel LEVEL
 
@@ -298,29 +286,27 @@ The Prometheus Port (default: 9464)
 
 \--prometheushb SECS
 
-Prometheus heartbeat in secs. The heartbeat updates common information to Prometheus  
-(default: 5 seconds)
+Prometheus heartbeat in secs. The heartbeat updates common information to Prometheus (default: 5 seconds)
 
 \--exitdelay wait
 
-Upon exist, the module will sleep ensuring all Prometheus events are captured  
-(default: 20)
+Upon exist, the module will sleep ensuring all Prometheus events are captured (default: 20)
 
 # hdf_create_dataset.py
 
 This module creates an HDF file from an existing vector dataset. This dataset can be an ANN or a user defined dataset.
 
-\-h, --help show this help message and exit
+\-h, --help
+
+show this help message and exit
 
 \-idx INDEXNAME, --indexname INDEXNAME
 
-Vector's Index Name. 
-Required
+Vector's Index Name. Required
 
-\--hdf HDFFILE A HDF file that will be created in the 'data' folder by default. 
+\--hdf HDFFILE
 
-You can provide a path, if for a different folder.
-Required
+A HDF file that will be created in the 'data' folder by default. You can provide a path, if for a different folder. Required
 
 \-a HOST:PORT [HOST:PORT ...], --hosts HOST:PORT [HOST:PORT ...]
 
@@ -328,11 +314,11 @@ A list of Aerospike host and optional ports (defaults to 3000). Example:
 
 'hosta:3000' or 'hostb' (default: ['localhost:3000'])
 
-\--policies POLICIES Aerospike connection policies
+\--policies POLICIES
 
-(default: {"read": {"total_timeout":
+Aerospike connection policies
 
-1000}})
+(default: {"read": {"total_timeout": 1000}})
 
 \-A HOST:PORT [HOST:PORT ...], --vectorhosts HOST:PORT [HOST:PORT ...]
 
@@ -344,7 +330,9 @@ Example: 'hosta:5000' or 'hostb' (default: ['localhost:5000'])
 
 Use Vector's DB Load Balancer (default: False)
 
-\-T, --vectortls Use TLS to connect to the Vector DB Server (default: False)
+\-T, --vectortls
+
+Use TLS to connect to the Vector DB Server (default: False)
 
 \-idxns INDEXNAME, --indexnamespace INDEXNAME
 
@@ -417,6 +405,23 @@ The logging file path. The default is no logging to a file.
 The Logging level
 
 (default: INFO)
+
+### HDF File Attributes
+
+-   type – A constant value which is always "dense"
+-   distance – An ANN distance type. The is a string value. Values are:
+
+    'angular', 'euclidean', 'hamming', 'jaccard', or 'dot'
+
+-   dimension – Thedimension of the training dataset (int)
+-   point_type – The training dataset’s element type (float, int, etc.). A string value…
+-   recall – The recall calculated value based on the recall method. (int, float, None)
+-   recallmethod – The recall method as string (e.g., k-nn, epsilon, largeepsilon, etc.)
+-   train – The training dataset
+-   test – The testing dataset which contains the vectors used to search for neighbors
+-   neighbors – the expected neighbors dataset based on a search on the test dataset
+-   distances – An array of distance calculations or None
+-   primarykeys – A list of primary keys from the application set used to obtain the vectors.
 
 # Prometheus
 
