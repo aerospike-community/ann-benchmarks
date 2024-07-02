@@ -342,7 +342,7 @@ class BaseAerospike(object):
                     key,
                     BaseAerospike.set_hnsw_params_attrs(
                             vectorTypes.HnswBatchingParams(),
-                            __dict[key].asdict()
+                            __dict[key],
                     )
                 )
             else:

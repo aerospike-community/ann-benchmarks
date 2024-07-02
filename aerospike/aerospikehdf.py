@@ -500,7 +500,7 @@ class Aerospike(BaseAerospike):
                     queries.append(resultnbrs)
                     if metricfunc is not None:
                         self._query_metric_value = metricfunc(self._neighbors, resultnbrs, DummyMetric(), i-1, len(resultnbrs[0]))
-                        self._logger.info(f"Run: {i}, Neighbors: {len(resultnbrs)}, {self._query_metric["type"]}: {self._query_metric_value}")
+                        self._logger.info(f"Run: {i}, Neighbors: {len(resultnbrs)}, {self._query_metric['type']}: {self._query_metric_value}")
             
                 i += 1                
             results = await asyncio.gather(*taskPuts)
