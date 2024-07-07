@@ -200,7 +200,7 @@
                     "--hdf", "${input:enterHDFFile}",
                     "--logfile", "./hdfcreatedataset.log",
                     "--indexname", "HDF-data_Idx",
-                    
+                    "--records", "1000"
                     ],
             "justMyCode": false,
             "console": "integratedTerminal"

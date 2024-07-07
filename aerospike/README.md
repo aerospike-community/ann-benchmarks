@@ -350,6 +350,11 @@ The Bin Name that represents the Primary Key for a record. If not provided the A
 
 If the Aerospike PK is not a value (digest), PK array will not be part of the HDF dataset. (default: \_proximus_uk_)
 
+\--records LIMIT
+
+The number of records (PKs) returned from the application Aerospike Set. If -1, all records are returned from the set. 
+(default: -1)
+
 \-n NEIGHBORS, --neighbors NEIGHBORS
 
 The number of neighbors to return from the query. (default: 100)
@@ -422,6 +427,8 @@ The Logging level
 -   neighbors – the expected neighbors dataset based on a search on the test dataset
 -   distances – An array of distance calculations or None
 -   primarykeys – A list of primary keys from the application set used to obtain the vectors.
+-   vector_distance -- The Aerospike distance type (VectorDistanceMetric)
+-   hnsw -- The hnsw parameters defined when the index was created
 
 # Prometheus
 
@@ -469,9 +476,13 @@ The module outputs certain meters to Prometheus. They are:
 -   `aerospike.hdf.waitidxcompletion Current number of waiting for index merge completions being conducted. Defined as a counter. Attributes:`
     -   `"ns" – Index Namespace`
     -   `"idx" – Index Name`
--   `aerospike.hdf.dropidxtime The amount of time to perform an index drop. Defined as a histogram. Attributes:`
+-   `aerospike.hdf.dropidxtime The amount of time (sec) to perform an index drop. Defined as a histogram. Attributes:`
     -   `"ns" – Index Namepsace`
     -   `"idx" – Index Name`
+-   `aerospike.hdf.queryhist The amount of time (ms) to perform vector search. Defined as a collection of buckets. Attributes:`
+    -   `"ns" – Index Namepsace`
+    -   `"idx" – Index Name`
+    -   `"run" – Run associated with this query latency buckets`
 
 # Supported Datasets
 

@@ -551,7 +551,6 @@ class Aerospike(BaseAerospike):
         for pos, searchValues in enumerate(self._queryarray):
             queryLen += len(searchValues)
             result = await self.vector_search(client, searchValues.tolist(),runNbr)
-            self._query_counter.add(1, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name, "run": runNbr})            
             resultCnt += len(result)
             print('Query Run [%d] Search [%d] Array [%d] Result [%d] %s\r'%(runNbr,pos+1,queryLen,resultCnt,msg), end="")
             self._remainingquerynbrs -= 1
@@ -576,12 +575,17 @@ class Aerospike(BaseAerospike):
         return rundistance
         
     async def vector_search(self, client:vectorASyncClient, query:List[float], runNbr:int) -> List[vectorTypes.Neighbor]:
+        import math
         try:
+            s = time.time_ns()
             result = await client.vector_search(namespace=self._idx_namespace,
                                                 index_name=self._idx_name,
                                                 query=query,
                                                 limit=self._query_nbrlimit,
-                                                search_params=self._query_hnswparams)            
+                                                search_params=self._query_hnswparams)
+            t = time.time_ns()
+            self._query_counter.add(1, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name, "run": runNbr})
+            self._query_histogram.record((t-s)*math.pow(10,-6), {"ns":self._idx_namespace,"idx": self._idx_name, "run": runNbr})
         except Exception as e:
             self._exception_counter.add(1, {"exception_type":e, "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
             raise

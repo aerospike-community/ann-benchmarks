@@ -97,10 +97,17 @@ class AerospikeDS():
             default="_proximus_uk_"
         )
         parser.add_argument(
+            "--records",
+            metavar="LIMIT",
+            type=int,
+            help="The number of records (PKS) to return from the Aerospike Set. -1 for all.",
+            default=-1,
+        )
+        parser.add_argument(
             "-n", "--neighbors",
             metavar="NEIGHBORS",
             type=int,
-            help="The number of neighbors to return from the query.",
+            help="The number of neighbors to return from the vector search.",
             default=100,
         )
         parser.add_argument(
@@ -191,6 +198,7 @@ class AerospikeDS():
         self._as_namespace : str = None
         self._as_set : str = None
         self._as_pkbinname : str = runtimeArgs.pkbinname
+        self._as_recs_limit : int = runtimeArgs.records
         self._vector_lb : bool = runtimeArgs.vectorloadbalancer
         self._hdf_path, self._ann_dataset = get_dataset_fn(runtimeArgs.hdf)        
         self._vector_namespace : str = runtimeArgs.indexnamespace
@@ -337,8 +345,12 @@ class AerospikeDS():
         with h5py.File(self._hdf_path, "w") as f:
             f.attrs["type"] = "dense"
             f.attrs["distance"] = self._vector_ann_distance
+            if self._vector_distance is not None:
+                f.attrs["vector_distance"] = vectorTypes.VectorDistanceMetric(self._vector_distance).name
             f.attrs["dimension"] = len(train[0])
             f.attrs["point_type"] = train[0].dtype.name.rstrip(digits)
+            if self._vector_hnsw is not None:
+                f.attrs["hnsw"] = str(self._vector_hnsw)
             if metricresult is not None:
                 f.attrs["recall"] = metricresult
                 f.attrs["recallmethod"] = self._vector_metric["type"]
@@ -376,7 +388,7 @@ class AerospikeDS():
             records = query.results()
             
             self.print_log(f"Aerospike Query record number: {len(records)}")
-            
+            i = 0
             for record in records:
                 key, _, bins = record
                 pkvalue = None
@@ -390,11 +402,15 @@ class AerospikeDS():
                     pkvalue = bins[self._as_pkbinname]
                                 
                 pkarray.append(pkvalue)
-        
+                i += 1
+                print('Set Record Counter [%d]\r'%i, end="")
+                if self._as_recs_limit > 0 and i >= self._as_recs_limit:
+                    break
         finally:
+            print('\n')
             self._logger.debug("closing connection to DB")
             client.close()
-            
+
         if len(pkarray) == 0 or all(p is None for p in pkarray):
             pkarray is None
         
@@ -452,16 +468,18 @@ class AerospikeDS():
         async with vectorASyncClient(seeds=self._vector_hosts,
                                         is_loadbalancer=self._vector_lb
                             ) as client:
-            self.print_log(f'Opened connection to Vectors on {AerospikeDS._vector_hostport_str(self._vector_hosts)} for set {self._as_namespace}.{self._as_set}')
+            self.print_log(f'Opened connection to Client Vectors on {AerospikeDS._vector_hostport_str(self._vector_hosts)} for set {self._as_namespace}.{self._as_set} Idx {self._vector_namespace}.{self._vector_name}')
             vectors = []
-            
+            i = 0
             for pk in pkarray:
                 record = await client.get(namespace=self._as_namespace,
                                             key=pk,
                                             field_names=[self._as_vectorbinname],
                                             set_name=self._as_set)
                 vectors.append(np.array(record.fields[self._as_vectorbinname]))
-                
+                i += 1
+                print('Vector Get Counter [%d]\r'%i, end="")
+            print('\n')
             vectors = np.array(vectors)
             self.print_log(f"Splitting {len(vectors)}*{self._vector_dimensions} into train/test with sizes Test:{self._vector_testsize}, Train: {self._vector_trainsize}, Random State: {self._vector_randomstate}")
             
@@ -499,6 +517,7 @@ class AerospikeDS():
         
         self.print_log(f"Performing Search using Test DS {testds.shape}")
         neighborsds = []
+        i = 0
         for searchitem in testds:
             neighbors = await self.search_vector(client, searchitem.tolist())
             if len(neighbors) > 0:
@@ -507,7 +526,10 @@ class AerospikeDS():
             else:
                 self._logger.debug(f"Found zero neighbors in resulting Search.", logging.WARN)
                 neighborsds.append(np.empty())
-                
+            i += 1
+            print('Vector Search Counter [%d]\r'%i, end="")
+        
+        print('\n')        
         neighborsds = np.array(neighborsds)
         self.print_log(f"Search Completed resulting in a neighbors DS {neighborsds.shape}")
         

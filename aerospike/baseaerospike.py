@@ -285,6 +285,9 @@ class BaseAerospike(object):
                                                         unit="1",
                                                         description="Cnts the nbr of queries performed"
                                                       )        
+        self._query_histogram = self._meter.create_histogram("aerospike.hdf.queryhist",
+                                                                unit="ms",
+                                                                description="The amount of time it took one vector search to complete")        
         self._exception_counter = self._meter.create_up_down_counter("aerospike.hdf.exception", 
                                                                 unit="1",
                                                                 description="Cnts the nbr exceptions"
@@ -294,7 +297,8 @@ class BaseAerospike(object):
                                                         description="Waiting Idx completions")
         self._dropidx_histogram = self._meter.create_histogram("aerospike.hdf.dropidxtime",
                                                             unit="sec",
-                                                            description="The amount of time it took t drop the idx")                
+                                                            description="The amount of time it took t drop the idx")
+        
         self._prometheus_heartbeat_gauge = self._meter.create_gauge("aerospike.hdf.heartbeat")
         
         self._prometheus_hb : int = runtimeArgs.prometheushb
