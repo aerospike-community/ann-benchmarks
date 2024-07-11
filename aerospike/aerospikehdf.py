@@ -156,6 +156,7 @@ class Aerospike(BaseAerospike):
         self._trainarray : Union[np.ndarray, List[np.ndarray]] = None
         self._queryarray : Union[np.ndarray, List[np.ndarray]] = None
         self._neighbors : Union[np.ndarray, List[np.ndarray]] = None
+        self._distances : Union[np.ndarray, List[np.ndarray]] = None
         self._dataset = None
         self._pausePuts : bool = False
         self._pks : Union[np.ndarray, List[np.ndarray]] = None
@@ -192,6 +193,7 @@ class Aerospike(BaseAerospike):
         (self._trainarray,
             self._queryarray,
             self._neighbors,
+            self._distances,
             distance,
             self._dataset,
             self._dimensions,
@@ -496,30 +498,30 @@ class Aerospike(BaseAerospike):
                 if self._query_parallel:
                     taskPuts.append(self.query_run(client, i))
                 else:
-                    resultnbrs = await self.query_run(client, i)
-                    queries.append(resultnbrs)
+                    resultdistances = await self.query_run(client, i)
+                    queries.append(resultdistances)
                     if metricfunc is not None:
-                        self._query_metric_value = metricfunc(self._neighbors, resultnbrs, DummyMetric(), i-1, len(resultnbrs[0]))
-                        self._logger.info(f"Run: {i}, Neighbors: {len(resultnbrs)}, {self._query_metric['type']}: {self._query_metric_value}")
+                        self._query_metric_value = metricfunc(self._distances, resultdistances, DummyMetric(), i-1, len(resultdistances[0]))
+                        self._logger.info(f"Run: {i}, Distances: {len(resultdistances)}, {self._query_metric['type']}: {self._query_metric_value}")
             
                 i += 1                
             results = await asyncio.gather(*taskPuts)
             t = time.time()
             if self._query_parallel:
-                queries =  results
+                queries = results
             print('\n')
             totqueries = sum([len(x) for x in queries])
             if metricfunc is not None:
                 metricValues = []
                 i = 0
-                for mvrun in queries:
-                    metricValues.append(metricfunc(self._neighbors, mvrun, DummyMetric(), i, len(mvrun[0])))
+                for mvrundistances in queries:
+                    metricValues.append(metricfunc(self._distances, mvrundistances, DummyMetric(), i, len(mvrundistances[0])))
                     i += 1
                 self._query_metric_value = statistics.mean(metricValues)
                 
             self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {totqueries} in {t-s} secs, {totqueries/(t-s)} TPS, {None if self._query_metric is None else self._query_metric["type"]}: {self._query_metric_value}')        
 
-    async def _check_query_results(self, results:List[Any], idx:int, runNbr:int) -> bool:
+    async def _check_query_results(self, results:List[Any], distances:List[Any], idx:int, runNbr:int) -> bool:
     
         compareresult = None                
         
@@ -555,15 +557,16 @@ class Aerospike(BaseAerospike):
             print('Query Run [%d] Search [%d] Array [%d] Result [%d] %s\r'%(runNbr,pos+1,queryLen,resultCnt,msg), end="")
             self._remainingquerynbrs -= 1
             result_ids = [neighbor.key.key for neighbor in result]
-            rundistance.append(result_ids)
+            result_distances = [neighbor.distance for neighbor in result]
+            rundistance.append(result_distances)
             
             if self._query_check:
-                if len(result_ids) == 0:
+                if len(result_distances) == 0:
                     self._exception_counter.add(1, {"exception_type":"No Query Results", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
                     logger.warn(f'No Query Results for {self._idx_namespace}.{self._idx_name}', logging.WARNING)
                     msg = "Warn: No Results"
                 elif self._canchecknbrs and len(self._neighbors[len(rundistance)-1]) > 0:
-                    if not await self._check_query_results(result_ids, len(rundistance)-1, runNbr):
+                    if not await self._check_query_results(result_ids, result_distances, len(rundistance)-1, runNbr):
                         msg = "Warn: Compare Failed"
                 else:                        
                     zeroDist = [record.key.key for record in result if record.distance == 0]

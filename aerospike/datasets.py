@@ -7,6 +7,9 @@ import h5py
 import numpy
 from typing import Any, Callable, Dict, Tuple, Optional, List, Union
 
+from numpy import ndarray, dtype
+
+
 def download(source_url: str, destination_path: str) -> None:
     """
     Downloads a file from the provided source URL to the specified destination path
@@ -21,7 +24,7 @@ def download(source_url: str, destination_path: str) -> None:
         urlretrieve(source_url, destination_path)
 
 
-def get_dataset_fn(dataset_name: str) -> Tuple[str,str]:
+def get_dataset_fn(dataset_name: str) -> Tuple[str, str]:
     """
     Returns the full file path for a given dataset name in the data directory.
     
@@ -33,22 +36,23 @@ def get_dataset_fn(dataset_name: str) -> Tuple[str,str]:
     """
     if not os.path.exists("data"):
         os.mkdir("data")
-        
+
     filename, fileext = os.path.splitext(dataset_name)
-    filenamewext : str = dataset_name
-    
+    filenamewext: str = dataset_name
+
     if fileext is None or not fileext:
         filenamewext = f"{filename}.hdf5"
-        
+
     if (filenamewext[0] == os.path.sep
             or filenamewext.startswith(f"data{os.path.sep}")
             or filenamewext.startswith(f".{os.path.sep}")):
         splitpath = os.path.split(filename)
         return filenamewext, splitpath[1]
-    
+
     return os.path.join("data", filenamewext), filename
 
-def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int]:
+
+def get_dataset(dataset_name: str, hdfpath: str = None) -> Tuple[h5py.File, int]:
     """
     Fetches a dataset by downloading it from a known URL or creating it locally
     if it's not already present. The dataset file is then opened for reading, 
@@ -65,7 +69,7 @@ def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int
         hdf5_filename, dataset_name = get_dataset_fn(dataset_name)
     else:
         hdf5_filename = hdfpath
-        
+
     if dataset_name in DATASETS.keys():
         try:
             dataset_url = f"https://ann-benchmarks.com/{dataset_name}.hdf5"
@@ -76,10 +80,10 @@ def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int
                 print("Creating dataset locally")
                 DATASETS[dataset_name](hdf5_filename)
     elif os.path.isfile(hdf5_filename):
-        DATASETS.update({dataset_name:hdf5_filename})
+        DATASETS.update({dataset_name: hdf5_filename})
     else:
         raise FileNotFoundError(f"HDF File '{hdf5_filename}' doesn't exist.")
-    
+
     hdf5_file = h5py.File(hdf5_filename, "r")
 
     # here for backward compatibility, to ensure old datasets can still be used with newer versions
@@ -87,14 +91,16 @@ def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int
     dimension = int(hdf5_file.attrs["dimension"]) if "dimension" in hdf5_file.attrs else len(hdf5_file["train"][0])
     return hdf5_file, dimension
 
-def load_and_transform_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[
-        Union[numpy.ndarray, List[numpy.ndarray]],
-        Union[numpy.ndarray, List[numpy.ndarray]],
-        Union[numpy.ndarray, List[numpy.ndarray]],
-        str,
-        h5py.File,
-        int,
-        Union[numpy.ndarray, List[numpy.ndarray]]]:
+
+def load_and_transform_dataset(dataset_name: str, hdfpath: str = None) -> Tuple[
+    Union[numpy.ndarray, List[numpy.ndarray]],
+    Union[numpy.ndarray, List[numpy.ndarray]],
+    Union[numpy.ndarray, List[numpy.ndarray]],
+    Union[numpy.ndarray, List[numpy.ndarray]],
+    str,
+    h5py.File,
+    int,
+    Union[numpy.ndarray, List[numpy.ndarray], None]]:
     """Loads and transforms the dataset.
 
     Args:
@@ -102,7 +108,7 @@ def load_and_transform_dataset(dataset_name: str, hdfpath : str = None) -> Tuple
 
     Returns:
         Tuple: Transformed datasets.
-    """    
+    """
     D, dimension = get_dataset(dataset_name, hdfpath)
     X_train = numpy.array(D["train"])
     X_test = numpy.array(D["test"])
@@ -111,12 +117,18 @@ def load_and_transform_dataset(dataset_name: str, hdfpath : str = None) -> Tuple
     print(f"Got a train set of size ({X_train.shape[0]} * {dimension})")
     print(f"Got {len(X_test)} queries")
 
-    train, test, neighbors, primarykeys = dataset_transform(D)
+    train, test, neighbors, distances, primarykeys = dataset_transform(D)
     if primarykeys is not None and primarykeys.dtype == numpy.dtype('O'):
         primarykeys = None
-    return train, test, neighbors, distance, D, dimension, primarykeys
+    return train, test, neighbors, distances, distance, D, dimension, primarykeys
 
-def dataset_transform(dataset: h5py.Dataset) -> Tuple[Union[numpy.ndarray, List[numpy.ndarray]], Union[numpy.ndarray, List[numpy.ndarray]], Union[numpy.ndarray, List[numpy.ndarray]]]:
+
+def dataset_transform(dataset: h5py.Dataset) -> tuple[
+    Union[ndarray[Any, dtype[Any]], list[ndarray]],
+    Union[ndarray[Any, dtype[Any]], list[ndarray]],
+    Union[ndarray[Any, dtype[Any]]],
+    Union[ndarray[Any, dtype[Any]], list[ndarray]],
+    Union[ndarray[Any, dtype[Any]], list[ndarray], None]]:
     """
     Transforms the dataset from the HDF5 format to conventional numpy format.
 
@@ -129,26 +141,32 @@ def dataset_transform(dataset: h5py.Dataset) -> Tuple[Union[numpy.ndarray, List[
     Returns:
         Tuple[Union[np.ndarray, List[np.ndarray]], Union[np.ndarray, List[np.ndarray]]]: Tuple of training and testing data in conventional format.
     """
-    from distance import convert_sparse_to_list    
-    
+    from distance import convert_sparse_to_list
+
     if dataset.attrs.get("type", "dense") != "sparse":
         return (
             numpy.array(dataset["train"]),
             numpy.array(dataset["test"]),
             numpy.array(dataset.get("neighbors")),
+            numpy.array(dataset.get("distances")),
             numpy.array(dataset.get("primarykeys"))
         )
 
     # we store the dataset as a list of integers, accompanied by a list of lengths in hdf5
-    # so we transform it back to the format expected by the algorithms here (array of array of ints)
+    # so we transform it back to the format expected by the algorithms here (array of arrays of ints)
     return (
         convert_sparse_to_list(dataset["train"], dataset["size_train"]),
         convert_sparse_to_list(dataset["test"], dataset["size_test"]),
-        numpy.array(dataset.get("neighbors")) if dataset.get("size_neighbors") is None else convert_sparse_to_list(dataset["neighbors"], dataset["size_neighbors"]),
+        numpy.array(dataset.get("neighbors")) if dataset.get("size_neighbors") is None else convert_sparse_to_list(
+            dataset["neighbors"], dataset["size_neighbors"]),
+        numpy.array(dataset.get("distances")) if dataset.get("size_distances") is None else convert_sparse_to_list(
+            dataset["distances"], dataset["size_distances"]),  #TODO: no idea if this will work, but hey!
         None
     )
 
-def write_output(train: numpy.ndarray, test: numpy.ndarray, fn: str, distance: str, point_type: str = "float", count: int = 100) -> None:
+
+def write_output(train: numpy.ndarray, test: numpy.ndarray, fn: str, distance: str, point_type: str = "float",
+                 count: int = 100) -> None:
     """
     Writes the provided training and testing data to an HDF5 file. It also computes 
     and stores the nearest neighbors and their distances for the test set using a 
@@ -201,7 +219,8 @@ param: train and test are arrays of arrays of indices.
 """
 
 
-def write_sparse_output(train: numpy.ndarray, test: numpy.ndarray, fn: str, distance: str, dimension: int, count: int = 100) -> None:
+def write_sparse_output(train: numpy.ndarray, test: numpy.ndarray, fn: str, distance: str, dimension: int,
+                        count: int = 100) -> None:
     """
     Writes the provided sparse training and testing data to an HDF5 file. It also computes 
     and stores the nearest neighbors and their distances for the test set using a 
@@ -260,7 +279,8 @@ def write_sparse_output(train: numpy.ndarray, test: numpy.ndarray, fn: str, dist
             distances_ds[i] = [dist for _, dist in res]
 
 
-def train_test_split(X: numpy.ndarray, test_size: int = 10000, dimension: int = None) -> Tuple[numpy.ndarray, numpy.ndarray]:
+def train_test_split(X: numpy.ndarray, test_size: int = 10000, dimension: int = None) -> Tuple[
+    numpy.ndarray, numpy.ndarray]:
     """
     Splits the provided dataset into a training set and a testing set.
     
@@ -474,6 +494,7 @@ def random_bitstring(out_fn: str, n_dims: int, n_samples: int, n_queries: int) -
     X_train, X_test = train_test_split(X, test_size=n_queries)
     write_output(X_train, X_test, out_fn, "hamming", "bit")
 
+
 def sift_hamming(out_fn: str, fn: str) -> None:
     import tarfile
 
@@ -567,6 +588,7 @@ def random_jaccard(out_fn: str, n: int = 10000, size: int = 50, universe: int = 
     write_output(item_factors, user_factors, out_fn, "angular")
  """
 
+
 def movielens(fn: str, ratings_file: str, out_fn: str, separator: str = "::", ignore_header: bool = False) -> None:
     import zipfile
 
@@ -615,7 +637,8 @@ def movielens10m(out_fn: str) -> None:
 def movielens20m(out_fn: str) -> None:
     movielens("ml-20m.zip", "ml-20m/ratings.csv", out_fn, ",", True)
 
-def dbpedia_entities_openai_1M(out_fn, n = None):
+
+def dbpedia_entities_openai_1M(out_fn, n=None):
     from sklearn.model_selection import train_test_split
     from datasets import load_dataset
     import numpy as np
@@ -663,6 +686,6 @@ DATASETS: Dict[str, Callable[[str], None]] = {
 }
 
 DATASETS.update({
-    f"dbpedia-openai-{n//1000}k-angular": lambda out_fn, i=n: dbpedia_entities_openai_1M(out_fn, i)
+    f"dbpedia-openai-{n // 1000}k-angular": lambda out_fn, i=n: dbpedia_entities_openai_1M(out_fn, i)
     for n in range(100_000, 1_100_000, 100_000)
 })
