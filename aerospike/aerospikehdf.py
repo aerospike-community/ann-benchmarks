@@ -16,6 +16,7 @@ from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  
 from baseaerospike import BaseAerospike, _distanceNameToAerospikeType as DistanceMaps, OperationActions
 from datasets import DATASETS, load_and_transform_dataset, get_dataset_fn
 from metrics import all_metrics as METRICS, DummyMetric
+from distance import metrics as DISTANCES, Metric as DistanceMetric
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +157,8 @@ class Aerospike(BaseAerospike):
         self._trainarray : Union[np.ndarray, List[np.ndarray]] = None
         self._queryarray : Union[np.ndarray, List[np.ndarray]] = None
         self._neighbors : Union[np.ndarray, List[np.ndarray]] = None
+        self._distances : Union[np.ndarray, List[np.ndarray]] = None
+        self._ann_distance : str = None
         self._dataset = None
         self._pausePuts : bool = False
         self._pks : Union[np.ndarray, List[np.ndarray]] = None
@@ -192,13 +195,15 @@ class Aerospike(BaseAerospike):
         (self._trainarray,
             self._queryarray,
             self._neighbors,
+            self._distances,
             distance,
             self._dataset,
             self._dimensions,
             self._pks) = load_and_transform_dataset(self._datasetname, self._hdf_file)
         
+        self._ann_distance = distance.lower()
         if self._idx_distance is None or not self._idx_distance:
-            self._idx_distance = DistanceMaps.get(distance.lower())
+            self._idx_distance = DistanceMaps.get(self._ann_distance)
         
         if self._idx_distance is None or not self._idx_distance:
              raise ValueError(f"Distance Map '{distance}' was not found.")
@@ -465,6 +470,7 @@ class Aerospike(BaseAerospike):
         '''
         Performs a query using the query array from the HDF dataset. 
         '''
+        from distance import metrics as DISTANCES
         
         self.print_log(f'Query: {self} Shape: {self._trainarray.shape}')
         
@@ -480,9 +486,11 @@ class Aerospike(BaseAerospike):
 
         self.print_log(f'Starting Query Runs ({self._query_runs}) on {self._idx_namespace}.{self._idx_name}')
         metricfunc = None
+        distancemetric : DistanceMetric= None
         if self._canchecknbrs:
             metricfunc = None if self._query_metric is None else self._query_metric["function"]
-        
+            distancemetric = DISTANCES[self._ann_distance]
+            
         async with vectorASyncClient(seeds=self._host,
                                         listener_name=self._listern,
                                         is_loadbalancer=self._useloadbalancer
@@ -494,32 +502,42 @@ class Aerospike(BaseAerospike):
             self._remainingquerynbrs = len(self._queryarray) * self._query_runs
             while i <= self._query_runs:
                 if self._query_parallel:
-                    taskPuts.append(self.query_run(client, i))
+                    taskPuts.append(self.query_run(client, i, distancemetric))
                 else:
-                    resultnbrs = await self.query_run(client, i)
-                    queries.append(resultnbrs)
+                    result = await   self.query_run(client, i, distancemetric)
+                    queries.append(result)
                     if metricfunc is not None:
-                        self._query_metric_value = metricfunc(self._neighbors, resultnbrs, DummyMetric(), i-1, len(resultnbrs[0]))
-                        self._logger.info(f"Run: {i}, Neighbors: {len(resultnbrs)}, {self._query_metric['type']}: {self._query_metric_value}")
+                        if len(result[0]) == 0:
+                            self._query_metric_value = None    
+                        else:
+                            self._query_metric_value = metricfunc(self._distances, result[0], DummyMetric(), i-1, len(result[0][0]))
+                        self._aerospike_metric_value = metricfunc(self._distances, result[1], DummyMetric(), i-1, len(result[1][0]))                        
+                        self._logger.info(f"Run: {i}, Neighbors: {len(result[1])}, {self._query_metric['type']}: {self._query_metric_value}, aerospike recall: {self._aerospike_metric_value}")
             
-                i += 1                
-            results = await asyncio.gather(*taskPuts)
+                i += 1
+                
+            if len(taskPuts) > 0:
+                results = await asyncio.gather(*taskPuts)
+                if self._query_parallel:
+                    queries =  results
             t = time.time()
-            if self._query_parallel:
-                queries =  results
             print('\n')
-            totqueries = sum([len(x) for x in queries])
+            totqueries = sum([len(x[1]) for x in queries])
             if metricfunc is not None:
                 metricValues = []
+                metricValuesAS = []
                 i = 0
-                for mvrun in queries:
-                    metricValues.append(metricfunc(self._neighbors, mvrun, DummyMetric(), i, len(mvrun[0])))
+                for rundist, runasdist in queries:
+                    if len(rundist) > 0:
+                        metricValues.append(metricfunc(self._distances, rundist, DummyMetric(), i, len(rundist[0])))
+                    metricValuesAS.append(metricfunc(self._distances, runasdist, DummyMetric(), i, len(runasdist[0])))                    
                     i += 1
                 self._query_metric_value = statistics.mean(metricValues)
+                self._aerospike_metric_value = statistics.mean(metricValuesAS)
                 
-            self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {totqueries} in {t-s} secs, {totqueries/(t-s)} TPS, {None if self._query_metric is None else self._query_metric["type"]}: {self._query_metric_value}')        
+            self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {totqueries} in {t-s} secs, {totqueries/(t-s)} TPS, {None if self._query_metric is None else self._query_metric["type"]}: {self._query_metric_value}, Aerospike recall: {self._aerospike_metric_value}')        
 
-    async def _check_query_results(self, results:List[Any], idx:int, runNbr:int) -> bool:
+    async def _check_query_neighbors(self, results:List[Any], idx:int, runNbr:int) -> bool:
     
         compareresult = None                
         
@@ -540,11 +558,30 @@ class Aerospike(BaseAerospike):
         logger.warn(f"Comparison Results: {compareresult}")
         
         return False
+    
+    async def _check_query_distances(self, distances:List[float], distances_aerospike:List[float], idx:int, runNbr:int) -> bool:    
+        import operator
+
+        subresult = np.array(list(map(operator.sub, distances, distances_aerospike)))
+        subresult = np.around(subresult, 6)
+        
+        if np.all(subresult == 0):
+            return True;
+        
+        self._exception_counter.add(1, {"exception_type":"Distances don't match", "handled_by_user":False,"ns":self._idx_namespace,"idx":self._idx_name,"run":runNbr})
+        logger.warn(f"Distance Results do not Match between Calculated and Aerospike (negative values towards Aerospike)  {self._idx_namespace}.{self._idx_name} for Query {idx}")
+        logger.warn(f"Results: {subresult.tolist()}")
+        
+        return False
             
-    async def query_run(self, client:vectorASyncClient, runNbr:int) -> List:
+    async def query_run(self, client:vectorASyncClient, runNbr:int, distancemetric : DistanceMetric) -> tuple[List, List]:
+        '''
+        Returns a tuple of calculated distances and aerospike distances
+        '''
         queryLen = 0
         resultCnt = 0
         rundistance = []
+        runasdistance = []
         self._query_current_run = runNbr
         self._query_counter.add(0, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name, "run": runNbr})
         msg = "                                   "
@@ -554,25 +591,35 @@ class Aerospike(BaseAerospike):
             resultCnt += len(result)
             print('Query Run [%d] Search [%d] Array [%d] Result [%d] %s\r'%(runNbr,pos+1,queryLen,resultCnt,msg), end="")
             self._remainingquerynbrs -= 1
-            result_ids = [neighbor.key.key for neighbor in result]
-            rundistance.append(result_ids)
+            result_ids = [neighbor.key.key for neighbor in result]            
+            aerospike_distances = [neighbor.distance for neighbor in result]
             
             if self._query_check:
                 if len(result_ids) == 0:
                     self._exception_counter.add(1, {"exception_type":"No Query Results", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
                     logger.warn(f'No Query Results for {self._idx_namespace}.{self._idx_name}', logging.WARNING)
                     msg = "Warn: No Results"
-                elif self._canchecknbrs and len(self._neighbors[len(rundistance)-1]) > 0:
-                    if not await self._check_query_results(result_ids, len(rundistance)-1, runNbr):
-                        msg = "Warn: Compare Failed"
+                elif self._canchecknbrs and len(self._neighbors[len(rundistance)]) > 0:
+                    if not await self._check_query_neighbors(result_ids, len(rundistance), runNbr):
+                        msg = "Warn: Neighbor Compare Failed"                    
                 else:                        
                     zeroDist = [record.key.key for record in result if record.distance == 0]
                     if len(zeroDist) > 0:
                         self._exception_counter.add(1, {"exception_type":"Zero Distance Found", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
                         logger.warn(f'Zero Distance Found for {self._idx_namespace}.{self._idx_name} Keys: {zeroDist}', logging.WARNING)
                         msg = "Warn: Zero Distance Found"
+            if distancemetric is not None:
+                distances = [float(distancemetric.distance(searchValues, self._trainarray[idx])) for idx in result_ids]
+                if self._query_check and not await self._check_query_distances(distances, aerospike_distances, len(rundistance), runNbr):
+                    if len(msg) == 0:
+                        msg = "Warn: Distances don't match"
+                    else:
+                        msg = ", Distances don't match"
+                rundistance.append(distances)                
             
-        return rundistance
+            runasdistance.append(aerospike_distances)
+
+        return rundistance, runasdistance
         
     async def vector_search(self, client:vectorASyncClient, query:List[float], runNbr:int) -> List[vectorTypes.Neighbor]:
         import math

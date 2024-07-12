@@ -82,7 +82,7 @@ class AerospikeDS():
             '-S', "--searchparams",
             metavar="PARM",
             type=json.loads,
-            help="The Vector's Search Params (HnswParams), as Json, used to obtained the neighbors",
+            help="The Vector's Search Params (HnswSearchParams), as Json, used to obtained the neighbors",
             default=None
         ) 
         parser.add_argument(

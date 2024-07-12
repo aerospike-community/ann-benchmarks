@@ -91,10 +91,11 @@ def load_and_transform_dataset(dataset_name: str, hdfpath : str = None) -> Tuple
         Union[numpy.ndarray, List[numpy.ndarray]],
         Union[numpy.ndarray, List[numpy.ndarray]],
         Union[numpy.ndarray, List[numpy.ndarray]],
+        Union[numpy.ndarray, List[numpy.ndarray]],
         str,
         h5py.File,
         int,
-        Union[numpy.ndarray, List[numpy.ndarray]]]:
+        Union[numpy.ndarray, List[numpy.ndarray], None]]:
     """Loads and transforms the dataset.
 
     Args:
@@ -111,12 +112,17 @@ def load_and_transform_dataset(dataset_name: str, hdfpath : str = None) -> Tuple
     print(f"Got a train set of size ({X_train.shape[0]} * {dimension})")
     print(f"Got {len(X_test)} queries")
 
-    train, test, neighbors, primarykeys = dataset_transform(D)
+    train, test, neighbors, distances, primarykeys = dataset_transform(D)
     if primarykeys is not None and primarykeys.dtype == numpy.dtype('O'):
         primarykeys = None
-    return train, test, neighbors, distance, D, dimension, primarykeys
+    return train, test, neighbors, distances, distance, D, dimension, primarykeys
 
-def dataset_transform(dataset: h5py.Dataset) -> Tuple[Union[numpy.ndarray, List[numpy.ndarray]], Union[numpy.ndarray, List[numpy.ndarray]], Union[numpy.ndarray, List[numpy.ndarray]]]:
+def dataset_transform(dataset: h5py.Dataset) -> Tuple[
+    Union[numpy.ndarray[Any, numpy.dtype[Any]], list[numpy.ndarray]],
+    Union[numpy.ndarray[Any, numpy.dtype[Any]], list[numpy.ndarray]],
+    Union[numpy.ndarray[Any, numpy.dtype[Any]]],
+    Union[numpy.ndarray[Any, numpy.dtype[Any]], list[numpy.ndarray]],
+    Union[numpy.ndarray[Any, numpy.dtype[Any]], list[numpy.ndarray], None]]:    
     """
     Transforms the dataset from the HDF5 format to conventional numpy format.
 
@@ -136,6 +142,7 @@ def dataset_transform(dataset: h5py.Dataset) -> Tuple[Union[numpy.ndarray, List[
             numpy.array(dataset["train"]),
             numpy.array(dataset["test"]),
             numpy.array(dataset.get("neighbors")),
+            numpy.array(dataset.get("distances")),
             numpy.array(dataset.get("primarykeys"))
         )
 
@@ -145,6 +152,7 @@ def dataset_transform(dataset: h5py.Dataset) -> Tuple[Union[numpy.ndarray, List[
         convert_sparse_to_list(dataset["train"], dataset["size_train"]),
         convert_sparse_to_list(dataset["test"], dataset["size_test"]),
         numpy.array(dataset.get("neighbors")) if dataset.get("size_neighbors") is None else convert_sparse_to_list(dataset["neighbors"], dataset["size_neighbors"]),
+        numpy.array(dataset.get(dataset.get("distances")) if dataset.get("size_distances") is None else convert_sparse_to_list(dataset["distances"], dataset["size_distances"])),
         None
     )
 
