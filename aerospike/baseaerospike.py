@@ -131,7 +131,7 @@ class BaseAerospike(object):
             '-S', "--searchparams",
             metavar="PARM",
             type=json.loads,
-            help="The Vector's Search Params (HnswParams)",
+            help="The Vector's Search Params (HnswSearchParams)",
             default=None
         )              
         parser.add_argument(
@@ -251,6 +251,7 @@ class BaseAerospike(object):
         self._remainingquerynbrs : int = None
         self._query_current_run : int = None
         self._query_metric_value : float = None
+        self._aerospike_metric_value : float = None
         self._query_metric : dict[str,any] = None
         self._canchecknbrs : bool = False
         
@@ -385,7 +386,8 @@ class BaseAerospike(object):
                                                         "remainingRecs" : self._remainingrecs,
                                                         "remainingquerynbrs" : self._remainingquerynbrs,
                                                         "querymetric": None if self._query_metric is None else self._query_metric["type"],
-                                                        "querymetricvalue": self._query_metric_value
+                                                        "querymetricvalue": self._query_metric_value,
+                                                        "querymetricaerospikevalue": self._aerospike_metric_value
                                                         })
         
     def _prometheus_heartbeat(self) -> None:

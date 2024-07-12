@@ -17,7 +17,8 @@
                      "--local",
                      "--force",
                      "--timeout", "300"],
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "justMyCode": false,
         },
         {
             "name": "Python Debugger: ann-benchmarks-aerospike Glove Angular",
