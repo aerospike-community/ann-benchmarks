@@ -13,6 +13,7 @@ from importlib.metadata import version
 from aerospike_vector_search import types as vectorTypes
 from aerospike_vector_search.aio import AdminClient as vectorASyncAdminClient, Client as vectorASyncClient
 from metrics import all_metrics as METRICS, DummyMetric
+from distance import metrics as DISTANCES, Metric as DistanceMetric
 
 logger = logging.getLogger(__name__)
 logFileHandler = None
@@ -117,7 +118,7 @@ class AerospikeDS():
             If float, should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
             If int, represents the absolute number of test samples.
             If None, the value is set to the complement of the train size.
-            If ``trainsize`` is also None, it will be set to 0.25.
+            If ``trainsize`` is also None, it will be set to 0.25.            
             ''',
             type=Union[float,int,None],
             default=0.1,
@@ -128,7 +129,7 @@ class AerospikeDS():
             help='''
              If float, should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the train split.
              If int, represents the absolute number of train samples.
-             If None, the value is automatically set to the complement of the test size.
+             If None, the value is automatically set to the complement of the test size.             
             ''',
             type=Union[float,int,None],
             default=None,
@@ -154,15 +155,7 @@ class AerospikeDS():
             The defualt is to use all vector records in the DB and a sampling is taken to conduct the searches using the Aerospike implementation.  
             ''',
             action='store_true'
-        )        
-        parser.add_argument(
-                "--metric",
-                metavar="TYPE",
-                help="Which metric to use to calculate Recall.",
-                default="k-nn",
-                type=str,
-                choices=METRICS.keys(),
-            )
+        )
         parser.add_argument(
             '-L', "--logfile",
             metavar="LOG",
@@ -204,6 +197,7 @@ class AerospikeDS():
         self._vector_namespace : str = runtimeArgs.indexnamespace
         self._vector_name : str = runtimeArgs.indexname
         self._as_vectorbinname : str = None
+        self._pk_consecutivenbrs : bool = False
         self._vector_searchparams = None if runtimeArgs.searchparams is None else AerospikeDS.set_hnsw_params_attrs(vectorTypes.HnswSearchParams(), runtimeArgs.searchparams)
         self._vector_distance : vectorTypes.VectorDistanceMetric = None
         self._vector_hnsw : dict = None
@@ -213,7 +207,6 @@ class AerospikeDS():
         self._vector_testsize = runtimeArgs.testsize
         self._vector_randomstate = runtimeArgs.randomstate
         self._vector_usetrainingds = runtimeArgs.usetrainingds
-        self._vector_metric = METRICS[runtimeArgs.metric]
         
         self._logging_init(runtimeArgs, logger)
 
@@ -295,9 +288,10 @@ class AerospikeDS():
         existingIndexes = await adminClient.index_list()
         if len(existingIndexes) == 0:
             return None
-        return [(index if index["id"]["namespace"] == self._vector_namespace
+        indexInfo = [(index if index["id"]["namespace"] == self._vector_namespace
                             and index["id"]["name"] == self._vector_name else None)
-                        for index in existingIndexes][0]
+                        for index in existingIndexes]
+        return next(i for i in indexInfo if i is not None)
     
     async def populate_vector_info(self) -> None:
         '''
@@ -336,33 +330,31 @@ class AerospikeDS():
             sampletrain,
             test,
             neighbors,
-            distances,
-            metricresult) = await self.get_vectors(pkarray)
+            distances) = await self.get_vectors(pkarray)
         
         if self._vector_usetrainingds:
             train = sampletrain
         
         with h5py.File(self._hdf_path, "w") as f:
             f.attrs["type"] = "dense"
+            f.attrs["sourceisxnamespace"] = self._vector_namespace
+            f.attrs["sourceidxname"] = self._vector_name
             f.attrs["distance"] = self._vector_ann_distance
             if self._vector_distance is not None:
                 f.attrs["vector_distance"] = vectorTypes.VectorDistanceMetric(self._vector_distance).name
             f.attrs["dimension"] = len(train[0])
             f.attrs["point_type"] = train[0].dtype.name.rstrip(digits)
             if self._vector_hnsw is not None:
-                f.attrs["hnsw"] = str(self._vector_hnsw)
-            if metricresult is not None:
-                f.attrs["recall"] = metricresult
-                f.attrs["recallmethod"] = self._vector_metric["type"]
+                f.attrs["hnsw"] = str(self._vector_hnsw)            
             print(f"train size: {train.shape[0]} * {train.shape[1]}")
             print(f"test size:  {test.shape[0]} * {test.shape[1]}")
             f.create_dataset("train", data=train)
             f.create_dataset("test", data=test)
             f.create_dataset("neighbors", data=neighbors)
-            if distances is not None:
-                f.create_dataset("distances", data=distances)
+            f.create_dataset("distances", data=distances)
             if not self._vector_usetrainingds:
                 f.create_dataset("primarykeys", data=pkarray)
+                f.attrs["pk_consecutivenbrs"] = self._pk_consecutivenbrs
             hdfpath = f.filename
             self.print_log(f"Created HDF dataset '{hdfpath}'")
             
@@ -413,8 +405,18 @@ class AerospikeDS():
 
         if len(pkarray) == 0 or all(p is None for p in pkarray):
             pkarray is None
-        
-        self.print_log(f"Closed connecction to Aerospike DB Cluster {self._as_clientconfig} with PK array of {0 if pkarray is None else len(pkarray)}")
+        else:
+            pkarray.sort()
+            if (type(pkarray[0]) is int
+                    and len(pkarray) > 1
+                    and pkarray[0] == 0
+                    and type(pkarray[-1]) is int):
+                numRange = list(range(0, pkarray[-1]+1))
+                self._pk_consecutivenbrs = pkarray == numRange                
+            else:
+                self._pk_consecutivenbrs = False
+                
+        self.print_log(f"Closed connecction to Aerospike DB Cluster {self._as_clientconfig} with PK array of {0 if pkarray is None else len(pkarray)}, Is PK consistence {self._pk_consecutivenbrs}")
         
         return pkarray
     
@@ -448,9 +450,14 @@ class AerospikeDS():
     
         self.print_log(f"Determined neighbors ({len(neighbors)})/distances ({len(distances)})")
         
-        return np.array(neighbors), np.array(neighbors)
+        return np.array(neighbors), np.array(distances)
         
-    async def get_vectors(self, pkarray : List) -> Tuple[np.ndarray[np.ndarray], np.ndarray[np.ndarray], np.ndarray[np.ndarray], np.ndarray[np.ndarray], np.ndarray[np.ndarray], Union[float, int, None]]:
+    async def get_vectors(self, pkarray : List) -> Tuple[
+                    np.ndarray[np.ndarray],
+                    np.ndarray[np.ndarray],
+                    np.ndarray[np.ndarray],
+                    np.ndarray[np.ndarray],
+                    np.ndarray[np.ndarray]]:
         '''
         Gets the corresponding vectors based on the pkarray.
         It returns:
@@ -458,8 +465,7 @@ class AerospikeDS():
             calculated training (based on smapling of all vector records),
             test (used to perform searches),
             neighbors (result from the test dataset),
-            distances (only provided when neighbors are calculated via k-nn method)
-            metricvalue (recal) value (can be None)
+            distances (only provided when neighbors are calculated via k-nn method)            
         '''
         from sklearn.model_selection import train_test_split as sklearn_train_test_split
         
@@ -482,58 +488,54 @@ class AerospikeDS():
             print('\n')
             vectors = np.array(vectors)
             self.print_log(f"Splitting {len(vectors)}*{self._vector_dimensions} into train/test with sizes Test:{self._vector_testsize}, Train: {self._vector_trainsize}, Random State: {self._vector_randomstate}")
-            
+               
             X_train, X_test = sklearn_train_test_split(vectors,
                                                         test_size=self._vector_testsize,
                                                         train_size=self._vector_trainsize,
                                                         random_state=self._vector_randomstate)
-                        
+
             distanceds : np.array[np.array] = None
             neighborsds : np.array[np.array] = None
-            metricvalue = None
             
             if self._vector_usetrainingds:
                 self.print_log(f"Split vector DS into training {X_train.shape} and test {X_test.shape} DSs. Using Brunte ", logging.WARN)
-                neighborsds, distanceds = await self.calculate_knn_neighbor_distance(X_test, X_train)    
+                neighborsds, distanceds = await self.calculate_knn_neighbor_distance(X_test, X_train)                
             else:
                 self.print_log(f"Using vector orginal DS {vectors.shape} and test DS {X_test.shape} (Training DS, which is not used, is {X_train.shape}).")
-                neighborsds = await self.conduct_search(client, X_test)
-                
-            metricfunc = None if self._vector_metric is None else self._vector_metric["function"]
-            if metricfunc is not None:
-                try:
-                    metricvalue = metricfunc(X_test, X_test, DummyMetric(), 0, len(X_test[0]))
-                    self.print_log(f"{self._vector_metric['type']} Recall/Metric Value: {metricvalue}")
-                except Exception as e:
-                    self.print_log(f"Recall/Metric caculation failed with '{e}'", logging.ERROR)
+                neighborsds, distanceds = await self.conduct_search(client, X_test, vectors)                
                 
             zeronbrs = [len(neighbor) == 0 for neighbor in neighborsds].count(True)
             if zeronbrs > 0:
                 self.print_log(f"Found {zeronbrs} neighbors in resulting Search.", logging.WARN)
                 
-            return  vectors, X_train, X_test, neighborsds, distanceds, metricvalue
+            return  vectors, X_train, X_test, neighborsds, distanceds
 
-    async def conduct_search(self, client:vectorASyncClient, testds : np.ndarray[np.ndarray]) -> np.ndarray:
+    async def conduct_search(self, client:vectorASyncClient, testds : np.ndarray[np.ndarray], trainds : np.ndarray[np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         
         self.print_log(f"Performing Search using Test DS {testds.shape}")
         neighborsds = []
+        distanceds = []
         i = 0
         for searchitem in testds:
             neighbors = await self.search_vector(client, searchitem.tolist())
             if len(neighbors) > 0:
                 result_ids = [neighbor.key.key for neighbor in neighbors]
+                aerospikedistance = [neighbor.distance for neighbor in neighbors]
                 neighborsds.append(np.array(result_ids))
+                distanceds.append(np.array(aerospikedistance))
             else:
                 self._logger.debug(f"Found zero neighbors in resulting Search.", logging.WARN)
                 neighborsds.append(np.empty())
+                distanceds.append(np.empty())                
             i += 1
             print('Vector Search Counter [%d]\r'%i, end="")
         
         print('\n')        
         neighborsds = np.array(neighborsds)
-        self.print_log(f"Search Completed resulting in a neighbors DS {neighborsds.shape}")
+        distanceds = np.array(distanceds)       
+        self.print_log(f"Search Completed resulting in a neighbors DS {neighborsds.shape}, and distance DS {distanceds.shape}")
         
-        return neighborsds
+        return neighborsds, distanceds
 
     async def search_vector(self, client:vectorASyncClient, query:List[float|bool]) -> List[vectorTypes.Neighbor]:
         

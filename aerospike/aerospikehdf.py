@@ -161,7 +161,8 @@ class Aerospike(BaseAerospike):
         self._ann_distance : str = None
         self._dataset = None
         self._pausePuts : bool = False
-        self._pks : Union[np.ndarray, List[np.ndarray]] = None
+        self._pks : Union[np.ndarray, List] = None
+        self._pk_consecutivenbrs : bool = False
         self._hdf_file : str = None
         
         if runtimeArgs.hdf is not None:
@@ -185,8 +186,10 @@ class Aerospike(BaseAerospike):
     async def __aenter__(self):
         return self
  
-    async def __aexit__(self, *args):
-        await super().shutdown()
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            self._logger.exception(f"error detected on exit.")
+        await super().shutdown(exc_type is None)
         
     async def get_dataset(self) -> None:
         
@@ -226,8 +229,22 @@ class Aerospike(BaseAerospike):
         if self._dataset.attrs.get("recall", None) is not None:
             self.print_log(f"Precalculated Recall value found {self._dataset.attrs['recall']}")
 
+        if self._pks is not None and type(self._pks) is np.ndarray:
+                self._pks = self._pks.tolist()
+                
+        if (self._pks is not None
+                and len(self._pks) > 1 
+                and type(self._pks[0]) is int
+                and type(self._pks[-1]) is int
+                and self._pks[0] == 0
+                and len(self._pks) == len(self._trainarray)):
+            numRange = list(range(0, self._pks[-1]+1))
+            self._pk_consecutivenbrs = self._pks == numRange
+        else:
+            self._pk_consecutivenbrs = False
+            
         self.prometheus_status(0)
-        self.print_log(f'get_dataset Exit: {self}, Train Array: {len(self._trainarray)}, Query Array: {len(self._queryarray)}, Distance: {distance}, Dimensions: {self._dimensions}')
+        self.print_log(f'get_dataset Exit: {self}, Train Array: {len(self._trainarray)}, Query Array: {len(self._queryarray)}, Distance: {distance}, Dimensions: {self._dimensions}, PK array: {0 if self._pks is None else len(self._pks)}, PK consistence: {self._pk_consecutivenbrs}')
                 
     async def drop_index(self, adminClient: vectorASyncAdminClient) -> None:
         self.print_log(f'Dropping Index {self._idx_namespace}.{self._idx_name}')
@@ -345,7 +362,7 @@ class Aerospike(BaseAerospike):
             print(f'\n** Count: {i} Key: {key} Exception: "{e}" **\r\n')
             logger.exception(f"Put Failure on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}, Retry: {retry}")
             self.flush_log()
-            self._exception_counter.add(1, {"exception_type":e, "handled_by_user":False,"ns":self._namespace,"set":self._setName})
+            self._exception_counter.add(1, {"exception_type":f"upsert: {e}", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
             self._pausePuts = False
             raise
         
@@ -573,6 +590,16 @@ class Aerospike(BaseAerospike):
         logger.warn(f"Results: {subresult.tolist()}")
         
         return False
+
+    def _get_orginal_vector_from_pk(self, pk : any) -> Union[np.ndarray, List]:
+        
+        self._logger.debug(f"_get_orginal_vector_from_pk: pk:{pk}")
+        if self._pk_consecutivenbrs or self._pks is None:
+            return self._trainarray[pk]
+
+        fndidx = self._pks.index(pk)
+        self._logger.debug(f"_get_orginal_vector_from_pk: pk idx:{fndidx}")
+        return self._trainarray[fndidx]
             
     async def query_run(self, client:vectorASyncClient, runNbr:int, distancemetric : DistanceMetric) -> tuple[List, List]:
         '''
@@ -609,13 +636,19 @@ class Aerospike(BaseAerospike):
                         logger.warn(f'Zero Distance Found for {self._idx_namespace}.{self._idx_name} Keys: {zeroDist}', logging.WARNING)
                         msg = "Warn: Zero Distance Found"
             if distancemetric is not None:
-                distances = [float(distancemetric.distance(searchValues, self._trainarray[idx])) for idx in result_ids]
-                if self._query_check and not await self._check_query_distances(distances, aerospike_distances, len(rundistance), runNbr):
-                    if len(msg) == 0:
-                        msg = "Warn: Distances don't match"
-                    else:
-                        msg = ", Distances don't match"
-                rundistance.append(distances)                
+                try:
+                    distances = [float(distancemetric.distance(searchValues, self._get_orginal_vector_from_pk(idx))) for idx in result_ids]
+                    if self._query_check and not await self._check_query_distances(distances, aerospike_distances, len(rundistance), runNbr):
+                        if len(msg) == 0:
+                            msg = "Warn: Distances don't match"
+                        else:
+                            msg += ", Distances don't match"
+                    rundistance.append(distances)
+                except Exception as e:
+                    msg = "Distance Calculation Failed: {e}"
+                    self._logger.exception(f"Distance Calculation Failed Run: {runNbr}")
+                    self._exception_counter.add(1, {"exception_type":f"Distance Calculation Failed", "handled_by_user":True,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
+                    rundistance.append([])
             
             runasdistance.append(aerospike_distances)
 
@@ -634,7 +667,7 @@ class Aerospike(BaseAerospike):
             self._query_counter.add(1, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name, "run": runNbr})
             self._query_histogram.record((t-s)*math.pow(10,-6), {"ns":self._idx_namespace,"idx": self._idx_name, "run": runNbr})
         except Exception as e:
-            self._exception_counter.add(1, {"exception_type":e, "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
+            self._exception_counter.add(1, {"exception_type":f"vector_search: {e}", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
             raise
         return result
 

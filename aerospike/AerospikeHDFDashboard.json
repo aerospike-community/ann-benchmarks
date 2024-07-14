@@ -1329,7 +1329,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "",
+      "description": "The recall as calculated based on the ANN neighbors result set",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1410,7 +1410,96 @@
           "useBackend": false
         }
       ],
-      "title": "Recall",
+      "title": "Recall (ANN Calculated)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "The recall based on the distance returned from the Aerospike Vector client API",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.5
+              },
+              {
+                "color": "yellow",
+                "value": 0.6
+              },
+              {
+                "color": "green",
+                "value": 0.7
+              },
+              {
+                "color": "dark-green",
+                "value": 0.8
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 18,
+        "y": 35
+      },
+      "id": 657,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "/^querymetricaerospikevalue$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {},
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_heartbeat{idx=\"$idxname\", instance=~\"$client\", idxns=\"$idxns\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "B",
+          "useBackend": false
+        }
+      ],
+      "title": "Recall (Aerospike)",
       "type": "stat"
     },
     {
@@ -1533,9 +1622,10 @@
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
-            "axisColorMode": "text",
+            "axisColorMode": "series",
             "axisLabel": "Count",
             "axisPlacement": "auto",
+            "axisSoftMin": 0,
             "fillOpacity": 71,
             "gradientMode": "none",
             "hideFrom": {
@@ -1545,8 +1635,7 @@
             },
             "lineWidth": 3,
             "scaleDistribution": {
-              "log": 2,
-              "type": "symlog"
+              "type": "linear"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -1554,6 +1643,7 @@
           },
           "fieldMinMax": false,
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1576,8 +1666,8 @@
       "id": 656,
       "options": {
         "barRadius": 0,
-        "barWidth": 0.56,
-        "fullHighlight": true,
+        "barWidth": 0.72,
+        "fullHighlight": false,
         "groupWidth": 0.75,
         "legend": {
           "calcs": [],
@@ -1587,7 +1677,7 @@
         },
         "orientation": "auto",
         "showValue": "auto",
-        "stacking": "none",
+        "stacking": "normal",
         "tooltip": {
           "mode": "single",
           "sort": "none"
@@ -1602,21 +1692,21 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
-          "editorMode": "code",
+          "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_hdf_queryhist_milliseconds_bucket{ns=\"$idxns\", idx=\"$idxname\", instance=~\"$client\",run=~\"$QueryRun\"}",
+          "expr": "sum by(le) (aerospike_hdf_queryhist_milliseconds_bucket{ns=\"$idxns\", idx=\"$idxname\", instance=~\"$client\", run=~\"$QueryRun\"})",
           "format": "heatmap",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
           "interval": "",
-          "legendFormat": "{{ie}} MS",
+          "legendFormat": "__auto",
           "range": true,
           "refId": "A",
           "useBackend": false
         }
       ],
-      "title": "Vector Search Latency Buckets",
+      "title": "Vector Search Latency Buckets (ms)",
       "type": "barchart"
     }
   ],
@@ -1632,9 +1722,9 @@
     "list": [
       {
         "current": {
-          "selected": true,
-          "text": "default",
-          "value": "default"
+          "selected": false,
+          "text": "prometheus",
+          "value": "edj97jcoudpfkd"
         },
         "hide": 0,
         "includeAll": false,
@@ -1827,6 +1917,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 47,
+  "version": 50,
   "weekStart": ""
 }

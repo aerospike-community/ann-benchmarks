@@ -141,7 +141,7 @@
             "program": "${workspaceFolder}/aerospike/hdf_query.py",
             "cwd": "${workspaceFolder}/aerospike",
             "args": [
-                    "--dataset", "random-xs-20-angular",
+                    "--hdf", "random-xs-20-angular",
                     "--logfile", "./hdfquery.log",
                     "-r", "10"
                     ],
@@ -201,7 +201,7 @@
                     "--hdf", "${input:enterHDFFile}",
                     "--logfile", "./hdfcreatedataset.log",
                     "--indexname", "HDF-data_Idx",
-                    "--records", "1000"
+                    "--records", "-1"
                     ],
             "justMyCode": false,
             "console": "integratedTerminal"

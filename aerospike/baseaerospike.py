@@ -424,9 +424,9 @@ class BaseAerospike(object):
             levelName = "" if logLevel == logging.INFO else f" {logging.getLevelName(logLevel)}: "
             print(levelName + msg + f', Time: {time.strftime("%Y-%m-%d %H:%M:%S")}')                    
     
-    async def shutdown(self):
+    async def shutdown(self, waitforcompletion:bool):
         
-        if self._sleepexit > 0:
+        if waitforcompletion and self._sleepexit > 0:
             self.prometheus_status(0, True)
             self.print_log(f'existing sleeping {self._sleepexit}') 
             await asyncio.sleep(self._sleepexit)
