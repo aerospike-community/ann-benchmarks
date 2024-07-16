@@ -459,6 +459,8 @@ The module outputs certain meters to Prometheus. They are:
     -   `"action” – If importing (populating) or querying`
     -   "remainingRecs" – The current number of records that have not been populated
     -   "remainingquerynbrs” - The total number of queries (includes all runs) that have not been executed
+    -   "hnswparams" -- The Vector Index's HNSW params
+    -   "queryef" -- The query's "ef" value 
 -   `aerospike.hdf.populate Current record rate that have been upserted. Defined as a counter. Attributes:`
     -   `"type" -- upsert`
     -   `"ns" -- Namespace`
