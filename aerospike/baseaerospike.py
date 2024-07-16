@@ -367,7 +367,12 @@ class BaseAerospike(object):
                 pausestate = "Running"
             else:
                 pausestate = "Idle"
-        
+                
+        if self._query_hnswparams is None:
+            queryef = '' if self._idx_hnswparams is None else str(self._idx_hnswparams.ef)
+        else:
+            queryef = self._query_hnswparams.ef
+            
         self._prometheus_heartbeat_gauge.set(i, {"ns":self._namespace,
                                                         "set":self._setName,
                                                         "idxns":self._idx_namespace,
@@ -387,7 +392,9 @@ class BaseAerospike(object):
                                                         "remainingquerynbrs" : self._remainingquerynbrs,
                                                         "querymetric": None if self._query_metric is None else self._query_metric["type"],
                                                         "querymetricvalue": self._query_metric_value,
-                                                        "querymetricaerospikevalue": self._aerospike_metric_value
+                                                        "querymetricaerospikevalue": self._aerospike_metric_value,
+                                                        "hnswparams": self.hnswstr(),
+                                                        "queryef": queryef
                                                         })
         
     def _prometheus_heartbeat(self) -> None:
@@ -454,9 +461,18 @@ class BaseAerospike(object):
     def query(self, query: np.array, limit: int) -> List[vectorTypes.Neighbor]:
         pass
     
+    def hnswstr(self) -> str:
+        if self._idx_hnswparams is None:
+            return ''
+        if self._idx_hnswparams.batching_params is None:
+            batchingparams = ''
+        else:
+            batchingparams = f"maxrecs:{self._idx_hnswparams.batching_params.max_records}, interval:{self._idx_hnswparams.batching_params.interval}, disabled:{self._idx_hnswparams.batching_params.disabled}"
+        return f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}"
+            
     def basestring(self) -> str:
-        batchingparams = f"maxrecs:{self._idx_hnswparams.batching_params.max_records}, interval:{self._idx_hnswparams.batching_params.interval}, disabled:{self._idx_hnswparams.batching_params.disabled}"
-        hnswparams = f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}"
+        hnswparams = self.hnswstr()
+        
         if self._query_hnswparams is None:
             searchhnswparams = ""
         else:

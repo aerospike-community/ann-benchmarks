@@ -115,6 +115,7 @@
             "cwd": "${workspaceFolder}/aerospike",
             "args": [
                     "--dataset", "glove-100-angular",
+                    "--idxdrop",
                     "--concurrency", "10000"                    
                     ],
             "console": "integratedTerminal"
@@ -171,7 +172,8 @@
                     "--dataset", "glove-100-angular",
                     "--logfile", "./hdfquery.log",
                     "--check",
-                    "-r", "10"
+                    "-r", "10",
+                    "--searchparams", "{\"ef\":10}"
                     ],
             "console": "integratedTerminal"
         },

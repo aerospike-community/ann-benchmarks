@@ -365,12 +365,15 @@ class Aerospike(BaseAerospike):
             self._exception_counter.add(1, {"exception_type":f"upsert: {e}", "handled_by_user":False,"ns":self._namespace,"set":self._setName})
             self._pausePuts = False
             raise
-        
-    async def index_exist(self, adminClient: vectorASyncAdminClient) -> bool:        
+
+    async def index_exist(self, adminClient: vectorASyncAdminClient) -> Union[dict, None]:        
         existingIndexes = await adminClient.index_list()
-        return any(index["id"]["namespace"] == self._idx_namespace
-                    and index["id"]["name"] == self._idx_name 
-                        for index in existingIndexes)
+        if len(existingIndexes) == 0:
+            return None
+        indexInfo = [(index if index["id"]["namespace"] == self._idx_namespace
+                            and index["id"]["name"] == self._idx_name else None)
+                        for index in existingIndexes]
+        return next(i for i in indexInfo if i is not None)
         
     async def populate(self) -> None:
         '''
@@ -388,8 +391,9 @@ class Aerospike(BaseAerospike):
                                             is_loadbalancer=self._useloadbalancer
             ) as adminClient:
             
-            #If exists, no sense to try creation...            
-            if await self.index_exist(adminClient):
+            #If exists, no sense to try creation...
+            idxinfo = await self.index_exist(adminClient)
+            if idxinfo is not None:
                 self.print_log(f'Index {self._idx_namespace}.{self._idx_name} Already Exists')
                 
                 #since this can be an external DB (not in a container), we need to clean up from prior runs
@@ -397,11 +401,15 @@ class Aerospike(BaseAerospike):
                 #If it is a fresh run, this list will not contain the index and we know it needs to be dropped.
                 if self._idx_name in aerospikeIdxNames:
                     self.print_log(f'Index {self._idx_name} being reused (updated)')
+                    self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(vectorTypes.HnswParams(),
+                                                                                idxinfo)
                 elif self._idx_drop:
                     await self.drop_index(adminClient)
                     await self.create_index(adminClient)
                 else:
                     self.print_log(f'Index {self._idx_namespace}.{self._idx_name} being updated')
+                    self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(vectorTypes.HnswParams(),
+                                                                                idxinfo)
             else:
                 await self.create_index(adminClient)
 
@@ -496,11 +504,14 @@ class Aerospike(BaseAerospike):
                                             is_loadbalancer=self._useloadbalancer
             ) as adminClient:
            
-            if not await self.index_exist(adminClient):
+            idxinfo = await self.index_exist(adminClient)
+            if idxinfo is None:
                 self.print_log(f'Query: Vector Index: {self._idx_namespace}.{self._idx_name}, not found')
                 self._exception_counter.add(1, {"exception_type":"Index not found", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name})
                 raise FileNotFoundError(f"Vector Index {self._idx_namespace}.{self._idx_name} not found")
-
+            self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(vectorTypes.HnswParams(),
+                                                                        idxinfo)
+            
         self.print_log(f'Starting Query Runs ({self._query_runs}) on {self._idx_namespace}.{self._idx_name}')
         metricfunc = None
         distancemetric : DistanceMetric= None
