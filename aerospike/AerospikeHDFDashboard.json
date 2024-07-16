@@ -1771,7 +1771,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "series",
-            "axisLabel": "Count",
+            "axisLabel": "Queries",
             "axisPlacement": "auto",
             "axisSoftMin": 0,
             "fillOpacity": 71,
@@ -1789,6 +1789,7 @@
               "mode": "off"
             }
           },
+          "decimals": 0,
           "fieldMinMax": false,
           "mappings": [],
           "min": 0,
@@ -1814,7 +1815,7 @@
       "id": 656,
       "options": {
         "barRadius": 0,
-        "barWidth": 0.72,
+        "barWidth": 0.67,
         "fullHighlight": false,
         "groupWidth": 0.75,
         "legend": {
@@ -1824,12 +1825,13 @@
           "showLegend": true
         },
         "orientation": "auto",
-        "showValue": "auto",
+        "showValue": "never",
         "stacking": "normal",
         "tooltip": {
           "mode": "single",
           "sort": "none"
         },
+        "xField": "Time",
         "xTickLabelRotation": 0,
         "xTickLabelSpacing": 0
       },
@@ -1870,15 +1872,15 @@
     "list": [
       {
         "current": {
-          "selected": false,
-          "text": "prometheus",
-          "value": "edj97jcoudpfkd"
+          "selected": true,
+          "text": "default",
+          "value": "default"
         },
         "hide": 0,
         "includeAll": false,
         "label": "Datasource",
         "multi": false,
-        "name": "DS_AEROSPIKE_PROMETHEUS",
+        "name": "DS_AEROSPIKE_HDF",
         "options": [],
         "query": "prometheus",
         "queryValue": "",
@@ -2034,7 +2036,7 @@
     ]
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-3h",
     "to": "now"
   },
   "timepicker": {
@@ -2065,6 +2067,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 52,
+  "version": 60,
   "weekStart": ""
 }
