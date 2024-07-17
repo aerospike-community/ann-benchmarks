@@ -208,6 +208,28 @@
             "justMyCode": false,
             "console": "integratedTerminal"
         },
+        {
+            "name": "Python Debugger: bigann_download random-xs",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/bigann_download.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "random-xs"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: bigann_download deep-10M",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/bigann_download.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "deep-10M"
+                    ],
+            "console": "integratedTerminal"
+        }
     ],
     "inputs": [
     {
