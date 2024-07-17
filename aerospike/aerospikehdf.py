@@ -260,13 +260,14 @@ class Aerospike(BaseAerospike):
         global aerospikeIdxNames
         self.print_log(f'Creating Index {self._idx_namespace}.{self._idx_name}')        
         s = time.time()
-        await adminClient.index_create(namespace=self._idx_namespace,
+        await adminClient.index_create(namespace=self._namespace,
                                                 name=self._idx_name,
                                                 sets=self._setName,
                                                 vector_field=self._idx_binName,
                                                 dimensions=self._dimensions,
                                                 index_params= self._idx_hnswparams,
-                                                vector_distance_metric=self._idx_distance
+                                                vector_distance_metric=self._idx_distance,
+                                                index_storage= vectorTypes.IndexStorage(namespace=self._idx_namespace)
                                                 )
         t = time.time()
         self.print_log(f'Index Creation Time (sec) = {t - s}')        
@@ -373,6 +374,8 @@ class Aerospike(BaseAerospike):
         indexInfo = [(index if index["id"]["namespace"] == self._idx_namespace
                             and index["id"]["name"] == self._idx_name else None)
                         for index in existingIndexes]
+        if len(indexInfo) == 1 and indexInfo[0] is None:
+            return None
         return next(i for i in indexInfo if i is not None)
         
     async def populate(self) -> None:
