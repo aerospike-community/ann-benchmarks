@@ -74,6 +74,7 @@
                     "--logfile", "./hdfimport.log",
                      "--loglevel", "DEBUG"
                     ],
+            "justMyCode": false,
             "console": "integratedTerminal"
         }, 
         {           
