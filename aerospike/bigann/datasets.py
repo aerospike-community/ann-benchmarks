@@ -903,6 +903,8 @@ class RandomDS(DatasetCompetitionFormat):
             np.array([self.nq, 100], dtype='uint32').tofile(f)
             I.astype('uint32').tofile(f)
             D.astype('float32').tofile(f)
+            
+        print("Computed groundtruth")
 
     def search_type(self):
         return "knn"

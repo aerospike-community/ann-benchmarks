@@ -229,7 +229,19 @@
                     "--dataset", "deep-10M"
                     ],
             "console": "integratedTerminal"
-        }
+        },
+        {
+            "name": "Python Debugger: bigann_convert",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/bigann_convert_hdf.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "${input:enterBigDataset}",
+                    "--hdf", "bigtest.hdf5"
+                    ],
+            "console": "integratedTerminal"
+        },
     ],
     "inputs": [
     {
@@ -238,6 +250,12 @@
       "description": "Enter Dataset",
       "default": "random-xs-20-angular"
     },
+    {
+        "id": "enterBigDataset",
+        "type": "promptString",
+        "description": "Enter Big Dataset",
+        "default": "random-xs"
+      },
     {
         "id": "enterHDFFile",
         "type": "promptString",
