@@ -29,7 +29,7 @@ async def main_loop(args : argparse.Namespace) -> None:
     
     async with BigAnnConvert(args, ds) as convertInstance:
         await convertInstance.bigann_getinfo()
-    
+        await convertInstance.create_hdf()
 
 if __name__ == "__main__":
     args = parse_arguments()

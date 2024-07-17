@@ -53,7 +53,6 @@ class BigAnnConvert():
         
         self._hdf_distance = self._bigann_ds.distance()
         self._hdf_type = self._bigann_ds.data_type()
-        self._hdf_dimension = self._bigann_ds.default_count()
         
         gettasks = []
         
@@ -63,4 +62,23 @@ class BigAnnConvert():
         
         await asyncio.gather(*gettasks)
         
-        print("done")
+        self._hdf_dimension = self._bigann_dataset.shape[1]
+        
+    async def create_hdf(self) -> None:
+        import h5py        
+        from string import digits
+        
+        with h5py.File(self._hdf_filepath, "w") as f:
+            f.attrs["type"] = self._hdf_type
+            f.attrs["sourcedataset"] = self._bigann_ds.short_name()
+            f.attrs["distance"] = self._hdf_distance
+            f.attrs["dimension"] = self._hdf_dimension
+            f.attrs["point_type"] = self._bigann_dataset[0].dtype.name.rstrip(digits)
+            print(f"train size: {self._bigann_dataset.shape[0]} * {self._bigann_dataset.shape[1]}")
+            print(f"test size:  {self._bigann_query.shape[0]} * {self._bigann_query.shape[1]}")
+            f.create_dataset("train", data=self._bigann_dataset)
+            f.create_dataset("test", data=self._bigann_query)
+            f.create_dataset("neighbors", data=self._bigann_neighbors)
+            f.create_dataset("distances", data=self._bigann_distances)
+            hdfpath = f.filename
+            print(f"Created HDF dataset '{hdfpath}'")
