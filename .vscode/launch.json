@@ -68,7 +68,7 @@
             "program": "${workspaceFolder}/aerospike/hdf_import.py",
             "cwd": "${workspaceFolder}/aerospike",
             "args": [
-                    "--dataset", "random-xs-20-angular",
+                    "--dataset", "${input:enterDataset}",
                     "--concurrency", "5000",
                     "--idxdrop",
                     "--logfile", "./hdfimport.log",

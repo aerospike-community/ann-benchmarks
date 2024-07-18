@@ -345,20 +345,26 @@ class Aerospike(BaseAerospike):
     async def put_vector(self, key, embedding, i: int, client: vectorASyncClient, retry: bool = False) -> None:
         try:
             try:
-                if type(key).__module__ == np.__name__:
-                    key = key.item()
-                await client.upsert(namespace=self._namespace,
-                                    set_name=self._setName,
-                                    key=key,
-                                    record_data={
-                                        self._idx_binName:embedding.tolist()
-                                    }
-                )                
+                try:
+                    if type(key).__module__ == np.__name__:
+                        key = key.item()
+                    await client.upsert(namespace=self._namespace,
+                                        set_name=self._setName,
+                                        key=key,
+                                        record_data={
+                                            self._idx_binName:embedding.tolist()
+                                        }
+                    )                
+                except vectorTypes.AVSServerError as avse:
+                    if self._idx_resource_event != 0 and not retry and avse.rpc_error.code() == vectorResultCodes.StatusCode.RESOURCE_EXHAUSTED:
+                        await self._resourceexhaused_handler(key, embedding, i, client)
+                    else:
+                        raise
             except vectorTypes.AVSServerError as avse:
-                if self._idx_resource_event != 0 and not retry and avse.rpc_error.code() == vectorResultCodes.StatusCode.RESOURCE_EXHAUSTED:
-                    await self._resourceexhaused_handler(key, embedding, i, client)
-                else:
-                    raise
+                    if str(avse.rpc_error.details()).find("Server memory error") != -1:
+                        raise RuntimeError(f"A Stop Write was detected which indicates the Aerospike DB is out of memory. AVS Error: {avse.rpc_error.debug_error_string()}")
+                    else:
+                        raise
         except Exception as e:
             print(f'\n** Count: {i} Key: {key} Exception: "{e}" **\r\n')
             logger.exception(f"Put Failure on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}, Retry: {retry}")
@@ -686,26 +692,4 @@ class Aerospike(BaseAerospike):
         return result
 
     def __str__(self):
-        arrayLen = None
-        nbrArrayLen = None
-        if self._trainarray is not None:
-            arrayLen = len(self._trainarray)
-        if self._neighbors is not None:
-            if len(self._neighbors) > 0:                
-                nbrArrayLen = f"{len(self._neighbors)}x{len(self._neighbors[0])}"
-            else:
-                nbrArrayLen = "0x0"
-        if OperationActions.POPULATION in self._actions:
-            popstr = f", DropIdx: {self._idx_drop}, Concurrency: {self._concurrency}, MaxRecs: {self._idx_maxrecs}, WaitIdxCompletion: {not self._idx_nowait} Exhausted Evt: {self._idx_resource_event}"
-        else:
-            popstr = ""
-        if OperationActions.QUERY in self._actions:
-            qrystr = f", Runs: {self._query_runs}, Parallel: {self._query_parallel}, Check: {self._query_check}"
-        else:
-            qrystr = ""
-        if self._query_metric is None:
-            metricstr = ""
-        else:
-            typestr = self._query_metric["type"]
-            metricstr = f", recall:{typestr}"
-        return f"Aerospike([{self.basestring()}, Actions: {self._actions}, Dimensions: {self._dimensions}, Array: {arrayLen}, NbrResult: {nbrArrayLen}, DS: {self._datasetname}{popstr}{qrystr}{metricstr}]"
+        return super().__str__()

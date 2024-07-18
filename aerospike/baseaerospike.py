@@ -491,4 +491,9 @@ class BaseAerospike(object):
         return f"BaseAerospike([[{hosts}], {self._useloadbalancer}, {fullName}, {self._idx_distance}, {{{hnswparams}}}{searchhnswparams}])"
 
     def __str__(self):
-        return self.basestring()
+        if self._idx_namespace == self._namespace:
+            fullName = f"{self._namespace}.{self._setName}.{self._idx_name}"
+        else:
+            fullName = f"{self._namespace}.{self._setName}.{self._idx_namespace}.{self._idx_name}"
+        
+        return f"{fullName}({self._datasetname})"
