@@ -21,7 +21,7 @@ def download(source_url: str, destination_path: str) -> None:
         urlretrieve(source_url, destination_path)
 
 
-def get_dataset_fn(dataset_name: str) -> Tuple[str,str]:
+def get_dataset_fn(dataset_name: str, folder:str = "data") -> Tuple[str,str]:
     """
     Returns the full file path for a given dataset name in the data directory.
     
@@ -31,8 +31,8 @@ def get_dataset_fn(dataset_name: str) -> Tuple[str,str]:
     Returns:
         str: The full file path of the dataset and the dataset name.
     """
-    if not os.path.exists("data"):
-        os.mkdir("data")
+    if not os.path.exists(folder):
+        os.mkdir(folder)
         
     filename, fileext = os.path.splitext(dataset_name)
     filenamewext : str = dataset_name
@@ -41,12 +41,12 @@ def get_dataset_fn(dataset_name: str) -> Tuple[str,str]:
         filenamewext = f"{filename}.hdf5"
         
     if (filenamewext[0] == os.path.sep
-            or filenamewext.startswith(f"data{os.path.sep}")
+            or filenamewext.startswith(f"{folder}{os.path.sep}")
             or filenamewext.startswith(f".{os.path.sep}")):
         splitpath = os.path.split(filename)
         return filenamewext, splitpath[1]
     
-    return os.path.join("data", filenamewext), filename
+    return os.path.join(folder, filenamewext), filename
 
 def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int]:
     """

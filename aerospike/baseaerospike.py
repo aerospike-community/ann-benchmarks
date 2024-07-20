@@ -251,6 +251,7 @@ class BaseAerospike(object):
         self._remainingquerynbrs : int = None
         self._query_current_run : int = None
         self._query_metric_value : float = None
+        self._query_metric_big_value : float = None
         self._aerospike_metric_value : float = None
         self._query_metric : dict[str,any] = None
         self._canchecknbrs : bool = False
@@ -393,6 +394,7 @@ class BaseAerospike(object):
                                                         "querymetric": None if self._query_metric is None else self._query_metric["type"],
                                                         "querymetricvalue": self._query_metric_value,
                                                         "querymetricaerospikevalue": self._aerospike_metric_value,
+                                                        "querymetricbigvalue": self._query_metric_big_value,
                                                         "hnswparams": self.hnswstr(),
                                                         "queryef": queryef
                                                         })
@@ -434,8 +436,10 @@ class BaseAerospike(object):
     async def shutdown(self, waitforcompletion:bool):
         
         if waitforcompletion and self._sleepexit > 0:
-            self.prometheus_status(0, True)
-            self.print_log(f'existing sleeping {self._sleepexit}') 
+            self.prometheus_status(0, True)            
+            self.print_log(f'existing sleeping {self._sleepexit}')
+            self._prometheus_meter_provider.force_flush()
+            self._prometheus_metric_reader.force_flush()            
             await asyncio.sleep(self._sleepexit)
                 
         self.print_log(f'done: {self}')                
@@ -447,8 +451,8 @@ class BaseAerospike(object):
             self._heartbeat_thread.join(timeout=hbt+1)
             self._logger.info(f"Shutdown Heartbeat...")
                         
-        self._prometheus_meter_provider.force_flush()
-        self._prometheus_metric_reader.force_flush()
+        self._prometheus_meter_provider.force_flush(1000)
+        self._prometheus_metric_reader.force_flush(1000)
         self._prometheus_meter_provider.shutdown()
         #self._prometheus_metric_reader.shutdown()
         self._prometheus_http_server[0].shutdown()

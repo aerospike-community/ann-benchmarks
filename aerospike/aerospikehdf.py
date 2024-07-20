@@ -137,6 +137,11 @@ class Aerospike(BaseAerospike):
             action='store_true'
         )
         parser.add_argument(
+           "--noresultfile",        
+            help="Do not produce a HDF5 result file.",
+            action='store_true'
+        )
+        parser.add_argument(
                 "--metric",
                 metavar="TYPE",
                 help="Which metric to use to calculate Recall",
@@ -182,7 +187,15 @@ class Aerospike(BaseAerospike):
             self._query_check = runtimeArgs.check
             self._query_nbrlimit = runtimeArgs.limit
             self._query_metric = METRICS[runtimeArgs.metric]
-                    
+            self._query_metric_result = DummyMetric()
+            self._query_metric_aerospike_result = DummyMetric()
+            self._query_metric_bigann_result = DummyMetric()
+            self._query_neighbors : List = None
+            self._query_distance : List = None
+            self._query_distance_aerospike : List = None
+            self._query_latencies : List[float] = None
+            self._query_produce_resultfile : bool = not runtimeArgs.noresultfile
+
     async def __aenter__(self):
         return self
  
@@ -193,7 +206,7 @@ class Aerospike(BaseAerospike):
         
     async def get_dataset(self) -> None:
         
-        self.print_log(f'get_dataset: {self}')
+        self.print_log(f'get_dataset: {self} hdf: {self._hdf_file}')
         
         (self._trainarray,
             self._queryarray,
@@ -244,7 +257,7 @@ class Aerospike(BaseAerospike):
             self._pk_consecutivenbrs = False
             
         self.prometheus_status(0)
-        self.print_log(f'get_dataset Exit: {self}, Train Array: {len(self._trainarray)}, Query Array: {len(self._queryarray)}, Distance: {distance}, Dimensions: {self._dimensions}, PK array: {0 if self._pks is None else len(self._pks)}, PK consistence: {self._pk_consecutivenbrs}')
+        self.print_log(f'get_dataset Exit: {self}, {self._ann_distance}, {self._idx_distance}, Train Array: {len(self._trainarray)}, Query Array: {len(self._queryarray)}, Distance: {distance}, Dimensions: {self._dimensions}, Neighbors: {0 if self._neighbors is None else len(self._neighbors)}, Distances: {0 if self._distances is None else len(self._distances)}, PK array: {0 if self._pks is None else len(self._pks)}, PK consistence: {self._pk_consecutivenbrs}, Neighbors Check: {self._canchecknbrs}')
                 
     async def drop_index(self, adminClient: vectorASyncAdminClient) -> None:
         self.print_log(f'Dropping Index {self._idx_namespace}.{self._idx_name}')
@@ -380,7 +393,7 @@ class Aerospike(BaseAerospike):
         indexInfo = [(index if index["id"]["namespace"] == self._idx_namespace
                             and index["id"]["name"] == self._idx_name else None)
                         for index in existingIndexes]
-        if len(indexInfo) == 1 and indexInfo[0] is None:
+        if all(v is None for v in indexInfo):
             return None
         return next(i for i in indexInfo if i is not None)
         
@@ -403,7 +416,7 @@ class Aerospike(BaseAerospike):
             #If exists, no sense to try creation...
             idxinfo = await self.index_exist(adminClient)
             if idxinfo is not None:
-                self.print_log(f'Index {self._idx_namespace}.{self._idx_name} Already Exists')
+                self.print_log(f'Index {self._idx_namespace}.{self._idx_name} Already Exists. Idx Info: {idxinfo}')
                 
                 #since this can be an external DB (not in a container), we need to clean up from prior runs
                 #if the index name is in this list, we know it was created in this run group and don't need to drop the index.
@@ -500,11 +513,84 @@ class Aerospike(BaseAerospike):
                 self.print_log(f"Index Completion Time (secs) = {t - w} TPS = {len(self._trainarray)/(t - w):,}")
                 self.print_log(f"Index Population Completion with Idx Wait (sec) = {t - s}")
 
+    async def create_query_hdf(self) -> str:
+        import h5py
+        import os
+        from string import digits
+        from datasets import get_dataset_fn
+    
+        hdfpath, _ = get_dataset_fn(self._datasetname, "results")
+        self.print_log(f'Creating Query HDF dataset {hdfpath}')
+ 
+        with h5py.File(hdfpath, "w") as f:
+            f.attrs["algo"] = "aerospike-standalone-ann"
+            f.attrs["batch_mode"] = self._query_parallel
+            f.attrs["best_search_time"] = round(min(self._query_latencies) * 0.001, 3)
+            f.attrs["build_time"] = 0
+            f.attrs["candidates"] = self._query_nbrlimit
+            f.attrs["count"] = len(self._query_neighbors[0])
+            f.attrs["dataset"] = self._datasetname
+            if self._hdf_file is not None:
+                f.attrs["query_hdf"] = self._hdf_file
+            f.attrs["distance"] = self._ann_distance
+            f.attrs["distance_aerospike"] = self._idx_distance.name
+            f.attrs["hnsw"] = self.hnswstr()
+            
+            if self._query_hnswparams is None:
+                queryef = '' if self._idx_hnswparams is None else str(self._idx_hnswparams.ef)
+            else:
+                queryef = self._query_hnswparams.ef            
+            f.attrs["ef"] = queryef
+            
+            f.attrs["expect_extra"] = False
+            f.attrs["index_size"] = 0
+            if self._namespace == self._idx_namespace:
+                f.attrs["name"] = f'{self._namespace}.{self._setName}.{self._idx_name}, ef:{queryef}, hnsw:{f.attrs["hnsw"]}, k:{self._query_nbrlimit}'
+            else:
+                f.attrs["name"] = f'{self._namespace}.{self._setName}.{self._idx_name}, ef:{queryef}, hnsw:{f.attrs["hnsw"]}, k:{self._query_nbrlimit}'
+                
+            f.attrs["run_count"] = self._query_runs
+            
+            if self._query_distance is not None:
+                f.create_dataset("distances", data=self._query_distance)
+            f.create_dataset("distance_aerospike", data=self._query_distance_aerospike)
+            f.create_dataset("neighbors", data=self._query_neighbors)            
+            f.create_dataset("times", data=[round(l * 0.001,3) for l in self._query_latencies])
+            
+            grp = f.create_group("metrics")
+            
+            if self._query_metric is not None:
+                if self._query_metric_result is not None:
+                    metrictype = self._query_metric["type"]
+                    mgrp = grp.create_group(metrictype)
+                    mgrp.attrs["mean"] = self._query_metric_result.d[metrictype].attrs["mean"]
+                    mgrp.attrs["std"] = self._query_metric_result.d[metrictype].attrs["std"]
+                    mgrp.create_dataset("recalls", data=self._query_metric_result.d[metrictype].d["recalls"])
+                
+                if self._query_metric_aerospike_result is not None:
+                    metrictype = self._query_metric["type"]
+                    mgrp = grp.create_group(f'{metrictype}_aerospike')
+                    mgrp.attrs["mean"] = self._query_metric_aerospike_result.d[metrictype].attrs["mean"]
+                    mgrp.attrs["std"] = self._query_metric_aerospike_result.d[metrictype].attrs["std"]
+                    mgrp.create_dataset("recalls", data=self._query_metric_aerospike_result.d[metrictype].d["recalls"])
+                            
+            if self._query_metric_bigann_result is not None:
+                metrictype = "knn"               
+                mgrp = grp.create_group("knn_big")
+                mgrp.attrs["mean"] = self._query_metric_bigann_result.d[metrictype].attrs["mean"]
+                mgrp.attrs["std"] = self._query_metric_bigann_result.d[metrictype].attrs["std"]
+                mgrp.create_dataset("recalls", data=self._query_metric_bigann_result.d[metrictype].d["recalls"])
+                     
+            self.print_log(f"Created HDF dataset '{hdfpath}'")
+            
+        return hdfpath
+
     async def query(self) -> None:
         '''
         Performs a query using the query array from the HDF dataset. 
         '''
         from distance import metrics as DISTANCES
+        from bigann.metrics import knn as bigknn
         
         self.print_log(f'Query: {self} Shape: {self._trainarray.shape}')
         
@@ -518,6 +604,8 @@ class Aerospike(BaseAerospike):
                 self.print_log(f'Query: Vector Index: {self._idx_namespace}.{self._idx_name}, not found')
                 self._exception_counter.add(1, {"exception_type":"Index not found", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name})
                 raise FileNotFoundError(f"Vector Index {self._idx_namespace}.{self._idx_name} not found")
+            
+            self.print_log(f'Found Index {self._idx_namespace}.{self._idx_name} with Info {idxinfo}')
             self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(vectorTypes.HnswParams(),
                                                                         idxinfo)
             
@@ -533,46 +621,73 @@ class Aerospike(BaseAerospike):
                                         is_loadbalancer=self._useloadbalancer
                             ) as client:
             s = time.time()
+            totalquerytime : float = 0.0
             taskPuts = []
             queries = []
+            metricValues = []
+            metricValuesAS = []
+            metricValuesBig = []
             i = 1
             self._remainingquerynbrs = len(self._queryarray) * self._query_runs
             while i <= self._query_runs:
                 if self._query_parallel:
                     taskPuts.append(self.query_run(client, i, distancemetric))
                 else:
-                    result = await   self.query_run(client, i, distancemetric)
-                    queries.append(result)
-                    if metricfunc is not None:
-                        if len(result[0]) == 0:
-                            self._query_metric_value = None    
-                        else:
-                            self._query_metric_value = metricfunc(self._distances, result[0], DummyMetric(), i-1, len(result[0][0]))
-                        self._aerospike_metric_value = metricfunc(self._distances, result[1], DummyMetric(), i-1, len(result[1][0]))                        
-                        self._logger.info(f"Run: {i}, Neighbors: {len(result[1])}, {self._query_metric['type']}: {self._query_metric_value}, aerospike recall: {self._aerospike_metric_value}")
+                    (self._query_distance,
+                        self._query_distance_aerospike,
+                        self._query_neighbors,
+                        self._query_latencies) = await self.query_run(client, i, distancemetric)
+
+                    totalquerytime += sum(self._query_latencies)
+                    
+                    if metricfunc is not None:                        
+                        if len(self._query_distance) == 0:
+                            self._query_metric_value = None
+                        else:                            
+                            self._query_metric_value = metricfunc(self._distances, self._query_distance, self._query_metric_result, i-1, len(self._query_distance[0]))
+                            metricValues.append(self._query_metric_value)
+                        self._aerospike_metric_value = metricfunc(self._distances, self._query_distance_aerospike, self._query_metric_aerospike_result, i-1, len(self._query_distance_aerospike[0]))
+                        metricValuesAS.append(self._aerospike_metric_value)
+                    
+                    if len(self._query_neighbors) == 0:
+                        self._query_metric_big_value = None
+                    else:
+                        self._query_metric_big_value = bigknn((self._neighbors,self._distances), self._query_neighbors, len(self._query_neighbors[0]), self._query_metric_bigann_result).attrs["mean"]
+                        metricValuesBig.append(self._query_metric_big_value)
+                        
+                    self._logger.info(f"Run: {i}, Neighbors: {len(self._query_neighbors)}, {self._query_metric['type']}: {self._query_metric_value}, aerospike recall: {self._aerospike_metric_value}, Big: {self._query_metric_big_value}")
             
                 i += 1
                 
             if len(taskPuts) > 0:
-                results = await asyncio.gather(*taskPuts)
-                if self._query_parallel:
-                    queries =  results
+                queries = await asyncio.gather(*taskPuts)                
+                i = 0
+                totalquerytime = 0.0
+                for rundist, runasdist, runnns, times in queries:
+                    if len(rundist) > 0:
+                        metricValues.append(metricfunc(self._distances, rundist, self._query_metric_result, i, len(rundist[0])))
+                    if len(runnns) > 0:
+                        metricValuesBig.append(bigknn((self._neighbors,self._distances), runnns, len(runnns[0]), self._query_metric_bigann_result).attrs["mean"])
+                    metricValuesAS.append(metricfunc(self._distances, runasdist, self._query_metric_aerospike_result, i, len(runasdist[0])))
+                    self._query_distance = rundist
+                    self._query_distance_aerospike = runasdist
+                    self._query_neighbors = runnns
+                    self._query_latencies = times
+                    totalquerytime += sum(times)
+                    i += 1
+                
             t = time.time()
+            self._query_metric_value = statistics.mean(metricValues)
+            self._aerospike_metric_value = statistics.mean(metricValuesAS)
+            self._query_metric_big_value = statistics.mean(metricValuesBig)
+                        
             print('\n')
             totqueries = sum([len(x[1]) for x in queries])
-            if metricfunc is not None:
-                metricValues = []
-                metricValuesAS = []
-                i = 0
-                for rundist, runasdist in queries:
-                    if len(rundist) > 0:
-                        metricValues.append(metricfunc(self._distances, rundist, DummyMetric(), i, len(rundist[0])))
-                    metricValuesAS.append(metricfunc(self._distances, runasdist, DummyMetric(), i, len(runasdist[0])))                    
-                    i += 1
-                self._query_metric_value = statistics.mean(metricValues)
-                self._aerospike_metric_value = statistics.mean(metricValuesAS)
-                
-            self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {totqueries} in {t-s} secs, {totqueries/(t-s)} TPS, {None if self._query_metric is None else self._query_metric["type"]}: {self._query_metric_value}, Aerospike recall: {self._aerospike_metric_value}')        
+
+            self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {totqueries} in {totalquerytime} secs (overall {{t-s}} secs), {totqueries/totalquerytime} TPS, {None if self._query_metric is None else self._query_metric["type"]}: {self._query_metric_value}, Aerospike recall: {self._aerospike_metric_value}, Big Recall: {self._query_metric_big_value}')
+            
+            if self._query_produce_resultfile and self._query_neighbors is not None:
+                await self.create_query_hdf()
 
     async def _check_query_neighbors(self, results:List[Any], idx:int, runNbr:int) -> bool:
     
@@ -621,23 +736,34 @@ class Aerospike(BaseAerospike):
         self._logger.debug(f"_get_orginal_vector_from_pk: pk idx:{fndidx}")
         return self._trainarray[fndidx]
             
-    async def query_run(self, client:vectorASyncClient, runNbr:int, distancemetric : DistanceMetric) -> tuple[List, List]:
+    async def query_run(self, client:vectorASyncClient, runNbr:int, distancemetric : DistanceMetric) -> tuple[List, List, List, List[float]]:
         '''
-        Returns a tuple of calculated distances and aerospike distances
+        Returns a tuple of calculated distances, aerospike distances, neighbors, latency times
         '''
         queryLen = 0
         resultCnt = 0
         rundistance = []
         runasdistance = []
+        runnneighbors = []
+        runlatencies = []
+        
         self._query_current_run = runNbr
         self._query_counter.add(0, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name, "run": runNbr})
         msg = "                                   "
         for pos, searchValues in enumerate(self._queryarray):
             queryLen += len(searchValues)
-            result = await self.vector_search(client, searchValues.tolist(),runNbr)
-            resultCnt += len(result)
+            result, latency = await self.vector_search(client, searchValues.tolist(),runNbr)
+            resultCnt += len(result) if result is not None else 0
             print('Query Run [%d] Search [%d] Array [%d] Result [%d] %s\r'%(runNbr,pos+1,queryLen,resultCnt,msg), end="")
             self._remainingquerynbrs -= 1
+            if result is None:
+                print('\n')
+                self.print_log(f"Skipping Query Run {runNbr} Search {pos+1} since search failed...")
+                runnneighbors.append([])
+                runasdistance.append([])
+                rundistance.append([])
+                runlatencies.append(latency)
+                continue
             result_ids = [neighbor.key.key for neighbor in result]            
             aerospike_distances = [neighbor.distance for neighbor in result]
             
@@ -669,14 +795,17 @@ class Aerospike(BaseAerospike):
                     self._logger.exception(f"Distance Calculation Failed Run: {runNbr}")
                     self._exception_counter.add(1, {"exception_type":f"Distance Calculation Failed", "handled_by_user":True,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
                     rundistance.append([])
-            
+                    
+            runnneighbors.append(result_ids)
             runasdistance.append(aerospike_distances)
+            runlatencies.append(latency)
 
-        return rundistance, runasdistance
+        return rundistance, runasdistance, runnneighbors, runlatencies
         
-    async def vector_search(self, client:vectorASyncClient, query:List[float], runNbr:int) -> List[vectorTypes.Neighbor]:
+    async def vector_search(self, client:vectorASyncClient, query:List[float], runNbr:int) -> tuple[List[vectorTypes.Neighbor], float]:
         import math
         try:
+            latency : int
             s = time.time_ns()
             result = await client.vector_search(namespace=self._idx_namespace,
                                                 index_name=self._idx_name,
@@ -684,12 +813,20 @@ class Aerospike(BaseAerospike):
                                                 limit=self._query_nbrlimit,
                                                 search_params=self._query_hnswparams)
             t = time.time_ns()
+            latency = (t-s)*math.pow(10,-6)
             self._query_counter.add(1, {"type": "Vector Search","ns":self._idx_namespace,"idx":self._idx_name, "run": runNbr})
-            self._query_histogram.record((t-s)*math.pow(10,-6), {"ns":self._idx_namespace,"idx": self._idx_name, "run": runNbr})
+            self._query_histogram.record(latency, {"ns":self._idx_namespace,"idx": self._idx_name, "run": runNbr})
+        except vectorTypes.AVSServerError as e:
+            if "unknown vector" in e.rpc_error.details():
+                self._exception_counter.add(1, {"exception_type":f"vector_search: {e.rpc_error.details()}", "handled_by_user":True,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
+                return None, (time.time_ns()-s)*math.pow(10,-6)
+            
+            self._exception_counter.add(1, {"exception_type":f"vector_search: {e.rpc_error.details()}", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
+            raise
         except Exception as e:
             self._exception_counter.add(1, {"exception_type":f"vector_search: {e}", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
             raise
-        return result
+        return result, latency
 
     def __str__(self):
         return super().__str__()

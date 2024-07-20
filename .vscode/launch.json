@@ -143,7 +143,7 @@
             "program": "${workspaceFolder}/aerospike/hdf_query.py",
             "cwd": "${workspaceFolder}/aerospike",
             "args": [
-                    "--hdf", "random-xs-20-angular",
+                    "--hdf", "${input:enterDataset}",
                     "--logfile", "./hdfquery.log",
                     "-r", "10"
                     ],
@@ -190,6 +190,21 @@
                     "--check",
                     "-r", "10",
                     "--limit", "10"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_query (gist 960)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_query.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "gist-960-euclidean",
+                    "--logfile", "./hdfquery-gist1.log",                    
+                    "-r", "1",
+                    "--limit", "10",
+                    "--idxname", "ANN-data_euclidean_SQUARED_EUCLIDEAN_960_16_100_100_Idx"
                     ],
             "console": "integratedTerminal"
         },
