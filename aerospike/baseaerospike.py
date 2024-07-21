@@ -3,7 +3,6 @@ import os
 import numpy as np
 import time
 import logging
-import json
 import argparse
 
 from enum import Flag, auto
@@ -75,65 +74,7 @@ class BaseAerospike(object):
             '-T', "--vectortls",            
             help="Use TLS to connect to the Vector DB Server",
             action='store_true'
-        )
-        parser.add_argument(
-            '-n', "--namespace",
-            metavar="NS",
-            help="The Aerospike Namespace",
-            default="test",
-        )
-        parser.add_argument(
-            '-N', "--idxnamespace",
-            metavar="NS",
-            help="Aerospike Namespace where the Vector Idx will be located. Defaults to --Namespace",
-            default=None,
-            type=str
-        )
-        parser.add_argument(
-            '-s', "--setname",
-            metavar="SET",
-            help="The Aerospike Set Name",
-            default="HDF-data",
-        )
-        parser.add_argument(
-            '-I', "--idxname",
-            metavar="IDX",
-            help="The Vector Index Name. Defaults to the Set Name with the suffix of '_idx'",
-            default=None,
-        )
-        parser.add_argument(
-            '-g', "--generatedetailsetname",            
-            help="Generates a Set name based on distance type, dimensions, index params, etc.",
-            action='store_true'
-        )
-        parser.add_argument(
-            '-b', "--vectorbinname",
-            metavar="BIN",
-            help="The Aerospike Bin Name where the Vector is stored",
-            default="HDF_embedding",
-        )
-        parser.add_argument(
-            '-D', "--distancetype",
-            metavar="DIST",
-            help="The Vector's Index Distance Type. The default is to select the type based on the dataset",
-            type=vectorTypes.VectorDistanceMetric, 
-            choices=list(vectorTypes.VectorDistanceMetric),
-            default=None
-        )
-        parser.add_argument(
-            '-P', "--indexparams",
-            metavar="PARM",
-            type=json.loads,
-            help="The Vector's Index Params (HnswParams)",
-            default='{"m": 16, "ef_construction": 100, "ef": 100}'
-        )
-        parser.add_argument(
-            '-S', "--searchparams",
-            metavar="PARM",
-            type=json.loads,
-            help="The Vector's Search Params (HnswSearchParams)",
-            default=None
-        )              
+        )                    
         parser.add_argument(
             '-L', "--logfile",
             metavar="LOG",
@@ -205,36 +146,17 @@ class BaseAerospike(object):
         self._listern = None          
         self._useloadbalancer = runtimeArgs.vectorloadbalancer        
         
-        self._namespace = runtimeArgs.namespace
-        if runtimeArgs.idxnamespace is None or not runtimeArgs.idxnamespace:
-            self._idx_namespace = self._namespace
-        else:
-            self._idx_namespace = runtimeArgs.idxnamespace
-        self._setName = runtimeArgs.setname
-        self._paramsetname = runtimeArgs.generatedetailsetname
-        if runtimeArgs.idxname is None or not runtimeArgs.idxname:
-            self._idx_name = f'{self._setName}_Idx'
-        else:
-            self._idx_name = runtimeArgs.idxname              
-        self._idx_binName = runtimeArgs.vectorbinname
+        self._namespace : str = None
+        self._idx_namespace : str = None        
+        self._setName : str = None
+        self._paramsetname = None
+        self._idx_name : str = None
+        self._idx_binName : str = None
         
-        self._idx_distance = runtimeArgs.distancetype
-        if runtimeArgs.indexparams is None or len(runtimeArgs.indexparams) == 0:
-            self._idx_hnswparams = None
-        else:
-            self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(
-                                        vectorTypes.HnswParams(),
-                                        runtimeArgs.indexparams
-                                    )
-        
-        if runtimeArgs.searchparams is None or len(runtimeArgs.searchparams) == 0:
-            self._query_hnswparams = None
-        else:
-            self._query_hnswparams = BaseAerospike.set_hnsw_params_attrs(
-                                        vectorTypes.HnswSearchParams(),
-                                        runtimeArgs.searchparams
-                                    )
-            
+        self._idx_distance = None
+        self._idx_hnswparams : vectorTypes.HnswParams = None
+        self._query_hnswparams : vectorTypes.HnswSearchParams = None
+
         self._sleepexit = runtimeArgs.exitdelay
         self._actions : OperationActions = None
         self._waitidx : bool = None
@@ -251,13 +173,15 @@ class BaseAerospike(object):
         self._remainingquerynbrs : int = None
         self._query_current_run : int = None
         self._query_metric_value : float = None
+        self._query_metric_big_value : float = None
         self._aerospike_metric_value : float = None
         self._query_metric : dict[str,any] = None
-        self._canchecknbrs : bool = False
+        self._canchecknbors : bool = False
         
         self._logging_init(runtimeArgs, logger)
-            
-        self._start_prometheus_heartbeat()
+        
+        self._heartbeat_stage = 0
+        self._start_prometheus_heartbeat()        
 
     def _prometheus_init(self, runtimeArgs: argparse.Namespace) -> None:
         
@@ -354,7 +278,37 @@ class BaseAerospike(object):
                 setattr(__obj, key, __dict[key])
         return __obj
     
-    def prometheus_status(self, i:int, done:bool = False) -> None:
+    def prometheus_status(self, done:bool = False) -> None:
+        
+        self.__cnthb__ += 1
+        
+        if self._heartbeat_stage == 0:
+            self._prometheus_heartbeat_gauge.set(self.__cnthb__,
+                                             {"paused": "Starting"
+                                                })
+            return
+        if self._heartbeat_stage == 1:
+            attrs = {"dims": self._dimensions,
+                        "poprecs": None if self._trainarray is None else len(self._trainarray),
+                        "queries": None if self._queryarray is None else len(self._queryarray),
+                        "querynbrlmt": self._query_nbrlimit,
+                        "queryruns": self._query_runs,                                                
+                        "dataset":self._datasetname,
+                        "paused":"Cellecting",
+                        "action": None if self._actions is None else self._actions.name,
+                        "hnswparams": self.hnswstr()
+                        }
+            if self._namespace is not None:
+                attrs["ns"] = self._namespace
+                attrs["set"] = self._setName
+            if self._idx_namespace is not None:
+                attrs["idxns"] = self._idx_namespace
+                attrs["idx"] = self._idx_name            
+            
+            self._prometheus_heartbeat_gauge.set(self.__cnthb__,
+                                                    attrs)
+            return
+        
         pausestate : str = None
         if done:
             pausestate = "Done"
@@ -367,44 +321,49 @@ class BaseAerospike(object):
                 pausestate = "Running"
             else:
                 pausestate = "Idle"
+        elif  self._actions is not None and OperationActions.QUERY in self._actions:
+            pausestate = "Query"
                 
         if self._query_hnswparams is None:
             queryef = '' if self._idx_hnswparams is None else str(self._idx_hnswparams.ef)
         else:
             queryef = self._query_hnswparams.ef
-            
-        self._prometheus_heartbeat_gauge.set(i, {"ns":self._namespace,
-                                                        "set":self._setName,
-                                                        "idxns":self._idx_namespace,
-                                                        "idx":self._idx_name,
-                                                        "idxbin":self._idx_binName,
-                                                        "idxdist": None if self._idx_distance is None else self._idx_distance.name,
-                                                        "dims": self._dimensions,
-                                                        "poprecs": None if self._trainarray is None else len(self._trainarray),
-                                                        "queries": None if self._queryarray is None else len(self._queryarray),
-                                                        "querynbrlmt": self._query_nbrlimit,
-                                                        "queryruns": self._query_runs,
-                                                        "querycurrun": self._query_current_run,
-                                                        "dataset":self._datasetname,
-                                                        "paused": pausestate,
-                                                        "action": None if self._actions is None else self._actions.name,
-                                                        "remainingRecs" : self._remainingrecs,
-                                                        "remainingquerynbrs" : self._remainingquerynbrs,
-                                                        "querymetric": None if self._query_metric is None else self._query_metric["type"],
-                                                        "querymetricvalue": self._query_metric_value,
-                                                        "querymetricaerospikevalue": self._aerospike_metric_value,
-                                                        "hnswparams": self.hnswstr(),
-                                                        "queryef": queryef
-                                                        })
+        
+        self._prometheus_heartbeat_gauge.set(self.__cnthb__,
+                                             {"ns":self._namespace,
+                                                "set":self._setName,
+                                                "idxns":self._idx_namespace,
+                                                "idx":self._idx_name,
+                                                "idxbin":self._idx_binName,
+                                                "idxdist": None if self._idx_distance is None else self._idx_distance.name,
+                                                "dims": self._dimensions,
+                                                "poprecs": None if self._trainarray is None else len(self._trainarray),
+                                                "queries": None if self._queryarray is None else len(self._queryarray),
+                                                "querynbrlmt": self._query_nbrlimit,
+                                                "queryruns": self._query_runs,
+                                                "querycurrun": self._query_current_run,
+                                                "dataset":self._datasetname,
+                                                "paused": pausestate,
+                                                "action": None if self._actions is None else self._actions.name,
+                                                "remainingRecs" : self._remainingrecs,
+                                                "remainingquerynbrs" : self._remainingquerynbrs,
+                                                "querymetric": None if self._query_metric is None else self._query_metric["type"],
+                                                "querymetricvalue": self._query_metric_value,
+                                                "querymetricaerospikevalue": self._aerospike_metric_value,
+                                                "querymetricbigvalue": self._query_metric_big_value,
+                                                "hnswparams": self.hnswstr(),
+                                                "queryef": queryef
+                                                })
         
     def _prometheus_heartbeat(self) -> None:
         from time import sleep
         
         self._logger.debug(f"Heartbeating Start")
         i : int = 0
+        self.__cnthb__ : int = 0
         while self._prometheus_hb > 0:
             i += 1
-            self.prometheus_status(i)
+            self.prometheus_status()
             sleep(self._prometheus_hb)
         self._logger.debug(f"Heartbeating Ended")
             
@@ -434,8 +393,10 @@ class BaseAerospike(object):
     async def shutdown(self, waitforcompletion:bool):
         
         if waitforcompletion and self._sleepexit > 0:
-            self.prometheus_status(0, True)
-            self.print_log(f'existing sleeping {self._sleepexit}') 
+            self.prometheus_status(True)            
+            self.print_log(f'existing sleeping {self._sleepexit}')
+            self._prometheus_meter_provider.force_flush()
+            self._prometheus_metric_reader.force_flush()            
             await asyncio.sleep(self._sleepexit)
                 
         self.print_log(f'done: {self}')                
@@ -447,8 +408,8 @@ class BaseAerospike(object):
             self._heartbeat_thread.join(timeout=hbt+1)
             self._logger.info(f"Shutdown Heartbeat...")
                         
-        self._prometheus_meter_provider.force_flush()
-        self._prometheus_metric_reader.force_flush()
+        self._prometheus_meter_provider.force_flush(1000)
+        self._prometheus_metric_reader.force_flush(1000)
         self._prometheus_meter_provider.shutdown()
         #self._prometheus_metric_reader.shutdown()
         self._prometheus_http_server[0].shutdown()
@@ -480,8 +441,10 @@ class BaseAerospike(object):
             
         if self._idx_namespace == self._namespace:
             fullName = f"{self._namespace}.{self._setName}.{self._idx_name}"
-        else:
-            fullName = f"{self._namespace}.{self._setName}; {self._idx_namespace}.{self._idx_name}"
+        elif self._namespace is None:
+            fullName = f"{self._idx_namespace}.{self._idx_name}"        
+        else: 
+            fullName = f"{self._namespace}.{self._setName}.{self._idx_namespace}.{self._idx_name}"
         
         if self._host is None:
             hosts = "NoHosts"
@@ -491,4 +454,11 @@ class BaseAerospike(object):
         return f"BaseAerospike([[{hosts}], {self._useloadbalancer}, {fullName}, {self._idx_distance}, {{{hnswparams}}}{searchhnswparams}])"
 
     def __str__(self):
-        return self.basestring()
+        if self._idx_namespace == self._namespace:
+            fullName = f"{self._namespace}.{self._setName}.{self._idx_name}"
+        elif self._namespace is None:
+            fullName = f"{self._idx_namespace}.{self._idx_name}"        
+        else: 
+            fullName = f"{self._namespace}.{self._setName}.{self._idx_namespace}.{self._idx_name}"
+        
+        return f"{fullName}({self._datasetname})"
