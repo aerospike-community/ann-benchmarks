@@ -4,6 +4,7 @@ import time
 import logging
 import argparse
 import statistics
+import json
 
 from enum import Flag, auto
 from typing import Iterable, List, Union, Any
@@ -29,21 +30,21 @@ class Aerospike(BaseAerospike):
         '''
         Adds the arguments required to populate an index. 
         '''
-        if len([x.dest for x in parser._actions if "dataset" == x.dest]) == 0:
-            parser.add_argument(
-                '-d', "--dataset",
-                metavar="DS",
-                help="the dataset to load training points from",
-                default="glove-100-angular",
-                choices=DATASETS.keys(),                
-            )
-            parser.add_argument(
-                "--hdf",
-                metavar="HDFFILE",
-                help="A HDF file that will be the dataset to load training points from... Defaults to 'data' folder",
-                default=None,
-                type=str                
-            )
+        group = parser.add_mutually_exclusive_group(required=True)
+        group.add_argument(
+            '-d', "--dataset",
+            metavar="DS",
+            help="the dataset to load training points from",
+            default="glove-100-angular",
+            choices=DATASETS.keys(),                
+        )
+        group.add_argument(
+            "--hdf",
+            metavar="HDFFILE",
+            help="A HDF file that will be the dataset to load training points from... Defaults to 'data' folder",
+            default=None,
+            type=str                
+        )
         parser.add_argument(
             '-c', "--concurrency",
             metavar="N",
@@ -57,7 +58,58 @@ class Aerospike(BaseAerospike):
         -   > 1 -- The number of records upserted, concurrently (async), before the app waits for the upserts to complete.
     ''',
             default=500,
+        )
+        parser.add_argument(
+            '-n', "--namespace",
+            metavar="NS",
+            help="The Aerospike Namespace",
+            default="test",
+        )
+        parser.add_argument(
+            '-s', "--setname",
+            metavar="SET",
+            help="The Aerospike Set Name. Will default to the dataset name",
+            default=None,
+        )
+        parser.add_argument(
+            '-N', "--idxnamespace",
+            metavar="NS",
+            help="Aerospike Namespace where the Vector Idx will be located. Defaults to --Namespace",
+            default=None,
+            type=str
+        )
+        parser.add_argument(
+            '-I', "--idxname",
+            metavar="IDX",
+            help="The Vector Index Name. Defaults to the DataSet Name with the suffix of '_idx'",
+            default=None,
+        )
+        parser.add_argument(
+            '-b', "--vectorbinname",
+            metavar="BIN",
+            help="The Aerospike Bin Name where the Vector is stored",
+            default="HDF_embedding",
+        )
+        parser.add_argument(
+            '-g', "--generatedetailsetname",            
+            help="Generates a Set name based on distance type, dimensions, index params, etc.",
+            action='store_true'
         )        
+        parser.add_argument(
+            '-D', "--distancetype",
+            metavar="DIST",
+            help="The Vector's Index Distance Type. The default is to select the type based on the dataset",
+            type=vectorTypes.VectorDistanceMetric, 
+            choices=list(vectorTypes.VectorDistanceMetric),
+            default=None
+        )
+        parser.add_argument(
+            '-P', "--indexparams",
+            metavar="PARM",
+            type=json.loads,
+            help="The Vector's Index Params (HnswParams)",
+            default='{"m": 16, "ef_construction": 100, "ef": 100}'
+        )
         parser.add_argument(
             "--idxdrop",        
             help="If the Vector Index existence, it will be dropped. Otherwise is is updated.",
@@ -97,21 +149,41 @@ class Aerospike(BaseAerospike):
         '''
         Adds the arguments required to query an index. 
         '''
-        if len([x.dest for x in parser._actions if "dataset" == x.dest]) == 0:
-            parser.add_argument(
-                '-d', "--dataset",
-                metavar="DS",
-                help="the dataset to load the search points from",
-                default="glove-100-angular",
-                choices=DATASETS.keys(),
-            )
-            parser.add_argument(
-                "--hdf",
-                metavar="HDFFILE",
-                help="A HDF file that will be the dataset to load search points from... Defaults to 'data' folder",
-                default=None,
-                type=str                
-            )
+        group = parser.add_mutually_exclusive_group(required=True)
+        group.add_argument(
+            '-d', "--dataset",
+            metavar="DS",
+            help="the dataset to load the search points from",
+            default="glove-100-angular",
+            choices=DATASETS.keys(),
+        )
+        group.add_argument(
+            "--hdf",
+            metavar="HDFFILE",
+            help="A HDF file that will be the dataset to load search points from... Defaults to 'data' folder",
+            default=None,
+            type=str                
+        )
+        parser.add_argument(
+            '-N', "--idxnamespace",
+            metavar="NS",
+            help="Aerospike Namespace where the Vector Idx will be located. Defaults to 'test'",
+            default="test",
+            type=str
+        )
+        parser.add_argument(
+            '-I', "--idxname",
+            metavar="IDX",
+            help="The Vector Index Name. If not provided, it defaults to the dataset name with a suffix of '_idx'",
+            default=None
+        )        
+        parser.add_argument(
+            '-S', "--searchparams",
+            metavar="PARM",
+            type=json.loads,
+            help="The Vector's Search Params (HnswSearchParams)",
+            default=None
+        )  
         parser.add_argument(
             '-r', "--runs",
             metavar="RUNS",
@@ -149,9 +221,9 @@ class Aerospike(BaseAerospike):
                 type=str,
                 choices=METRICS.keys(),
             )
-        
+                
         BaseAerospike.parse_arguments(parser)
-    
+        
     def __init__(self, runtimeArgs: argparse.Namespace, actions: OperationActions):
         
         super().__init__(runtimeArgs, logger)
@@ -180,8 +252,38 @@ class Aerospike(BaseAerospike):
             self._idx_resource_event = runtimeArgs.exhaustedevt
             self._idx_resource_cnt = 0
             self._idx_maxrecs = runtimeArgs.maxrecs
-        
+            self._namespace = runtimeArgs.namespace
+            if runtimeArgs.idxnamespace is None or not runtimeArgs.idxnamespace:
+                self._idx_namespace = self._namespace
+            else:
+                self._idx_namespace = runtimeArgs.idxnamespace
+            
+            if runtimeArgs.setname is None or not runtimeArgs.setname:
+                self._setName = self._datasetname
+            else:
+                self._setName = runtimeArgs.setname
+            self._paramsetname = runtimeArgs.generatedetailsetname
+            if runtimeArgs.idxname is None or not runtimeArgs.idxname:
+                self._idx_name = f'{self._datasetname}_Idx'
+            else:
+                self._idx_name = runtimeArgs.idxname              
+            self._idx_binName = runtimeArgs.vectorbinname
+            
+            self._idx_distance = runtimeArgs.distancetype
+            if runtimeArgs.indexparams is None or len(runtimeArgs.indexparams) == 0:
+                self._idx_hnswparams = None
+            else:
+                self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(
+                                            vectorTypes.HnswParams(),
+                                            runtimeArgs.indexparams
+                                        )                        
+                    
         if OperationActions.QUERY in actions:
+            self._idx_namespace = runtimeArgs.idxnamespace
+            if runtimeArgs.idxname is None or not runtimeArgs.idxname:
+                self._idx_name = f'{self._datasetname}_Idx'
+            else:
+                self._idx_name = runtimeArgs.idxname            
             self._query_runs = runtimeArgs.runs
             self._query_parallel = runtimeArgs.parallel
             self._query_check = runtimeArgs.check
@@ -195,6 +297,14 @@ class Aerospike(BaseAerospike):
             self._query_distance_aerospike : List = None
             self._query_latencies : List[float] = None
             self._query_produce_resultfile : bool = not runtimeArgs.noresultfile
+            
+            if runtimeArgs.searchparams is None or len(runtimeArgs.searchparams) == 0:
+                self._query_hnswparams = None
+            else:
+                self._query_hnswparams = BaseAerospike.set_hnsw_params_attrs(
+                                            vectorTypes.HnswSearchParams(),
+                                            runtimeArgs.searchparams
+                                        )
 
     async def __aenter__(self):
         return self
@@ -224,6 +334,12 @@ class Aerospike(BaseAerospike):
         if self._idx_distance is None or not self._idx_distance:
              raise ValueError(f"Distance Map '{distance}' was not found.")
          
+        if self._dataset.attrs.get('sourceidxname', None) is not None:
+            if (self._idx_name != self._dataset.attrs['sourceidxname']
+                or self._idx_namespace != self._dataset.attrs['sourceisxnamespace']):
+                self.print_log(f"Index Name doesn't match source idx name in HDF file. Names are: {self._idx_namespace}.{self._idx_name} != {self._dataset.attrs['sourceisxnamespace']}.{ self._dataset.attrs['sourceidxname']}",
+                                logging.WARN)
+         
         if self._paramsetname:
             if self._idx_distance.casefold() == distance.casefold():
                 setNameType = self._idx_distance
@@ -232,8 +348,8 @@ class Aerospike(BaseAerospike):
             self._setName = f'{self._setName}_{setNameType}_{self._dimensions}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}'
             self._idx_name = f'{self._setName}_Idx'             
         
-        self._canchecknbrs = self._neighbors is not None and len(self._neighbors) > 0
-        if self._canchecknbrs and (self._query_nbrlimit is None or self._query_nbrlimit <= 0 or self._query_nbrlimit > len(self._neighbors[0])):
+        self._canchecknbors = self._neighbors is not None and len(self._neighbors) > 0
+        if self._canchecknbors and (self._query_nbrlimit is None or self._query_nbrlimit <= 0 or self._query_nbrlimit > len(self._neighbors[0])):
             self._query_nbrlimit = len(self._neighbors[0])
             
         self._remainingrecs = 0           
@@ -256,8 +372,9 @@ class Aerospike(BaseAerospike):
         else:
             self._pk_consecutivenbrs = False
             
-        self.prometheus_status(0)
-        self.print_log(f'get_dataset Exit: {self}, {self._ann_distance}, {self._idx_distance}, Train Array: {len(self._trainarray)}, Query Array: {len(self._queryarray)}, Distance: {distance}, Dimensions: {self._dimensions}, Neighbors: {0 if self._neighbors is None else len(self._neighbors)}, Distances: {0 if self._distances is None else len(self._distances)}, PK array: {0 if self._pks is None else len(self._pks)}, PK consistence: {self._pk_consecutivenbrs}, Neighbors Check: {self._canchecknbrs}')
+        self._heartbeat_stage = 1
+        self.prometheus_status()
+        self.print_log(f'get_dataset Exit: {self}, {self._ann_distance}, {self._idx_distance}, Train Array: {len(self._trainarray)}, Query Array: {len(self._queryarray)}, Distance: {distance}, Dimensions: {self._dimensions}, Neighbors: {0 if self._neighbors is None else len(self._neighbors)}, Distances: {0 if self._distances is None else len(self._distances)}, PK array: {0 if self._pks is None else len(self._pks)}, PK consistence: {self._pk_consecutivenbrs}, Neighbors Check: {self._canchecknbors}')
                 
     async def drop_index(self, adminClient: vectorASyncAdminClient) -> None:
         self.print_log(f'Dropping Index {self._idx_namespace}.{self._idx_name}')
@@ -407,7 +524,10 @@ class Aerospike(BaseAerospike):
             self._trainarray = self._trainarray.astype(np.float32)
     
         self.print_log(f'populate: {self} Shape: {self._trainarray.shape}')
-                    
+
+        self._heartbeat_stage = 2
+        self.prometheus_status()
+
         async with vectorASyncAdminClient(seeds=self._host,
                                             listener_name=self._listern,
                                             is_loadbalancer=self._useloadbalancer
@@ -607,12 +727,20 @@ class Aerospike(BaseAerospike):
             
             self.print_log(f'Found Index {self._idx_namespace}.{self._idx_name} with Info {idxinfo}')
             self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(vectorTypes.HnswParams(),
-                                                                        idxinfo)
+                                                                        idxinfo['hnsw_params'])
+            self._idx_binName = idxinfo["field"]
+            self._setName = idxinfo["setFilter"]
+            self._namespace = idxinfo["id"]["namespace"]
+            if self._query_hnswparams is None and self._idx_hnswparams is not None:           
+                self._query_hnswparams = vectorTypes.HnswSearchParams(ef=self._idx_hnswparams.ef)
+            
+        self._heartbeat_stage = 2
+        self.prometheus_status()
             
         self.print_log(f'Starting Query Runs ({self._query_runs}) on {self._idx_namespace}.{self._idx_name}')
         metricfunc = None
         distancemetric : DistanceMetric= None
-        if self._canchecknbrs:
+        if self._canchecknbors:
             metricfunc = None if self._query_metric is None else self._query_metric["function"]
             distancemetric = DISTANCES[self._ann_distance]
             
@@ -649,12 +777,12 @@ class Aerospike(BaseAerospike):
                         self._aerospike_metric_value = metricfunc(self._distances, self._query_distance_aerospike, self._query_metric_aerospike_result, i-1, len(self._query_distance_aerospike[0]))
                         metricValuesAS.append(self._aerospike_metric_value)
                     
-                    if len(self._query_neighbors) == 0:
+                    if len(self._query_neighbors) == 0 or not self._canchecknbors:
                         self._query_metric_big_value = None
                     else:
                         self._query_metric_big_value = bigknn((self._neighbors,self._distances), self._query_neighbors, len(self._query_neighbors[0]), self._query_metric_bigann_result).attrs["mean"]
                         metricValuesBig.append(self._query_metric_big_value)
-                        
+                
                     self._logger.info(f"Run: {i}, Neighbors: {len(self._query_neighbors)}, {self._query_metric['type']}: {self._query_metric_value}, aerospike recall: {self._aerospike_metric_value}, Big: {self._query_metric_big_value}")
             
                 i += 1
@@ -664,11 +792,12 @@ class Aerospike(BaseAerospike):
                 i = 0
                 totalquerytime = 0.0
                 for rundist, runasdist, runnns, times in queries:
-                    if len(rundist) > 0:
-                        metricValues.append(metricfunc(self._distances, rundist, self._query_metric_result, i, len(rundist[0])))
-                    if len(runnns) > 0:
-                        metricValuesBig.append(bigknn((self._neighbors,self._distances), runnns, len(runnns[0]), self._query_metric_bigann_result).attrs["mean"])
-                    metricValuesAS.append(metricfunc(self._distances, runasdist, self._query_metric_aerospike_result, i, len(runasdist[0])))
+                    if metricfunc is not None:
+                        if len(rundist) > 0:
+                            metricValues.append(metricfunc(self._distances, rundist, self._query_metric_result, i, len(rundist[0])))
+                        metricValuesAS.append(metricfunc(self._distances, runasdist, self._query_metric_aerospike_result, i, len(runasdist[0])))
+                    if len(runnns) > 0 and self._canchecknbors:
+                            metricValuesBig.append(bigknn((self._neighbors,self._distances), runnns, len(runnns[0]), self._query_metric_bigann_result).attrs["mean"])                        
                     self._query_distance = rundist
                     self._query_distance_aerospike = runasdist
                     self._query_neighbors = runnns
@@ -729,13 +858,22 @@ class Aerospike(BaseAerospike):
     def _get_orginal_vector_from_pk(self, pk : any) -> Union[np.ndarray, List]:
         
         self._logger.debug(f"_get_orginal_vector_from_pk: pk:{pk}")
-        if self._pk_consecutivenbrs or self._pks is None:
-            return self._trainarray[pk]
+        try:
+            if self._pk_consecutivenbrs or self._pks is None:
+                return self._trainarray[pk]
 
-        fndidx = self._pks.index(pk)
-        self._logger.debug(f"_get_orginal_vector_from_pk: pk idx:{fndidx}")
-        return self._trainarray[fndidx]
-            
+            fndidx = self._pks.index(pk)
+            self._logger.debug(f"_get_orginal_vector_from_pk: {pk} idx:{fndidx}")
+            return self._trainarray[fndidx]
+        except IndexError as e:
+            self._logger.exception(f"pk: {pk}")
+            self._exception_counter.add(1, {"exception_type":f"PK index lookup Failed", "handled_by_user":True,"ns":self._idx_namespace,"set":self._idx_name})
+            return np.zeros(len(self._trainarray[0]))
+        except ValueError as e:
+            self._logger.exception(f"pk: {pk}")
+            self._exception_counter.add(1, {"exception_type":f"PK value error lookup Failed", "handled_by_user":True,"ns":self._idx_namespace,"set":self._idx_name})
+            return np.zeros(len(self._trainarray[0]))
+
     async def query_run(self, client:vectorASyncClient, runNbr:int, distancemetric : DistanceMetric) -> tuple[List, List, List, List[float]]:
         '''
         Returns a tuple of calculated distances, aerospike distances, neighbors, latency times
@@ -772,7 +910,7 @@ class Aerospike(BaseAerospike):
                     self._exception_counter.add(1, {"exception_type":"No Query Results", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
                     logger.warn(f'No Query Results for {self._idx_namespace}.{self._idx_name}', logging.WARNING)
                     msg = "Warn: No Results"
-                elif self._canchecknbrs and len(self._neighbors[len(rundistance)]) > 0:
+                elif self._canchecknbors and len(self._neighbors[len(rundistance)]) > 0:
                     if not await self._check_query_neighbors(result_ids, len(rundistance), runNbr):
                         msg = "Warn: Neighbor Compare Failed"                    
                 else:                        
@@ -791,7 +929,7 @@ class Aerospike(BaseAerospike):
                             msg += ", Distances don't match"
                     rundistance.append(distances)
                 except Exception as e:
-                    msg = "Distance Calculation Failed: {e}"
+                    msg = f"Distance Calculation Failed: {e}"
                     self._logger.exception(f"Distance Calculation Failed Run: {runNbr}")
                     self._exception_counter.add(1, {"exception_type":f"Distance Calculation Failed", "handled_by_user":True,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
                     rundistance.append([])

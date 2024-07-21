@@ -50,15 +50,12 @@ def get_recall_values(true_nn, run_nn, count, count_ties=True):
             queries_with_ties)
 
 def knn(true_nn, run_nn, count, metrics):
-    if 'knn' not in metrics:
-        print('Computing knn metrics')
-        knn_metrics = metrics.create_group('knn')
-        mean, std, recalls, queries_with_ties = get_recall_values(true_nn, run_nn, count)
-        if queries_with_ties>0:
-            print("Warning: %d/%d queries contained ties accounted for in recall" % (queries_with_ties, len(run_nn)))
-        knn_metrics.attrs['mean'] = mean
-        knn_metrics.attrs['std'] = std
-        knn_metrics['recalls'] = recalls
-    else:
-        print("Found cached result")
+    knn_metrics = metrics.create_group('knn')
+    mean, std, recalls, queries_with_ties = get_recall_values(true_nn, run_nn, count)
+    if queries_with_ties>0:
+        print("knn Warning: %d/%d queries contained ties accounted for in recall" % (queries_with_ties, len(run_nn)))
+    knn_metrics.attrs['mean'] = mean
+    knn_metrics.attrs['std'] = std
+    knn_metrics['recalls'] = recalls
+    
     return metrics['knn']
