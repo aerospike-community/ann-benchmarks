@@ -9,12 +9,13 @@ import json
 from enum import Flag, auto
 from typing import Iterable, List, Union, Any
 from importlib.metadata import version
+from math import sqrt
 
 from aerospike_vector_search import types as vectorTypes, Client as vectorSyncClient
 from aerospike_vector_search.aio import AdminClient as vectorASyncAdminClient, Client as vectorASyncClient
 from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
 
-from baseaerospike import BaseAerospike, _distanceNameToAerospikeType as DistanceMaps, OperationActions
+from baseaerospike import BaseAerospike, _distanceNameToAerospikeType as DistanceMaps, _distanceAerospikeTypeToAnn as DistanceMapsAnn, OperationActions
 from datasets import DATASETS, load_and_transform_dataset, get_dataset_fn
 from metrics import all_metrics as METRICS, DummyMetric
 from distance import metrics as DISTANCES, Metric as DistanceMetric
@@ -99,8 +100,8 @@ class Aerospike(BaseAerospike):
             '-D', "--distancetype",
             metavar="DIST",
             help="The Vector's Index Distance Type. The default is to select the type based on the dataset",
-            type=vectorTypes.VectorDistanceMetric, 
-            choices=list(vectorTypes.VectorDistanceMetric),
+            type=str, 
+            choices=[v.name for v in vectorTypes.VectorDistanceMetric],
             default=None
         )
         parser.add_argument(
@@ -220,6 +221,11 @@ class Aerospike(BaseAerospike):
                 default="k-nn",
                 type=str,
                 choices=METRICS.keys(),
+            )
+        parser.add_argument(
+                "--dontadustdistance",
+                help="Don't adjust the distance returned by Aerospike based on the distance type (e.g., Square-Euclidean)",
+                action='store_true'
             )        
                 
         BaseAerospike.parse_arguments(parser)
@@ -268,7 +274,9 @@ class Aerospike(BaseAerospike):
                 self._idx_name = runtimeArgs.idxname              
             self._idx_binName = runtimeArgs.vectorbinname
             
-            self._idx_distance = runtimeArgs.distancetype
+            if runtimeArgs.distancetype is not None and runtimeArgs.distancetype:
+                self._idx_distance = next(v for v in vectorTypes.VectorDistanceMetric if v.name == runtimeArgs.distancetype)
+                
             if runtimeArgs.indexparams is None or len(runtimeArgs.indexparams) == 0:
                 self._idx_hnswparams = None
             else:
@@ -296,6 +304,7 @@ class Aerospike(BaseAerospike):
             self._query_distance_aerospike : List = None
             self._query_latencies : List[float] = None
             self._query_produce_resultfile : bool = not runtimeArgs.noresultfile
+            self._query_distance_no_adjustments = runtimeArgs.dontadustdistance
             
             if runtimeArgs.searchparams is None or len(runtimeArgs.searchparams) == 0:
                 self._query_hnswparams = None
@@ -332,9 +341,14 @@ class Aerospike(BaseAerospike):
         elif distance != self._ann_distance:
             self.print_log(f"ANN distance types do not match! Found: {distance} Provided: {self._ann_distance}. Distance calculations could be wrong!", logging.WARN)
             
-        if self._idx_distance is None or not self._idx_distance:
+        if self._idx_distance is None:
             self._idx_distance = DistanceMaps.get(distance)
-        
+        else:
+            idxdistance = DistanceMaps.get(distance)
+            if idxdistance.name != self._idx_distance.name:
+                self.print_log(f"ANN distance and Idx types do not match! Found: {distance} Idx: {self._idx_distance.name}. Using {self._idx_distance.name}!", logging.WARN)
+                self._ann_distance = DistanceMapsAnn.get(self._idx_distance.name)
+            
         if self._idx_distance is None or not self._idx_distance:
              raise ValueError(f"Distance Map '{distance}' was not found.")
          
@@ -906,8 +920,12 @@ class Aerospike(BaseAerospike):
                 rundistance.append([])
                 runlatencies.append(latency)
                 continue
-            result_ids = [neighbor.key.key for neighbor in result]            
-            aerospike_distances = [neighbor.distance for neighbor in result]
+            result_ids = [neighbor.key.key for neighbor in result]
+            
+            if self._idx_distance.name == "SQUARED_EUCLIDEAN" and not self._query_distance_no_adjustments:
+                aerospike_distances = [sqrt(neighbor.distance) for neighbor in result]
+            else:
+                aerospike_distances = [neighbor.distance for neighbor in result]
             
             if self._query_check:
                 if len(result_ids) == 0:

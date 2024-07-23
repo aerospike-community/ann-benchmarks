@@ -31,6 +31,14 @@ _distanceNameToAerospikeType: Dict[str, vectorTypes.VectorDistanceMetric] = {
     'dot': vectorTypes.VectorDistanceMetric.DOT_PRODUCT,
 }
 
+_distanceAerospikeTypeToAnn: Dict[str, str] = {
+    'COSINE' : 'angular',
+    'SQUARED_EUCLIDEAN' : 'euclidean',
+    'HAMMING' : 'hamming',    
+    'DOT_PRODUCT' : 'dot',
+    'jaccard' : 'jaccard'
+}
+
 loggerASClient = logging.getLogger("aerospike_vector_search")
 logFileHandler = None
 
@@ -290,39 +298,19 @@ class BaseAerospike(object):
             if self._heartbeat_current_stage == self._heartbeat_stage:
                 return
             self._heartbeat_current_stage = self._heartbeat_stage
-            self._prometheus_heartbeat_gauge.set(self.__cnthb__,
-                                             {"paused": "Starting"
-                                                })
-            return
+            
         if self._heartbeat_stage == 1:
             if self._heartbeat_current_stage == self._heartbeat_stage:
                 return
             self._heartbeat_current_stage = self._heartbeat_stage
-            attrs : Dict = {"dims": self._dimensions,
-                            "poprecs": None if self._trainarray is None else len(self._trainarray),
-                            "queries": None if self._queryarray is None else len(self._queryarray),
-                            "querynbrlmt": self._query_nbrlimit,
-                            "queryruns": self._query_runs,                                                
-                            "dataset":self._datasetname,
-                            "paused":"Cellecting",
-                            "action": None if self._actions is None else self._actions.name,
-                            "hnswparams": self.hnswstr()
-                            }
-            if self._namespace is not None:
-                attrs.update({"ns": self._namespace,
-                                "set": self._setName})
-            if self._idx_namespace is not None:
-                attrs.update({"idxns": self._idx_namespace,
-                                "idx": self._idx_name})
-                
-            self._prometheus_heartbeat_gauge.set(self.__cnthb__,
-                                                    attrs)
-           
-            return
-        
+                    
         pausestate : str = None
         if done:
             pausestate = "Done"
+        elif self._heartbeat_stage == 0:
+            pausestate = "Starting"
+        elif self._heartbeat_stage == 1:
+            pausestate = "Collecting"
         elif  self._actions is not None and OperationActions.POPULATION in self._actions:
             if self._waitidx:
                 pausestate = "Waiting"
@@ -341,10 +329,10 @@ class BaseAerospike(object):
             queryef = self._query_hnswparams.ef
         
         self._prometheus_heartbeat_gauge.set(self.__cnthb__,
-                                             {"ns":self._namespace,
-                                                "set":self._setName,
-                                                "idxns":self._idx_namespace,
-                                                "idx":self._idx_name,
+                                             {"ns": '' if self._namespace is None else self._namespace,
+                                                "set": '' if self._setName is None else self._setName,
+                                                "idxns":'' if self._idx_namespace is None else self._idx_namespace,
+                                                "idx": '' if self._idx_name is None else self._idx_name,
                                                 "idxbin":self._idx_binName,
                                                 "idxdist": None if self._idx_distance is None else self._idx_distance.name,
                                                 "anndist": self._ann_distance,
@@ -353,7 +341,7 @@ class BaseAerospike(object):
                                                 "queries": None if self._queryarray is None else len(self._queryarray),
                                                 "querynbrlmt": self._query_nbrlimit,
                                                 "queryruns": self._query_runs,
-                                                "querycurrun": self._query_current_run,
+                                                "querycurrun": '' if self._query_current_run is None else self._query_current_run,
                                                 "dataset":self._datasetname,
                                                 "paused": pausestate,
                                                 "action": None if self._actions is None else self._actions.name,

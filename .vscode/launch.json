@@ -84,14 +84,29 @@
             "program": "${workspaceFolder}/aerospike/hdf_import.py",
             "cwd": "${workspaceFolder}/aerospike",
             "args": [
-                    "--hdf", "${input:enterDataset}",
+                    "--hdf", "${input:enterHDFFile}",
                     "--concurrency", "5000",
                     "--idxdrop",
                     "--logfile", "./hdfimport.log",
                      "--loglevel", "DEBUG"
                     ],
             "console": "integratedTerminal"
-        },  
+        }, 
+        {           
+            "name": "Python Debugger: hdf_import angular (prompt HDF)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_import.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--hdf", "${input:enterHDFFile}",
+                    "--concurrency", "5000",
+                    "--distancetype", "COSINE",
+                    "--idxdrop",
+                    "--logfile", "./hdfimport-angular.log",                    
+                    ],
+            "console": "integratedTerminal"
+        },          
         {
             "name": "Python Debugger: hdf_import LB",
             "type": "debugpy",
@@ -148,7 +163,7 @@
                     "-r", "10"
                     ],
             "console": "integratedTerminal"
-        },
+        },        
         {
             "name": "Python Debugger: hdf_query (proimpt HDF)",
             "type": "debugpy",
