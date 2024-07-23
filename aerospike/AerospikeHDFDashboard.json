@@ -752,8 +752,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -2195,7 +2194,7 @@
     "list": [
       {
         "current": {
-          "selected": true,
+          "selected": false,
           "text": "prometheus",
           "value": "edj97jcoudpfkd"
         },
@@ -2238,6 +2237,10 @@
       },
       {
         "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
         "definition": "label_values(aerospike_hdf_heartbeat,ns)",
         "hide": 0,
         "includeAll": true,
@@ -2262,7 +2265,7 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(aerospike_hdf_heartbeat{ns=\"$namespace\"},set)",
+        "definition": "label_values(aerospike_hdf_heartbeat{ns=~\"$namespace\"},set)",
         "hide": 0,
         "includeAll": true,
         "label": "Set",
@@ -2271,7 +2274,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(aerospike_hdf_heartbeat{ns=\"$namespace\"},set)",
+          "query": "label_values(aerospike_hdf_heartbeat{ns=~\"$namespace\"},set)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -2310,7 +2313,7 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(aerospike_hdf_heartbeat{idxns=\"$idxns\"},idx)",
+        "definition": "label_values(aerospike_hdf_heartbeat{idxns=~\"$idxns\"},idx)",
         "hide": 0,
         "includeAll": true,
         "label": "Index name",
@@ -2319,7 +2322,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(aerospike_hdf_heartbeat{idxns=\"$idxns\"},idx)",
+          "query": "label_values(aerospike_hdf_heartbeat{idxns=~\"$idxns\"},idx)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -2334,7 +2337,7 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(aerospike_hdf_query_total{idx=\"$idxname\", ns=\"$idxns\"},run)",
+        "definition": "label_values(aerospike_hdf_query_total{idx=~\"$idxname\", ns=~\"$idxns\"},run)",
         "hide": 0,
         "includeAll": true,
         "label": "Query Run",
@@ -2343,7 +2346,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(aerospike_hdf_query_total{idx=\"$idxname\", ns=\"$idxns\"},run)",
+          "query": "label_values(aerospike_hdf_query_total{idx=~\"$idxname\", ns=~\"$idxns\"},run)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -2386,6 +2389,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 18,
+  "version": 19,
   "weekStart": ""
 }
