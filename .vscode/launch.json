@@ -215,8 +215,8 @@
             "args": [
                     "--dataset", "gist-960-euclidean",
                     "--logfile", "./hdfquery-gist1.log",                    
-                    "-r", "10",
-                    "--limit", "100",
+                    "-r", "1",
+                    "--limit", "10",                    
                     "--idxname", "ANN-data_euclidean_SQUARED_EUCLIDEAN_960_16_100_100_Idx"
                     ],
             "console": "integratedTerminal"

@@ -220,7 +220,7 @@ class Aerospike(BaseAerospike):
                 default="k-nn",
                 type=str,
                 choices=METRICS.keys(),
-            )
+            )        
                 
         BaseAerospike.parse_arguments(parser)
         
@@ -235,7 +235,6 @@ class Aerospike(BaseAerospike):
         self._queryarray : Union[np.ndarray, List[np.ndarray]] = None
         self._neighbors : Union[np.ndarray, List[np.ndarray]] = None
         self._distances : Union[np.ndarray, List[np.ndarray]] = None
-        self._ann_distance : str = None
         self._dataset = None
         self._pausePuts : bool = False
         self._pks : Union[np.ndarray, List] = None
@@ -327,9 +326,14 @@ class Aerospike(BaseAerospike):
             self._dimensions,
             self._pks) = load_and_transform_dataset(self._datasetname, self._hdf_file)
         
-        self._ann_distance = distance.lower()
+        distance = distance.lower() 
+        if self._ann_distance is None:
+            self._ann_distance = distance
+        elif distance != self._ann_distance:
+            self.print_log(f"ANN distance types do not match! Found: {distance} Provided: {self._ann_distance}. Distance calculations could be wrong!", logging.WARN)
+            
         if self._idx_distance is None or not self._idx_distance:
-            self._idx_distance = DistanceMaps.get(self._ann_distance)
+            self._idx_distance = DistanceMaps.get(distance)
         
         if self._idx_distance is None or not self._idx_distance:
              raise ValueError(f"Distance Map '{distance}' was not found.")
@@ -783,7 +787,7 @@ class Aerospike(BaseAerospike):
                         self._query_metric_big_value = bigknn((self._neighbors,self._distances), self._query_neighbors, len(self._query_neighbors[0]), self._query_metric_bigann_result).attrs["mean"]
                         metricValuesBig.append(self._query_metric_big_value)
                 
-                    self._logger.info(f"Run: {i}, Neighbors: {len(self._query_neighbors)}, {self._query_metric['type']}: {self._query_metric_value}, aerospike recall: {self._aerospike_metric_value}, Big: {self._query_metric_big_value}")
+                    self._logger.info(f"Run: {i}, Neighbors: {len(self._query_neighbors)}, {'No distance' if distancemetric is None else distancemetric.type} {self._query_metric['type']}: {self._query_metric_value}, aerospike recall: {self._aerospike_metric_value}, Big: {self._query_metric_big_value}")
             
                 i += 1
                 
@@ -922,6 +926,7 @@ class Aerospike(BaseAerospike):
             if distancemetric is not None:
                 try:
                     distances = [float(distancemetric.distance(searchValues, self._get_orginal_vector_from_pk(idx))) for idx in result_ids]
+                    
                     if self._query_check and not await self._check_query_distances(distances, aerospike_distances, len(rundistance), runNbr):
                         if len(msg) == 0:
                             msg = "Warn: Distances don't match"

@@ -24,23 +24,28 @@ def euclidean(a, b):
 class Metric(NamedTuple):
     distance: Callable[[np.ndarray, np.ndarray], float]
     distance_valid: Callable[[float], bool]
+    type: str
 
 metrics = {
     "hamming": Metric(
         distance=lambda a, b: np.sum(a.astype(np.bool_) ^ b.astype(np.bool_)),
-        distance_valid=lambda a: True
+        distance_valid=lambda a: True,
+        type='hamming'
     ),
     "jaccard": Metric(
         distance=lambda a, b: 1 - jaccard(a, b),
-        distance_valid=lambda a: a < 1 - 1e-5
+        distance_valid=lambda a: a < 1 - 1e-5,
+        type="jaccard"
     ),
     "euclidean": Metric(
         distance=lambda a, b: euclidean(a, b),
-        distance_valid=lambda a: True
+        distance_valid=lambda a: True,
+        type='euclidean'
     ),
     "angular": Metric(
         distance=lambda a, b: 1 - np.dot(a, b) / (norm(a) * norm(b)),
-        distance_valid=lambda a: True
+        distance_valid=lambda a: True,
+        type='andular'
     ),
 }
 

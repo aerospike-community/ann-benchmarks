@@ -6,7 +6,7 @@ import logging
 import argparse
 
 from enum import Flag, auto
-from typing import List, Dict, Union
+from typing import List, Dict, Union, OrderedDict
 from importlib.metadata import version
 from logging import _nameToLevel as LogLevels
 from threading import Thread
@@ -18,6 +18,7 @@ from opentelemetry.exporter.prometheus import PrometheusMetricReader
 from opentelemetry.sdk.metrics import MeterProvider, Meter
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.util.types import Attributes
 
 from aerospike_vector_search import types as vectorTypes
 from metrics import all_metrics as METRICS
@@ -154,6 +155,7 @@ class BaseAerospike(object):
         self._idx_binName : str = None
         
         self._idx_distance = None
+        self._ann_distance : str = None
         self._idx_hnswparams : vectorTypes.HnswParams = None
         self._query_hnswparams : vectorTypes.HnswSearchParams = None
 
@@ -227,6 +229,8 @@ class BaseAerospike(object):
         self._prometheus_heartbeat_gauge = self._meter.create_gauge("aerospike.hdf.heartbeat")
         
         self._prometheus_hb : int = runtimeArgs.prometheushb
+        
+        self._heartbeat_current_stage : int = -1
 
     def _logging_init(self, runtimeArgs: argparse.Namespace, logger: logging.Logger) -> None:
        
@@ -283,30 +287,37 @@ class BaseAerospike(object):
         self.__cnthb__ += 1
         
         if self._heartbeat_stage == 0:
+            if self._heartbeat_current_stage == self._heartbeat_stage:
+                return
+            self._heartbeat_current_stage = self._heartbeat_stage
             self._prometheus_heartbeat_gauge.set(self.__cnthb__,
                                              {"paused": "Starting"
                                                 })
             return
         if self._heartbeat_stage == 1:
-            attrs = {"dims": self._dimensions,
-                        "poprecs": None if self._trainarray is None else len(self._trainarray),
-                        "queries": None if self._queryarray is None else len(self._queryarray),
-                        "querynbrlmt": self._query_nbrlimit,
-                        "queryruns": self._query_runs,                                                
-                        "dataset":self._datasetname,
-                        "paused":"Cellecting",
-                        "action": None if self._actions is None else self._actions.name,
-                        "hnswparams": self.hnswstr()
-                        }
+            if self._heartbeat_current_stage == self._heartbeat_stage:
+                return
+            self._heartbeat_current_stage = self._heartbeat_stage
+            attrs : Dict = {"dims": self._dimensions,
+                            "poprecs": None if self._trainarray is None else len(self._trainarray),
+                            "queries": None if self._queryarray is None else len(self._queryarray),
+                            "querynbrlmt": self._query_nbrlimit,
+                            "queryruns": self._query_runs,                                                
+                            "dataset":self._datasetname,
+                            "paused":"Cellecting",
+                            "action": None if self._actions is None else self._actions.name,
+                            "hnswparams": self.hnswstr()
+                            }
             if self._namespace is not None:
-                attrs["ns"] = self._namespace
-                attrs["set"] = self._setName
+                attrs.update({"ns": self._namespace,
+                                "set": self._setName})
             if self._idx_namespace is not None:
-                attrs["idxns"] = self._idx_namespace
-                attrs["idx"] = self._idx_name            
-            
+                attrs.update({"idxns": self._idx_namespace,
+                                "idx": self._idx_name})
+                
             self._prometheus_heartbeat_gauge.set(self.__cnthb__,
                                                     attrs)
+           
             return
         
         pausestate : str = None
@@ -336,6 +347,7 @@ class BaseAerospike(object):
                                                 "idx":self._idx_name,
                                                 "idxbin":self._idx_binName,
                                                 "idxdist": None if self._idx_distance is None else self._idx_distance.name,
+                                                "anndist": self._ann_distance,
                                                 "dims": self._dimensions,
                                                 "poprecs": None if self._trainarray is None else len(self._trainarray),
                                                 "queries": None if self._queryarray is None else len(self._queryarray),
