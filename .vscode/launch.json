@@ -230,7 +230,7 @@
             "args": [
                     "--dataset", "gist-960-euclidean",
                     "--logfile", "./hdfquery-gist1.log",                    
-                    "-r", "1",
+                    "-r", "10",
                     "--limit", "10",                    
                     "--idxname", "ANN-data_euclidean_SQUARED_EUCLIDEAN_960_16_100_100_Idx"
                     ],
@@ -251,26 +251,15 @@
                     ],
             "justMyCode": false,
             "console": "integratedTerminal"
-        },
+        },        
         {
-            "name": "Python Debugger: bigann_download random-xs",
+            "name": "Python Debugger: bigann_download (prompt)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/aerospike/bigann_download.py",
             "cwd": "${workspaceFolder}/aerospike",
             "args": [
-                    "--dataset", "random-xs"
-                    ],
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Python Debugger: bigann_download deep-10M",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/aerospike/bigann_download.py",
-            "cwd": "${workspaceFolder}/aerospike",
-            "args": [
-                    "--dataset", "deep-10M"
+                    "--dataset", "${input:enterBigDataset}"
                     ],
             "console": "integratedTerminal"
         },
