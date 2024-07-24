@@ -402,6 +402,7 @@ class Aerospike(BaseAerospike):
         t = time.time()
         self._dropidx_histogram.record(t-s, {"ns":self._idx_namespace,"idx": self._idx_name})
         print('\n')
+        self._idx_state = 'Dropped'
         self.print_log(f'Drop Index Time (sec) = {t - s}')        
         
     async def create_index(self, adminClient: vectorASyncAdminClient) -> None:
@@ -420,9 +421,10 @@ class Aerospike(BaseAerospike):
         t = time.time()
         self.print_log(f'Index Creation Time (sec) = {t - s}')        
         aerospikeIdxNames.append(self._idx_name)
+        self._idx_state = 'Created'
 
     async def _wait_for_idx_completion(self, client: vectorASyncClient):
-        self._waitidx_counter.add(1, {"ns":self._idx_namespace,"idx": self._idx_name})
+        self._waitidx_counter.add(1, {"ns":self._idx_namespace,"idx": self._idx_name, "type":"Wait"})
         try:
             self._waitidx = True
             await client.wait_for_index_completion(namespace=self._idx_namespace,
@@ -434,7 +436,7 @@ class Aerospike(BaseAerospike):
             self._exception_counter.add(1, {"exception_type":e, "handled_by_user":False,"ns":self._idx_namespace,"idx":self._idx_name})            
             raise
         finally:
-            self._waitidx_counter.add(-1, {"ns":self._idx_namespace,"idx": self._idx_name})
+            self._waitidx_counter.add(-1, {"ns":self._idx_namespace,"idx": self._idx_name, "type":"Wait"})
             self._waitidx = False
             
     async def _put_wait_completion_handler(self, key: int, embedding, i: int, client: vectorASyncClient, logLevel: int) -> None:
@@ -455,24 +457,40 @@ class Aerospike(BaseAerospike):
             logger.debug(msg=f"Resuming population for Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}")
             
     async def _put_wait_sleep_handler(self, key: int, embedding, i: int, client: vectorASyncClient, logLevel: int) -> None:
+        
+        if self._idx_resource_cnt == 0:
+            self._waitidx_counter.add(1, {"ns":self._idx_namespace,"idx": self._idx_name, "type":"Sleep"})
+        
         self._idx_resource_cnt += 1
         if logLevel == logging.WARNING:
             self.print_log(msg=f"Resource Exhausted Going to Sleep {self._idx_resource_event}: {self._idx_namespace}.{self._idx_name}",
                                 logLevel=logging.WARNING)
         else:
             logger.debug(msg=f"Resource Exhausted Sleep {self._idx_resource_event}, Going to Reissue Puts for Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}")
-        await asyncio.sleep(self._idx_resource_event)
-        
-        await self.put_vector(key, embedding, i, client, True)
-        self._idx_resource_cnt -= 1        
-        if(self._idx_resource_cnt <= 0):
-            self._pausePuts = False
+        try:
+            await asyncio.sleep(self._idx_resource_event)
             
-            if logLevel == logging.WARNING:
-                self.print_log(msg=f"Resuming population for Idx: {self._idx_namespace}.{self._idx_name}",
-                                    logLevel=logging.WARNING)
-            else:
-                logger.debug(msg=f"Resuming population for Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}")
+            await self.put_vector(key, embedding, i, client, True)
+            
+        except Exception as e:
+            print(f'\n**Exception: "{e}" **\r\n')
+            logger.exception(f"Sleep for Idx Resource Exhausted Failure on Idx: {self._idx_namespace}.{self._idx_name}")
+            self.flush_log()
+            self._exception_counter.add(1, {"exception_type":e, "handled_by_user":False,"ns":self._idx_namespace,"idx":self._idx_name})            
+            raise
+        finally:
+            self._idx_resource_cnt -= 1        
+            if(self._idx_resource_cnt <= 0):
+                self._pausePuts = False
+                self._idx_resource_cnt = 0
+                
+                self._waitidx_counter.add(-1, {"ns":self._idx_namespace,"idx": self._idx_name, "type":"Sleep"})
+            
+                if logLevel == logging.WARNING:
+                    self.print_log(msg=f"Resuming population for Idx: {self._idx_namespace}.{self._idx_name}",
+                                        logLevel=logging.WARNING)
+                else:
+                    logger.debug(msg=f"Resuming population for Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}")
 
     async def _resourceexhaused_handler(self, key: int, embedding, i: int, client: vectorASyncClient) -> None:
         self._exception_counter.add(1, {"exception_type": "Resource Exhausted", "handled_by_user": True,"ns":self._namespace,"set":self._setName})
@@ -480,10 +498,10 @@ class Aerospike(BaseAerospike):
         if not self._pausePuts:
             self._pausePuts = True
             logLevel = logging.WARNING
-            self.print_log(msg=f"\nResource Exhausted on Put first encounter on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...",
+            self.print_log(msg=f"\nResource Exhausted on Put first encounter on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait...",
                                 logLevel=logging.WARNING)
         else:
-            logger.debug(f"Resource Exhausted on Put on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...")
+            logger.debug(f"Resource Exhausted on Put on Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}. Going to Pause Population and Wait...")
         
         if self._idx_resource_event < 0:
             await self._put_wait_completion_handler(key, embedding, i, client, logLevel)                        
@@ -542,10 +560,10 @@ class Aerospike(BaseAerospike):
             self._trainarray = self._trainarray.astype(np.float32)
     
         self.print_log(f'populate: {self} Shape: {self._trainarray.shape}')
-
+        
         self._heartbeat_stage = 2
         self.prometheus_status()
-
+        
         async with vectorASyncAdminClient(seeds=self._host,
                                             listener_name=self._listern,
                                             is_loadbalancer=self._useloadbalancer
@@ -555,6 +573,7 @@ class Aerospike(BaseAerospike):
             idxinfo = await self.index_exist(adminClient)
             if idxinfo is not None:
                 self.print_log(f'Index {self._idx_namespace}.{self._idx_name} Already Exists. Idx Info: {idxinfo}')
+                self._idx_state = 'Exists'
                 
                 #since this can be an external DB (not in a container), we need to clean up from prior runs
                 #if the index name is in this list, we know it was created in this run group and don't need to drop the index.
@@ -562,22 +581,26 @@ class Aerospike(BaseAerospike):
                 if self._idx_name in aerospikeIdxNames:
                     self.print_log(f'Index {self._idx_name} being reused (updated)')
                     self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(vectorTypes.HnswParams(),
-                                                                                idxinfo)
+                                                                                idxinfo)                    
                 elif self._idx_drop:
                     await self.drop_index(adminClient)
                     await self.create_index(adminClient)
+                    self._idx_state = 'Dropped-Created'
                 else:
                     self.print_log(f'Index {self._idx_namespace}.{self._idx_name} being updated')
                     self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(vectorTypes.HnswParams(),
                                                                                 idxinfo)
             else:
                 await self.create_index(adminClient)
-
+       
         async with vectorASyncClient(seeds=self._host,
                                         listener_name=self._listern,
                                         is_loadbalancer=self._useloadbalancer
                         ) as client: 
             
+            self._heartbeat_stage = 3
+            self.prometheus_status()
+
             self._remainingrecs = len(self._trainarray) if self._idx_maxrecs < 0 else self._idx_maxrecs >= 0
             if self._concurrency == 0 or self._idx_maxrecs == 0:
                 s = time.time()
@@ -603,7 +626,7 @@ class Aerospike(BaseAerospike):
                         print('\n')
                         while (self._pausePuts):
                             if loopTimes % 30 == 0:
-                                self.print_log(f"Paused Population still waiting for Idx Completion at {loopTimes} mins!", logging.WARNING)                                
+                                self.print_log(f"Paused Population still waiting at {loopTimes} mins!", logging.WARNING)                                
                             loopTimes += 1                                
                             logger.debug(f"Putting Paused {loopTimes}")
                             await asyncio.sleep(60)
@@ -732,6 +755,9 @@ class Aerospike(BaseAerospike):
         
         self.print_log(f'Query: {self} Shape: {self._trainarray.shape}')
         
+        self._heartbeat_stage = 2
+        self.prometheus_status()
+
         async with vectorASyncAdminClient(seeds=self._host,
                                             listener_name=self._listern,
                                             is_loadbalancer=self._useloadbalancer
@@ -741,8 +767,10 @@ class Aerospike(BaseAerospike):
             if idxinfo is None:
                 self.print_log(f'Query: Vector Index: {self._idx_namespace}.{self._idx_name}, not found')
                 self._exception_counter.add(1, {"exception_type":"Index not found", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name})
+                self._idx_state = 'Not Found'
                 raise FileNotFoundError(f"Vector Index {self._idx_namespace}.{self._idx_name} not found")
             
+            self._idx_state = 'Exists'
             self.print_log(f'Found Index {self._idx_namespace}.{self._idx_name} with Info {idxinfo}')
             self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(vectorTypes.HnswParams(),
                                                                         idxinfo['hnsw_params'])
@@ -751,10 +779,7 @@ class Aerospike(BaseAerospike):
             self._namespace = idxinfo["id"]["namespace"]
             if self._query_hnswparams is None and self._idx_hnswparams is not None:           
                 self._query_hnswparams = vectorTypes.HnswSearchParams(ef=self._idx_hnswparams.ef)
-            
-        self._heartbeat_stage = 2
-        self.prometheus_status()
-            
+                       
         self.print_log(f'Starting Query Runs ({self._query_runs}) on {self._idx_namespace}.{self._idx_name}')
         metricfunc = None
         distancemetric : DistanceMetric= None
@@ -766,6 +791,10 @@ class Aerospike(BaseAerospike):
                                         listener_name=self._listern,
                                         is_loadbalancer=self._useloadbalancer
                             ) as client:
+            
+            self._heartbeat_stage = 3
+            self.prometheus_status()
+         
             s = time.time()
             totalquerytime : float = 0.0
             taskPuts = []

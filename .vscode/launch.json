@@ -71,8 +71,7 @@
                     "--dataset", "${input:enterDataset}",
                     "--concurrency", "5000",
                     "--idxdrop",
-                    "--logfile", "./hdfimport.log",
-                     "--loglevel", "DEBUG"
+                    "--logfile", "./hdfimport.log"
                     ],
             "justMyCode": false,
             "console": "integratedTerminal"
@@ -87,8 +86,22 @@
                     "--hdf", "${input:enterHDFFile}",
                     "--concurrency", "5000",
                     "--idxdrop",
-                    "--logfile", "./hdfimport.log",
-                     "--loglevel", "DEBUG"
+                    "--logfile", "./hdfimport-hdf.log"                    
+                    ],
+            "console": "integratedTerminal"
+        }, 
+        {           
+            "name": "Python Debugger: hdf_import Sleep 10 mins (prompt HDF)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_import.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--hdf", "${input:enterHDFFile}",
+                    "--concurrency", "5000",
+                    "--idxdrop",
+                    "--logfile", "./hdfimport-hdf.log",
+                    "--exhaustedevt", "600"
                     ],
             "console": "integratedTerminal"
         }, 
@@ -145,9 +158,8 @@
             "args": [
                     "--dataset", "glove-100-angular",
                     "--concurrency", "10000",
-                    "--logfile", "./hdfimport.log",
-                    "--idxdrop",
-                    "--loglevel", "DEBUG"
+                    "--logfile", "./hdfimport-glove.log",
+                    "--idxdrop"
                     ],
             "console": "integratedTerminal"
         },
