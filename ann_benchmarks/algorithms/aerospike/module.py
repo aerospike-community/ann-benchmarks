@@ -44,7 +44,7 @@ class Aerospike(BaseANN):
         global loggingEnabled
         
         asLogFile = os.environ.get("APP_LOGFILE")
-        self._asLogLevel = os.environ.get("PROXIMUS_LOGLEVEL")
+        self._asLogLevel = os.environ.get("AVS_LOGLEVEL")
         self._logLevel = os.environ.get("APP_LOGLEVEL") or "INFO"
         self._indocker = Aerospike.InDocker()
         
@@ -89,17 +89,17 @@ class Aerospike(BaseANN):
         
         #self._username = os.environ.get("APP_USERNAME") or ""
         #self._password = os.environ.get("APP_PASSWORD") or ""
-        self._host = os.environ.get("PROXIMUS_HOST") or "localhost"
-        self._port = int(os.environ.get("PROXIMUS_PORT") or 5000)
-        self._listern = None #os.environ.get("PROXIMUS_ADVERTISED_LISTENER") or None          
-        self._isloadbalancer = os.environ.get("PROXIMUS_USELOADBALANCER")
+        self._host = os.environ.get("AVS_HOST") or "localhost"
+        self._port = int(os.environ.get("AVS_PORT") or 5000)
+        self._listern = None #os.environ.get("AVS_ADVERTISED_LISTENER") or None          
+        self._isloadbalancer = os.environ.get("AVS_USELOADBALANCER")
         if self._isloadbalancer is not None and self._isloadbalancer.lower() in ['true', '1', 't', '']:
             self._isloadbalancer = True
         else:
             self._isloadbalancer = False
         
-        self._namespace = os.environ.get("PROXIMUS_NAMESPACE") or "test"
-        self._setName = os.environ.get("PROXIMUS_SET") or "ANN-data"
+        self._namespace = os.environ.get("AVS_NAMESPACE") or "test"
+        self._setName = os.environ.get("AVS_SET") or "ANN-data"
         
         if self._idx_type.casefold() == self._metric.casefold():
             setNameType = self._idx_type
@@ -112,7 +112,7 @@ class Aerospike(BaseANN):
             self._setName = f'{self._setName}_{setNameType}_{self._dims}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}'
         self._idx_name = f'{self._setName}_Idx'
         
-        self._verifyTLS = os.environ.get("PROXIMUS_VERIFY_TLS")
+        self._verifyTLS = os.environ.get("AVS_VERIFY_TLS")
         if self._verifyTLS is None or self._verifyTLS.lower() in ['true', '1', 't', '']:
             self._verifyTLS = True
         else:
@@ -120,11 +120,11 @@ class Aerospike(BaseANN):
             
         self._idx_sleep = int(os.environ.get("APP_INDEX_SLEEP") or 0)
         self._populateTasks = int(os.environ.get("APP_POPULATE_TASKS") or 5000)
-        pingProximus = os.environ.get("APP_PINGPROXIMUS")
-        if pingProximus is None or pingProximus.lower() in ['false', '0', 'f', '']:
-            pingProximus = False
+        pingAVS = os.environ.get("APP_PINGAVS")
+        if pingAVS is None or pingAVS.lower() in ['false', '0', 'f', '']:
+            pingAVS = False
         else:
-            pingProximus = True
+            pingAVS = True
         self._checkResult = os.environ.get("APP_CHECKRESULT")
         if self._checkResult is None or self._checkResult.lower() in ['true', '1', 't', '']:
             self._checkResult = not self._indocker
@@ -133,7 +133,7 @@ class Aerospike(BaseANN):
         self._idx_binName = "ANN_embedding"
         self._query_hnswsearchparams = None
         
-        if pingProximus:
+        if pingAVS:
             print(f'Aerospike: Trying Ping to {self._host} {self._verifyTLS} {self._listern}')
             pingresult = PingHost(self._host, verbose=True)
             print(pingresult)
