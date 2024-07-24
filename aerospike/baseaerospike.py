@@ -167,6 +167,12 @@ class BaseAerospike(object):
         self._idx_hnswparams : vectorTypes.HnswParams = None
         self._query_hnswparams : vectorTypes.HnswSearchParams = None
 
+        self._concurrency : int = None
+        self._idx_nowait : bool = None
+        self._idx_resource_event : int = None
+        self._idx_resource_cnt : int = None
+        self._idx_state : str = ''
+
         self._sleepexit = runtimeArgs.exitdelay
         self._actions : OperationActions = None
         self._waitidx : bool = None
@@ -303,14 +309,20 @@ class BaseAerospike(object):
             if self._heartbeat_current_stage == self._heartbeat_stage:
                 return
             self._heartbeat_current_stage = self._heartbeat_stage
-                    
+        if self._heartbeat_stage == 2:
+            if self._heartbeat_current_stage == self._heartbeat_stage:
+                return
+            self._heartbeat_current_stage = self._heartbeat_stage
+           
         pausestate : str = None
         if done:
             pausestate = "Done"
         elif self._heartbeat_stage == 0:
             pausestate = "Starting"
         elif self._heartbeat_stage == 1:
-            pausestate = "Collecting"
+            pausestate = "Collecting HDF"
+        elif self._heartbeat_stage == 2:
+            pausestate = "AVS Status"
         elif  self._actions is not None and OperationActions.POPULATION in self._actions:
             if self._waitidx:
                 pausestate = "Waiting"
@@ -328,6 +340,31 @@ class BaseAerospike(object):
         else:
             queryef = self._query_hnswparams.ef
         
+        resourceevt = ''
+        if self._idx_resource_event is not None:
+            if self._idx_resource_event < 0:
+                resourceevt = 'Wait Idx'
+            elif self._idx_resource_event > 0:
+                resourceevt = f"Sleep {self._idx_resource_event} secs"
+            else:
+                resourceevt = 'Exception'
+        concurrentevt = ''
+        if self._concurrency is not None:
+            if self._concurrency < 0:
+                concurrentevt = 'All'
+            elif self._concurrency > 0:
+                concurrentevt = f'Concurrent {self._concurrency}'
+            elif self._concurrency == 1:
+                concurrentevt = 'Single'
+            else:
+                concurrentevt = 'Disabled'
+        waitevt = ''
+        if self._idx_nowait is not None:
+            if self._idx_nowait:
+                waitevt = "No Wait"
+            else:
+                waitevt = "Wait for Completion"
+                
         self._prometheus_heartbeat_gauge.set(self.__cnthb__,
                                              {"ns": '' if self._namespace is None else self._namespace,
                                                 "set": '' if self._setName is None else self._setName,
@@ -347,12 +384,16 @@ class BaseAerospike(object):
                                                 "action": None if self._actions is None else self._actions.name,
                                                 "remainingRecs" : self._remainingrecs,
                                                 "remainingquerynbrs" : self._remainingquerynbrs,
-                                                "querymetric": None if self._query_metric is None else self._query_metric["type"],
+                                                "querymetric": '' if self._query_metric is None else self._query_metric["type"],
                                                 "querymetricvalue": self._query_metric_value,
                                                 "querymetricaerospikevalue": self._aerospike_metric_value,
                                                 "querymetricbigvalue": self._query_metric_big_value,
                                                 "hnswparams": self.hnswstr(),
-                                                "queryef": queryef
+                                                "queryef": queryef,
+                                                "popresrcevt": resourceevt,
+                                                "popconcurrent": concurrentevt,
+                                                "popwait" : waitevt,
+                                                "idxstate": self._idx_state
                                                 })
         
     def _prometheus_heartbeat(self) -> None:
