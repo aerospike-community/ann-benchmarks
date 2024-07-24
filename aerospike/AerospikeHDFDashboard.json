@@ -752,7 +752,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -1688,9 +1689,9 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
+          "editorMode": "code",
           "exemplar": false,
-          "expr": "label_join(aerospike_hdf_heartbeat{idx=~\"$idxname\", instance=~\"$client\", idxns=~\"$idxns\"}, \"recalltype\", \"-\", \"anndist\"-\"querymetric\")",
+          "expr": "label_join(aerospike_hdf_heartbeat{idx=~\"$idxname\", instance=~\"$client\", idxns=~\"$idxns\"}, \"recalltype\", \"-\", \"anndist\",\"querymetric\")",
           "format": "table",
           "fullMetaSearch": false,
           "hide": false,
@@ -2389,6 +2390,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 20,
+  "version": 21,
   "weekStart": ""
 }
