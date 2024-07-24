@@ -65,7 +65,7 @@ class BigAnnConvert():
         self._bigann_neighbors : np.ndarray
         self._bigann_distances : np.ndarray
         self._bigann_searchtype : str
-        self._bigann_nbrneighbors : int
+        self._bigann_default_search_count : int
         
         if os.path.exists(self._hdf_filepath):
             print(f"Warn: ANN HDF File '{self._hdf_filepath}' exist and will be overwritten")
@@ -94,7 +94,7 @@ class BigAnnConvert():
         
         self._hdf_dimension = self._bigann_dataset.shape[1]
         self._bigann_searchtype = str(self._bigann_ds.search_type())
-        self._bigann_nbrneighbors = int(self._bigann_ds.default_count())
+        self._bigann_default_search_count = int(self._bigann_ds.default_count())
         
     async def create_hdf(self) -> None:
         import h5py        
@@ -105,9 +105,9 @@ class BigAnnConvert():
             f.attrs["sourcedataset"] = self._bigann_ds.short_name()
             f.attrs["distance"] = self._hdf_distance
             f.attrs["dimension"] = self._hdf_dimension
-            f.attrs["searchtype"] = self._bigann_searchtype
+            f.attrs["metrictype"] = self._bigann_searchtype
             f.attrs["point_type"] = self._bigann_dataset[0].dtype.name.rstrip(digits)
-            f.attrs["nbrneighbors"] = self._bigann_nbrneighbors
+            f.attrs["defaultsearchcount"] = self._bigann_default_search_count
             print(f"train size: {self._bigann_dataset.shape[0]} * {self._bigann_dataset.shape[1]}")
             print(f"test size:  {self._bigann_query.shape[0]} * {self._bigann_query.shape[1]}")
             f.create_dataset("train", data=self._bigann_dataset)
