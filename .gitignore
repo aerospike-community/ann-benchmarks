@@ -17,10 +17,5 @@ results/*
 venv
 
 .idea
-aerospike/data/*.hdf5
 aerospike/data/*
-<<<<<<< HEAD
-aerospike/results/*.hdf5
-=======
 aerospike/results/*
->>>>>>> 8754424984433ad748d1b1a1b864bc1bda33bed4
