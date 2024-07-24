@@ -27,10 +27,38 @@ class BigAnnConvert():
     async def __aexit__(self, *args):
         pass      
         
+    @staticmethod
+    def get_dataset_fn(dataset_name: str, folder:str = "data") -> str:
+        """
+        Returns the full file path for a given dataset name in the data directory.
+        
+        Args:
+            dataset_name (str): The name of the dataset.
+        
+        Returns:
+            str: The full file path of the dataset.
+        """
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+            
+        filename, fileext = os.path.splitext(dataset_name)
+        filenamewext : str = dataset_name
+        
+        if fileext is None or not fileext:
+            filenamewext = f"{filename}.hdf5"
+            
+        if (filenamewext[0] == os.path.sep
+                or filenamewext.startswith(f"{folder}{os.path.sep}")
+                or filenamewext.startswith(f".{os.path.sep}")):
+            splitpath = os.path.split(filename)
+            return filenamewext, splitpath[1]
+    
+        return os.path.join(folder, filenamewext)
+    
     def __init__(self, runtimeArgs: argparse.Namespace, ds : DatasetCompetitionFormat) -> None:
         
         self._bigann_ds = ds
-        self._hdf_filepath : str = os.path.join(BASEDIR, runtimeArgs.hdf)
+        self._hdf_filepath : str = BigAnnConvert.get_dataset_fn(runtimeArgs.hdf, BASEDIR)
         
         self._bigann_dataset : np.ndarray
         self._bigann_query : np.ndarray
