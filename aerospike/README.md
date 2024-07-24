@@ -495,9 +495,9 @@ The arguments are:
 -   \--hdf HDFFILE – The name of the HDF5 file that will be created in the “data” folder. This file will have the following attributes:
     -   dimension – The dimensions of the training vector as defined by the Big ANN dataset
     -   distance – The distance type
-    -   nbrneighbors -- The number of neighbors returned
+    -   defaultsearchcount-- The default search count as defined by Big ANN
     -   point_type – The point type
-    -   searchtype – The distance search type
+    -   metrictype– The metric type used to calculate distance. Currently only support “KNN”. This is associated to the “search type” in Big ANN.
     -   sourcedataset – The Big ANN dataset name
     -   type – Always "dense"
     -   distances – A collection of vectors and shape of the test results distances as defined in the Big ANN dataset
