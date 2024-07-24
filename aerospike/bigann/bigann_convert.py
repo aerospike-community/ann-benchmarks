@@ -96,6 +96,9 @@ class BigAnnConvert():
         self._bigann_searchtype = str(self._bigann_ds.search_type())
         self._bigann_default_search_count = int(self._bigann_ds.default_count())
         
+        if self._bigann_searchtype != "knn":
+            raise ValueError(f"The Big ANN Dataset {self._bigann_ds.short_name()} is defined with a type of {self._bigann_searchtype}. Conversion only supports 'KNN'.")
+        
     async def create_hdf(self) -> None:
         import h5py        
         from string import digits
