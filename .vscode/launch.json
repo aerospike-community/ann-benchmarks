@@ -172,7 +172,7 @@
             "args": [
                     "--dataset", "${input:enterDataset}",
                     "--logfile", "./hdfquery.log",
-                    "-r", "10"
+                    "-r", "1"
                     ],
             "console": "integratedTerminal"
         },        
@@ -284,6 +284,19 @@
             "args": [
                     "--dataset", "${input:enterBigDataset}",
                     "--hdf", "${input:enterBigHDFFile}"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: bigann_convert Convert Euclidean (prompt DS)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/bigann_convert_hdf.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "${input:enterBigDataset}",
+                    "--hdf", "${input:enterBigHDFFile}",
+                    "--distancesquareeuclidean"
                     ],
             "console": "integratedTerminal"
         },

@@ -1,8 +1,8 @@
 import asyncio
 import os
 import argparse
-
 import numpy as np
+
 from .datasets import DatasetCompetitionFormat, BASEDIR
 
 class BigAnnConvert():
@@ -19,6 +19,11 @@ class BigAnnConvert():
             help="A HDF file name that will be created in the 'data' folder by converting a Big ANN file Format files",
             type=str,
             required=True,
+        )
+        parser.add_argument(
+           "--distancesquareeuclidean",        
+            help="If present, the Big ANN dataset's distance is Squared Euclidean and is converted to be compatiable with the expected ANN euclidean distance",
+            action='store_true'
         )
         
     async def __aenter__(self):
@@ -66,6 +71,7 @@ class BigAnnConvert():
         self._bigann_distances : np.ndarray
         self._bigann_searchtype : str
         self._bigann_nbrneighbors : int
+        self._bigann_force_squareeuclidean : bool = runtimeArgs.distancesquareeuclidean
         
         if os.path.exists(self._hdf_filepath):
             print(f"Warn: ANN HDF File '{self._hdf_filepath}' exist and will be overwritten")
@@ -78,12 +84,20 @@ class BigAnnConvert():
         
     async def _bigann_getnbrdists(self) -> None:
         self._bigann_neighbors, self._bigann_distances = self._bigann_ds.get_groundtruth()
+        if (self._bigann_force_squareeuclidean
+                or self._hdf_distance == "square-euclidean"
+                or self._hdf_distance == "squared-euclidean"):
+            self._hdf_distance = "euclidean"            
+            self._bigann_distances =  np.array([np.sqrt(dvector) for dvector in self._bigann_distances])
         
     async def bigann_getinfo(self) -> None:
         
         self._hdf_distance = self._bigann_ds.distance()
         self._hdf_type = self._bigann_ds.data_type()
-        
+                
+        if self._hdf_distance != "euclidean" and self._bigann_force_squareeuclidean:
+            self._bigann_force_squareeuclidean = False
+            
         gettasks = []
         
         gettasks.append(self._bigann_getdataset())
@@ -103,6 +117,8 @@ class BigAnnConvert():
         with h5py.File(self._hdf_filepath, "w") as f:
             f.attrs["type"] = self._hdf_type
             f.attrs["sourcedataset"] = self._bigann_ds.short_name()
+            f.attrs["sourcesystem"] = "big-ann"
+            f.attrs["sourcedistance"] = "squared-euclidean (forced)" if self._bigann_force_squareeuclidean else self._hdf_distance
             f.attrs["distance"] = self._hdf_distance
             f.attrs["dimension"] = self._hdf_dimension
             f.attrs["searchtype"] = self._bigann_searchtype

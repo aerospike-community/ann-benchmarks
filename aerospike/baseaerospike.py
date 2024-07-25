@@ -193,6 +193,7 @@ class BaseAerospike(object):
         self._aerospike_metric_value : float = None
         self._query_metric : dict[str,any] = None
         self._canchecknbors : bool = False
+        self._query_distancecalc : str = None
         
         self._logging_init(runtimeArgs, logger)
         
@@ -393,7 +394,8 @@ class BaseAerospike(object):
                                                 "popresrcevt": resourceevt,
                                                 "popconcurrent": concurrentevt,
                                                 "popwait" : waitevt,
-                                                "idxstate": self._idx_state
+                                                "idxstate": self._idx_state,
+                                                "qrydistancecalc": self._ann_distance if self._query_distancecalc is None else self._query_distancecalc
                                                 })
         
     def _prometheus_heartbeat(self) -> None:

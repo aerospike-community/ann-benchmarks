@@ -223,6 +223,14 @@ class Aerospike(BaseAerospike):
                 choices=METRICS.keys(),
             )
         parser.add_argument(
+                "--distancecalc",
+                metavar="TYPE",
+                help="Overrides the ANN distance type and will calculate distance basedf on the given type. The default is to use the ANN Distance.",
+                default=None,
+                type=str,
+                choices=DISTANCES.keys(),
+            )
+        parser.add_argument(
                 "--dontadustdistance",
                 help="Don't adjust the distance returned by Aerospike based on the distance type (e.g., Square-Euclidean)",
                 action='store_true'
@@ -306,6 +314,11 @@ class Aerospike(BaseAerospike):
             self._query_produce_resultfile : bool = not runtimeArgs.noresultfile
             self._query_distance_no_adjustments = runtimeArgs.dontadustdistance
             
+            if runtimeArgs.distancecalc is None or not runtimeArgs.distancecalc:
+                self._query_distancecalc = self._ann_distance
+            else:
+                self._query_distancecalc = runtimeArgs.distancecalc
+                
             if runtimeArgs.searchparams is None or len(runtimeArgs.searchparams) == 0:
                 self._query_hnswparams = None
             else:
@@ -785,7 +798,7 @@ class Aerospike(BaseAerospike):
         distancemetric : DistanceMetric= None
         if self._canchecknbors:
             metricfunc = None if self._query_metric is None else self._query_metric["function"]
-            distancemetric = DISTANCES[self._ann_distance]
+            distancemetric = DISTANCES[self._query_distancecalc]
             
         async with vectorASyncClient(seeds=self._host,
                                         listener_name=self._listern,
@@ -950,8 +963,10 @@ class Aerospike(BaseAerospike):
                 runlatencies.append(latency)
                 continue
             result_ids = [neighbor.key.key for neighbor in result]
-            
-            if self._idx_distance.name == "SQUARED_EUCLIDEAN" and not self._query_distance_no_adjustments:
+                       
+            if (not self._query_distance_no_adjustments
+                    and self._idx_distance.name == "SQUARED_EUCLIDEAN" 
+                    and distancemetric.type !=  "squared_euclidean"):
                 aerospike_distances = [sqrt(neighbor.distance) for neighbor in result]
             else:
                 aerospike_distances = [neighbor.distance for neighbor in result]
