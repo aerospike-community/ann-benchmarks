@@ -313,12 +313,8 @@ class Aerospike(BaseAerospike):
             self._query_latencies : List[float] = None
             self._query_produce_resultfile : bool = not runtimeArgs.noresultfile
             self._query_distance_no_adjustments = runtimeArgs.dontadustdistance
-            
-            if runtimeArgs.distancecalc is None or not runtimeArgs.distancecalc:
-                self._query_distancecalc = self._ann_distance
-            else:
-                self._query_distancecalc = runtimeArgs.distancecalc
-                
+            self._query_distancecalc = runtimeArgs.distancecalc
+                     
             if runtimeArgs.searchparams is None or len(runtimeArgs.searchparams) == 0:
                 self._query_hnswparams = None
             else:
@@ -349,19 +345,18 @@ class Aerospike(BaseAerospike):
             self._pks) = load_and_transform_dataset(self._datasetname, self._hdf_file)
         
         distance = distance.lower() 
-        if self._ann_distance is None:
-            self._ann_distance = distance
-        elif distance != self._ann_distance:
-            self.print_log(f"ANN distance types do not match! Found: {distance} Provided: {self._ann_distance}. Distance calculations could be wrong!", logging.WARN)
-            
-        if self._idx_distance is None:
-            self._idx_distance = DistanceMaps.get(distance)
-        else:
-            idxdistance = DistanceMaps.get(distance)
-            if idxdistance.name != self._idx_distance.name:
-                self.print_log(f"ANN distance and Idx types do not match! Found: {distance} Idx: {self._idx_distance.name}. Using {self._idx_distance.name}!", logging.WARN)
-                self._ann_distance = DistanceMapsAnn.get(self._idx_distance.name)
-            
+        self._ann_distance = distance
+          
+        if self._query_distancecalc is None or not self._query_distancecalc:
+            self._query_distancecalc = self._ann_distance           
+            if self._idx_distance is None:
+                self._idx_distance = DistanceMaps.get(self._query_distancecalc)
+            else:
+                idxdistance = DistanceMaps.get(self._query_distancecalc)
+                if idxdistance.name != self._idx_distance.name:
+                    self.print_log(f"ANN distance and Idx types do not match! Found: {self._query_distancecalc} Idx: {self._idx_distance.name}. Using {self._idx_distance.name}!", logging.WARN)
+                    self._query_distancecalc = DistanceMapsAnn.get(self._idx_distance.name)
+
         if self._idx_distance is None or not self._idx_distance:
              raise ValueError(f"Distance Map '{distance}' was not found.")
          
