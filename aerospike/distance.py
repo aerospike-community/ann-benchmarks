@@ -42,6 +42,11 @@ metrics = {
         distance_valid=lambda a: True,
         type='euclidean'
     ),
+    "squared_euclidean": Metric(
+        distance=lambda a, b: pow(euclidean(a, b), 2),
+        distance_valid=lambda a: True,
+        type='squared_euclidean'
+    ),
     "angular": Metric(
         distance=lambda a, b: 1 - np.dot(a, b) / (norm(a) * norm(b)),
         distance_valid=lambda a: True,

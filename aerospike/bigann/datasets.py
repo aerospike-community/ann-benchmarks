@@ -259,6 +259,7 @@ class BillionScaleDatasetCompetitionFormat(DatasetCompetitionFormat):
 
 subset_url = "https://dl.fbaipublicfiles.com/billion-scale-ann-benchmarks/"
 
+'''
 class SSNPPDataset(BillionScaleDatasetCompetitionFormat):
     def __init__(self, nb_M=1000):
         # assert nb_M in (10, 1000)
@@ -304,6 +305,7 @@ class SSNPPDataset(BillionScaleDatasetCompetitionFormat):
         assert self.private_gt_url is not None
         fn = self.private_gt_url.split("/")[-1]   # in case it's a URL
         return range_result_read(os.path.join(self.basedir, fn))
+'''
 
 class BigANNDataset(BillionScaleDatasetCompetitionFormat):
     def __init__(self, nb_M=1000):
@@ -361,7 +363,7 @@ class Deep1BDataset(BillionScaleDatasetCompetitionFormat):
         return "euclidean"
 
 
-
+'''
 class Text2Image1B(BillionScaleDatasetCompetitionFormat):
     def __init__(self, nb_M=1000):
         self.nb_M = nb_M
@@ -395,6 +397,7 @@ class Text2Image1B(BillionScaleDatasetCompetitionFormat):
             BASEDIR + "/text2image1B/query.learn.50M.fbin", offset=8,
             dtype='float32', shape=(maxn, 200), mode='r')
         return np.array(xq_train)
+'''
 
 class MSTuringANNS(BillionScaleDatasetCompetitionFormat):
     def __init__(self, nb_M=1000):
@@ -530,6 +533,7 @@ class RandomClusteredDS(DatasetCompetitionFormat):
     def prepare(self, skip_data=False, original_size=10 ** 9):
         return super().prepare(skip_data, original_size = self.nb)
 
+'''
 class RandomRangeDS(DatasetCompetitionFormat):
     def __init__(self, nb, nq, d):
         self.nb = nb
@@ -604,6 +608,7 @@ class RandomRangeDS(DatasetCompetitionFormat):
 
     def __str__(self):
         return f"RandomRange({self.nb})"
+'''
 
 class YFCC100MDataset(DatasetCompetitionFormat):
     """ the 2023 competition """
@@ -708,7 +713,7 @@ def _gunzip_if_needed(filename):
         os.remove(filename)
         print('done.')
 
-
+'''
 class SparseDataset(DatasetCompetitionFormat):
     """ the 2023 competition
         Sparse vectors for sparse max inner product search
@@ -857,7 +862,7 @@ class SparseDataset(DatasetCompetitionFormat):
     
     def data_type(self):
         return "sparse"
-
+'''
 
 class RandomDS(DatasetCompetitionFormat):
     def __init__(self, nb, nq, d, basedir="random"):
@@ -918,7 +923,7 @@ class RandomDS(DatasetCompetitionFormat):
     def default_count(self):
         return 10
     
-
+'''
 class RandomFilterDS(RandomDS):
     def __init__(self, nb, nq, d):
         super().__init__(nb, nq, d, "random-filter")
@@ -1003,8 +1008,8 @@ class RandomFilterDS(RandomDS):
 
     def __str__(self):
         return f"RandomFilter({self.nb})"
-
-
+'''
+'''
 class OpenAIEmbedding1M(DatasetCompetitionFormat):
     def __init__(self, query_selection_random_seed):
         self.seed = query_selection_random_seed
@@ -1091,7 +1096,7 @@ class OpenAIEmbedding1M(DatasetCompetitionFormat):
 
     def short_name(self):
         return f"{self.__class__.__name__}-{self.nb}"
-
+'''
 
 
 DATASETS = {
@@ -1103,15 +1108,15 @@ DATASETS = {
     'deep-100M': lambda : Deep1BDataset(100),
     'deep-10M': lambda : Deep1BDataset(10),
 
-    'ssnpp-1B': lambda : SSNPPDataset(1000),
-    'ssnpp-10M': lambda : SSNPPDataset(10),
-    'ssnpp-100M': lambda : SSNPPDataset(100),
-    'ssnpp-1M': lambda : SSNPPDataset(1),
+    #'ssnpp-1B': lambda : SSNPPDataset(1000),
+    #'ssnpp-10M': lambda : SSNPPDataset(10),
+    #'ssnpp-100M': lambda : SSNPPDataset(100),
+    #'ssnpp-1M': lambda : SSNPPDataset(1),
 
-    'text2image-1B': lambda : Text2Image1B(),
-    'text2image-1M': lambda : Text2Image1B(1),
-    'text2image-10M': lambda : Text2Image1B(10),
-    'text2image-100M': lambda : Text2Image1B(100),
+    #'text2image-1B': lambda : Text2Image1B(),
+    #'text2image-1M': lambda : Text2Image1B(1),
+    #'text2image-10M': lambda : Text2Image1B(10),
+    #'text2image-100M': lambda : Text2Image1B(100),
 
     'msturing-1B': lambda : MSTuringANNS(1000),
     'msturing-100M': lambda : MSTuringANNS(100),
@@ -1126,24 +1131,24 @@ DATASETS = {
     'msspacev-10M': lambda : MSSPACEV1B(10),
     'msspacev-1M': lambda : MSSPACEV1B(1),
 
-    'yfcc-10M': lambda: YFCC100MDataset(),
+    #'yfcc-10M': lambda: YFCC100MDataset(),
     'yfcc-10M-unfiltered': lambda: YFCC100MDataset(filtered=False),
-    'yfcc-10M-dummy': lambda: YFCC100MDataset(dummy=True),
+    #'yfcc-10M-dummy': lambda: YFCC100MDataset(dummy=True),
     'yfcc-10M-dummy-unfiltered': lambda: YFCC100MDataset(filtered=False, dummy=True),
 
-    'sparse-small': lambda: SparseDataset("small"),
-    'sparse-1M': lambda: SparseDataset("1M"),
-    'sparse-full': lambda: SparseDataset("full"), 
+    #'sparse-small': lambda: SparseDataset("small"),
+    #'sparse-1M': lambda: SparseDataset("1M"),
+    #'sparse-full': lambda: SparseDataset("full"), 
 
     'random-xs': lambda : RandomDS(10000, 1000, 20),
     'random-s': lambda : RandomDS(100000, 1000, 50),
 
     'random-xs-clustered': lambda: RandomClusteredDS(),
 
-    'random-range-xs': lambda : RandomRangeDS(10000, 1000, 20),
-    'random-range-s': lambda : RandomRangeDS(100000, 1000, 50),
+    #'random-range-xs': lambda : RandomRangeDS(10000, 1000, 20),
+    #'random-range-s': lambda : RandomRangeDS(100000, 1000, 50),
 
-    'random-filter-s': lambda : RandomFilterDS(100000, 1000, 50),
+    #'random-filter-s': lambda : RandomFilterDS(100000, 1000, 50),
 
-    'openai-embedding-1M': lambda: OpenAIEmbedding1M(93652),
+    #'openai-embedding-1M': lambda: OpenAIEmbedding1M(93652),
 }
