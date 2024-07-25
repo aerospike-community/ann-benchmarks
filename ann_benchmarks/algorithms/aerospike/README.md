@@ -17,7 +17,7 @@
 
 Below are the Environmental Variables:
 
--   PROXIMUS_LOGLEVEL -- The Vector Client API's Log Level. Defaults "WARNING"
+-   AVS_LOGLEVEL -- The Vector Client API's Log Level. Defaults "WARNING"
     -   Possible Values:
     -   CRITICAL
     -   FATAL
@@ -30,12 +30,12 @@ Below are the Environmental Variables:
 
         Note: The logging file is determined by "APP_LOGFILE"
 
--   PROXIMUS_HOST -- The Proximus Server's Address. Defaults to "localhost"
--   PROXIMUS_PORT -- The Proximus Server's Port. Defaults to 5000
--   PROXIMUS_VERIFY_TLS -- A Boolean value to determine if TLS connection is required. Defaults to True.
--   PROXIMUS_USELOADBALANCER -- The Proximus Server's Address is a Load Balancer. Default False.
--   PROXIMUS_NAMESPACE -- The Vector's Namespace. Defaults to "test"
--   PROXIMUS_SET -- The Vector's Set name. Defaults to "ANN-data"
+-   AVS_HOST -- The AVS Server's Address. Defaults to "localhost"
+-   AVS_PORT -- The AVS Server's Port. Defaults to 5000
+-   AVS_VERIFY_TLS -- A Boolean value to determine if TLS connection is required. Defaults to True.
+-   AVS_USELOADBALANCER -- The AVS Server's Address is a Load Balancer. Default False.
+-   AVS_NAMESPACE -- The Vector's Namespace. Defaults to "test"
+-   AVS_SET -- The Vector's Set name. Defaults to "ANN-data"
 
     This behavior is determined by the "uniqueSetIdxName" argument defined in the config.yml file.
 
@@ -44,7 +44,7 @@ Below are the Environmental Variables:
 The name has the following parts:
 
 ```
-{PROXIMUS_SET}_{ANN Distance Type}_{Proximus Idx Type}_{Dimension}_{hnsw m}_{hnsw ef construction}_{hnsw ef}
+{AVS_SET}_{ANN Distance Type}_{AVS Idx Type}_{Dimension}_{hnsw m}_{hnsw ef construction}_{hnsw ef}
 ```
 
 Example:
@@ -54,7 +54,7 @@ ANN-data_angular_COSINE_20_16_100_100
 If "uniqueSetIdxName" is false, the Set name is as follows:
 
 ```
-{PROXIMUS_SET}__{ANN Distance Type}_{Proximus Idx Type}
+{AVS_SET}__{ANN Distance Type}_{AVS Idx Type}
 ```
 
 Example:
@@ -94,7 +94,7 @@ When running in a docker container, logging is disabled.
     -   \< 0 -- All records are upserted, concurrently, and the app will only wait for the upsert completion before waiting for index completion.
     -   0 or 1 -- One record is upserted at a time (sync)
     -   \> 1 -- The number of records upserted, concurrently (async), before the app waits for the upserts to complete.
--   APP_PINGPROXIMUS -- Checks to determine if the Proximus server is reachable via ping. Default is False.
+-   APP_PINGAVS -- Checks to determine if the AVS server is reachable via ping. Default is False.
 -   APP_CHECKRESULT -- Checks the Vector Search results for failed results or Zero Distance. Default is True
 
     Note: This value is always false if running in a docker container.
@@ -128,7 +128,7 @@ float:
 #A collection of HnswParams where each param is ran as a separate ran for this Idx Type. This is required and must have at least one item.
           [{m: 8, ef_construction: 64, ef: 8},
             {m: 16, ef_construction: 128, ef: 8} ],
-#Unique Set/Index Name (optional, default True). See the “PROXIMUS_SET” environment variable above.
+#Unique Set/Index Name (optional, default True). See the “AVS_SET” environment variable above.
           [True], 
 #True to Drop Idx and Re-Populate, optional default true. See “APP_DROP_IDX” environment variable above.
           [True],

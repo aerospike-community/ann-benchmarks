@@ -348,12 +348,11 @@ The Vector's Search Params (HnswParams) as a Json value used to obtain the neigh
 
 The Bin Name that represents the Primary Key for a record. If not provided the Aerospike PK will try to be used, if the PK value is returned.
 
-If the Aerospike PK is not a value (digest), PK array will not be part of the HDF dataset. (default: \_proximus_uk_)
+If the Aerospike PK is not a value (digest), PK array will not be part of the HDF dataset. (default: \_avs_uk_)
 
 \--records LIMIT
 
-The number of records (PKs) returned from the application Aerospike Set. If -1, all records are returned from the set. 
-(default: -1)
+The number of records (PKs) returned from the application Aerospike Set. If -1, all records are returned from the set. (default: -1)
 
 \-n NEIGHBORS, --neighbors NEIGHBORS
 
@@ -430,6 +429,82 @@ The Logging level
 -   vector_distance -- The Aerospike distance type (VectorDistanceMetric)
 -   hnsw -- The hnsw parameters defined when the index was created
 
+# Big ANN Datasets
+
+You can create a HDF5 file that can be used by the ANN framework or “Standalone ANN”, The Big ANN datasets are in a different format than the “standard” ANN HDF5 file.
+
+To convert from a Big ANN format to an ANN HDF5 file you must perform these two steps:
+
+1.  Call the bigann_download.py program to download the Big ANN files
+2.  Call bigann_convert_hdf.py that will convert from the Big ANN files to the HDF5 file
+
+## bigann_download
+
+This will download the Big ANN dataset files and place the files into the default “data” folder where the dataset name will be a sub-folder within this folder. **This requires the following applications installed in your environment:**
+
+-   **axel**
+-   **azcopy**
+
+Below are the arguments:
+
+-   \--dataset name  
+    You can find more information about the Big ANN datasets [here](https://big-ann-benchmarks.com/neurips23.html). Name is:
+    -   'bigann-1B'
+    -   'bigann-100M'
+    -   'bigann-10M'
+    -   'deep-1B'
+    -   'deep-100M'
+    -   'deep-10M'
+    -   'ssnpp-1B'
+    -   'ssnpp-10M'
+    -   'ssnpp-100M'
+    -   'ssnpp-1M'
+    -   'text2image-1B'
+    -   'text2image-1M'
+    -   'text2image-10M'
+    -   'text2image-100M'
+    -   'msturing-1B'
+    -   'msturing-100M'
+    -   'msturing-10M'
+    -   'msturing-1M'
+    -   'msturing-10M-clustered'
+    -   'msturing-30M-clustered'
+    -   'msspacev-1B' 'msspacev-100M'
+    -   'msspacev-10M' 'msspacev-1M'
+    -   'yfcc-10M' 'yfcc-10M-unfiltered'
+    -   'yfcc-10M-dummy'
+    -   'yfcc-10M-dummy-unfiltered'
+    -   'sparse-small'
+    -   'sparse-1M'
+    -   'sparse-full'
+    -   'random-xs'
+    -   'random-s'
+    -   'random-xs-clustered'
+    -   'random-range-xs'
+    -   'random-range-s'
+    -   'random-filter-s'
+    -   'openai-embedding-1M'
+
+## bigann_convert_hdf
+
+This will convert a previously downloaded Big ANN dataset into the standard ANN HDF5 file.
+
+The arguments are:
+
+-   \--dataset name – The Big ANN dataset name as defined and download from [bigann_download](#bigann_download).
+-   \--hdf HDFFILE – The name of the HDF5 file that will be created in the “data” folder. This file will have the following attributes:
+    -   dimension – The dimensions of the training vector as defined by the Big ANN dataset
+    -   distance – The distance type
+    -   defaultsearchcount-- The default search count as defined by Big ANN
+    -   point_type – The point type
+    -   metrictype– The metric type used to calculate distance. Currently only support “KNN”. This is associated to the “search type” in Big ANN.
+    -   sourcedataset – The Big ANN dataset name
+    -   type – Always "dense"
+    -   distances – A collection of vectors and shape of the test results distances as defined in the Big ANN dataset
+    -   neighbors -- A collection of vectors and shape of the test results neighbors as defined in the Big ANN dataset
+    -   test -- A vector and shape of the test vectors used to obtain the results as defined in the Big ANN dataset
+    -   train -- A vector and shape of the training vectors used to by training to query the DB
+
 # Prometheus
 
 The module outputs certain meters to Prometheus. They are:
@@ -455,12 +530,28 @@ The module outputs certain meters to Prometheus. They are:
         -   `Paused – paused due to resource exhausted`
         -   `Running - Populating`
         -   `Idle – before population, after, or after waiting…`
+        -   Collecting HDF – Obtaining information from the HDF file
+        -   AVS Status – Connecting to the AVS server and obtaining index information
+        -   Query – Performing a Query action
         -   `Done – Population/Wait done`
     -   `"action” – If importing (populating) or querying`
     -   "remainingRecs" – The current number of records that have not been populated
     -   "remainingquerynbrs” - The total number of queries (includes all runs) that have not been executed
     -   "hnswparams" -- The Vector Index's HNSW params
-    -   "queryef" -- The query's "ef" value 
+    -   "queryef" -- The query's "ef" value
+    -   “popresrcevt" – during population, the resource exhausted event handling. Values are:
+        -   Wait Idx – Wait for Index to Complete before proceeding
+        -   Sleep N – Sleep N seconds until proceeding
+        -   Exception – Rethrow the resource exhausted exception
+    -   "popconcurrent” – during population the concurrency action of the upserts. Values are:
+        -   All – All records are upserted, concurrently
+        -   Concurrent N – Records are upseted N records concurrently, at a time. Once the records are submitted, the application waits for server to respond before the next N records are submitted.
+        -   Single – One record is submitted and waits for the sever upsert response
+        -   Disabled – Population is disabled
+    -   "popwait" – The action taken once all records are upserted into the DB. Values are:
+        -   Wait for Completion – Wait for the server to acknowledge that all upsets are committed to the database.
+        -   No Wait – The application doesn’t wait for acknowledgement and eventually the upserts will be committed.
+    -   "idxstate" – Provides if the index already existed, newly created, or dropped and re-created.
 -   `aerospike.hdf.populate Current record rate that have been upserted. Defined as a counter. Attributes:`
     -   `"type" -- upsert`
     -   `"ns" -- Namespace`
