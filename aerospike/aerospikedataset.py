@@ -95,7 +95,7 @@ class AerospikeDS():
             If not provided the Aerospike PK will try to be used if the PK value is returned.
             If the Aerospike PK is not a value (digest), PK array will not be  part of the HDF dataset (None).
             ''',
-            default="_proximus_uk_"
+            default="_avs_uk_"
         )
         parser.add_argument(
             "--records",
