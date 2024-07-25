@@ -78,12 +78,7 @@ class BaseAerospike(object):
             '-l', "--vectorloadbalancer",            
             help="Use Vector's DB Load Balancer",
             action='store_true'
-        )
-        parser.add_argument(
-            '-T', "--vectortls",            
-            help="Use TLS to connect to the Vector DB Server",
-            action='store_true'
-        )                    
+        )                          
         parser.add_argument(
             '-L', "--logfile",
             metavar="LOG",
@@ -139,18 +134,17 @@ class BaseAerospike(object):
         self._prometheus_init(runtimeArgs)
         
         self._port = runtimeArgs.vectorport
-        self._verifyTLS = runtimeArgs.vectortls
         
         if runtimeArgs.hosts is None or len(runtimeArgs.hosts) == 0:            
-            self._host = [vectorTypes.HostPort(host=runtimeArgs.host,port=self._port,is_tls=self._verifyTLS)]
+            self._host = [vectorTypes.HostPort(host=runtimeArgs.host,port=self._port)]
         else:
             self._host = []
             for pos, host in enumerate(runtimeArgs.hosts):
                 parts = host.split(':')
                 if len(parts) == 1:
-                    self._host.append(vectorTypes.HostPort(host=host,port=self._port,is_tls=self._verifyTLS))
+                    self._host.append(vectorTypes.HostPort(host=host,port=self._port))
                 elif len(parts) == 2:
-                    self._host.append(vectorTypes.HostPort(host=parts[0],port=parts[1],is_tls=self._verifyTLS))
+                    self._host.append(vectorTypes.HostPort(host=parts[0],port=parts[1]))
                     
         self._listern = None          
         self._useloadbalancer = runtimeArgs.vectorloadbalancer        

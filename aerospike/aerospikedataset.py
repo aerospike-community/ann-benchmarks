@@ -51,12 +51,7 @@ class AerospikeDS():
             '-l', "--vectorloadbalancer",            
             help="Use Vector's DB Load Balancer",
             action='store_true'
-        )
-        parser.add_argument(
-            '-T', "--vectortls",            
-            help="Use TLS to connect to the Vector DB Server",
-            action='store_true'
-        )
+        )        
         parser.add_argument(
             "--hdf",
             metavar="HDFFILE",
@@ -184,9 +179,9 @@ class AerospikeDS():
         for pos, host in enumerate(runtimeArgs.vectorhosts):
             parts = host.split(':')
             if len(parts) == 1:
-                self._vector_hosts.append(vectorTypes.HostPort(host=host,port=5000,is_tls=bool(runtimeArgs.vectortls)))
+                self._vector_hosts.append(vectorTypes.HostPort(host=host,port=5000))
             elif len(parts) == 2:
-                self._vector_hosts.append(vectorTypes.HostPort(host=parts[0],port=int(parts[1]),is_tls=bool(runtimeArgs.vectortls)))
+                self._vector_hosts.append(vectorTypes.HostPort(host=parts[0],port=int(parts[1])))
 
         self._as_namespace : str = None
         self._as_set : str = None
