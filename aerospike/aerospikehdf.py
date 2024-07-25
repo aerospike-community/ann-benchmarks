@@ -706,7 +706,8 @@ class Aerospike(BaseAerospike):
             f.attrs["dataset"] = self._datasetname
             if self._hdf_file is not None:
                 f.attrs["query_hdf"] = self._hdf_file
-            f.attrs["distance"] = self._ann_distance
+            f.attrs["distance"] = self._query_distancecalc
+            f.attrs["distance_ann"] = self._ann_distance
             f.attrs["distance_aerospike"] = self._idx_distance.name
             f.attrs["hnsw"] = self.hnswstr()
             

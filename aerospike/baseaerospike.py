@@ -395,7 +395,7 @@ class BaseAerospike(object):
                                                 "popconcurrent": concurrentevt,
                                                 "popwait" : waitevt,
                                                 "idxstate": self._idx_state,
-                                                "qrydistancecalc": self._ann_distance if self._query_distancecalc is None else self._query_distancecalc
+                                                "querydistance": self._ann_distance if self._query_distancecalc is None else self._query_distancecalc
                                                 })
         
     def _prometheus_heartbeat(self) -> None:

@@ -163,6 +163,8 @@ Upon exist, the module will sleep ensuring all Prometheus events are captured (d
 
 This module will query using the ANN neighbor query vector defined in the ANN dataset that was downloaded and populated using [hdf_import.py](#hdf_importpy).
 
+If the dataset is an ANN “Euclidean”, the Aerospike returned distances are converted to match the ANN Euclidean distances for proper recall. This behavior can be overridden by the “dontadustdistance” switch.
+
 You can obtain a list of arguments by running:
 
 ```
@@ -267,6 +269,19 @@ Determines how recall is calculated. Defaults to “KNN”. Possible values are:
 -   epsilon -- Epsilon 0.01 Recall
 -   largeepsilon -- Epsilon 0.1 Recall
 -   rel -- Relative Error
+
+\--distancecalc TYPE
+
+If provided, this will override the ANN distance type as defined in the dataset. The default is the ANN defined distance type. Values can be:
+
+-   hamming
+-   jaccard
+-   euclidean
+-   squared_euclidean
+-   angular
+
+\--dontadustdistance  
+If provided, the ANN default distance formula is always used regardless of the ANN or “distancecalc” values.
 
 \-L LOG, --logfile LOG
 
@@ -455,14 +470,6 @@ Below are the arguments:
     -   'deep-1B'
     -   'deep-100M'
     -   'deep-10M'
-    -   'ssnpp-1B'
-    -   'ssnpp-10M'
-    -   'ssnpp-100M'
-    -   'ssnpp-1M'
-    -   'text2image-1B'
-    -   'text2image-1M'
-    -   'text2image-10M'
-    -   'text2image-100M'
     -   'msturing-1B'
     -   'msturing-100M'
     -   'msturing-10M'
@@ -472,18 +479,10 @@ Below are the arguments:
     -   'msspacev-1B' 'msspacev-100M'
     -   'msspacev-10M' 'msspacev-1M'
     -   'yfcc-10M' 'yfcc-10M-unfiltered'
-    -   'yfcc-10M-dummy'
     -   'yfcc-10M-dummy-unfiltered'
-    -   'sparse-small'
-    -   'sparse-1M'
-    -   'sparse-full'
     -   'random-xs'
     -   'random-s'
     -   'random-xs-clustered'
-    -   'random-range-xs'
-    -   'random-range-s'
-    -   'random-filter-s'
-    -   'openai-embedding-1M'
 
 ## bigann_convert_hdf
 
@@ -504,6 +503,7 @@ The arguments are:
     -   neighbors -- A collection of vectors and shape of the test results neighbors as defined in the Big ANN dataset
     -   test -- A vector and shape of the test vectors used to obtain the results as defined in the Big ANN dataset
     -   train -- A vector and shape of the training vectors used to by training to query the DB
+-   \-- distancesquareeuclidean – If the Big ANN dataset is a Squared Euclidean distance type. This switch should be used so that the distances are properly converted to work with the ANN framework. If this switch is not provided the ANN will compute the incorrect Recall value.
 
 # Prometheus
 

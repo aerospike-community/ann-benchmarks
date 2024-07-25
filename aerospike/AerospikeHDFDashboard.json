@@ -752,8 +752,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -1453,7 +1452,6 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "axisWidth": 60,
             "barAlignment": 0,
             "drawStyle": "line",
             "fillOpacity": 0,
@@ -2083,7 +2081,7 @@
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": false,
-          "expr": "label_join(aerospike_hdf_heartbeat{idx=~\"$idxname\", instance=~\"$client\", idxns=~\"$idxns\"}, \"recalltype\", \"-\", \"anndist\",\"querymetric\")",
+          "expr": "label_join(aerospike_hdf_heartbeat{idx=~\"$idxname\", instance=~\"$client\", idxns=~\"$idxns\"}, \"recalltype\", \"-\", \"querydistance\",\"querymetric\")",
           "format": "table",
           "fullMetaSearch": false,
           "hide": false,
@@ -2751,7 +2749,7 @@
     ]
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {
@@ -2782,6 +2780,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 24,
+  "version": 25,
   "weekStart": ""
 }
