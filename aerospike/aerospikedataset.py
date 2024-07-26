@@ -271,6 +271,8 @@ class AerospikeDS():
         indexInfo = [(index if index["id"]["namespace"] == self._vector_namespace
                             and index["id"]["name"] == self._vector_name else None)
                         for index in existingIndexes]
+        if all(v is None for v in indexInfo):
+            return None
         return next(i for i in indexInfo if i is not None)
     
     async def populate_vector_info(self) -> None:

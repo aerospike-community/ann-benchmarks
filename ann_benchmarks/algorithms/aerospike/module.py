@@ -149,13 +149,13 @@ class Aerospike(BaseANN):
             return 'docker' in ifh.read()
         
     @staticmethod
-    def set_hnsw_params_attrs(__obj :object, __dict: dict) -> object:
+    def SetHnswParamsAttrs(__obj :object, __dict: dict) -> object:
         for key in __dict: 
             if key == 'batching_params':
                 setattr(
                     __obj,
                     key,
-                    Aerospike.set_hnsw_params_attrs(
+                    Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswBatchingParams(),
                             __dict[key],
                     )
@@ -164,7 +164,7 @@ class Aerospike(BaseANN):
                 setattr(
                     __obj,
                     key,
-                    Aerospike.set_hnsw_params_attrs(
+                    Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswCachingParams(),
                             __dict[key],
                     )
@@ -173,7 +173,7 @@ class Aerospike(BaseANN):
                 setattr(
                     __obj,
                     key,
-                    Aerospike.set_hnsw_params_attrs(
+                    Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswHealerParams(),
                             __dict[key],
                     )
@@ -182,11 +182,15 @@ class Aerospike(BaseANN):
                 setattr(
                     __obj,
                     key,
-                    Aerospike.set_hnsw_params_attrs(
+                    Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswIndexMergeParams(),
                             __dict[key],
                     )
                 )
+            elif (type(__dict[key]) == str
+                    and (__dict[key].lower() == "none"
+                        or __dict[key].lower() == "null")):
+                setattr(__obj, key, None)
             else:
                 setattr(__obj, key, __dict[key])
         return __obj
@@ -345,7 +349,7 @@ class Aerospike(BaseANN):
         if populateIdx:
             self._puasePuts = False
             Aerospike.PrintLog(f'Populating Index {self._namespace}.{self._idx_name}')
-            async with vectorASyncClient(seeds=vectorTypes.HostPort(host=self._host, port=self._port, is_tls=self._verifyTLS),
+            async with vectorASyncClient(seeds=vectorTypes.HostPort(host=self._host, port=self._port),
                                             listener_name=self._listern,
                                             is_loadbalancer=self._isloadbalancer
                         ) as client:
