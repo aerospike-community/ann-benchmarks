@@ -22,6 +22,7 @@ from opentelemetry.util.types import Attributes
 
 from aerospike_vector_search import types as vectorTypes
 from metrics import all_metrics as METRICS
+from helpers import set_hnsw_params_attrs, hnswstr
 
 _distanceNameToAerospikeType: Dict[str, vectorTypes.VectorDistanceMetric] = {
     'angular': vectorTypes.VectorDistanceMetric.COSINE,
@@ -275,22 +276,6 @@ class BaseAerospike(object):
             else:
                 loggerASClient.setLevel(logging.getLevelName(self._asLogLevel))       
 
-    @staticmethod
-    def set_hnsw_params_attrs(__obj :object, __dict: dict) -> object:
-        for key in __dict: 
-            if key == 'batching_params':
-                setattr(
-                    __obj,
-                    key,
-                    BaseAerospike.set_hnsw_params_attrs(
-                            vectorTypes.HnswBatchingParams(),
-                            __dict[key],
-                    )
-                )
-            else:
-                setattr(__obj, key, __dict[key])
-        return __obj
-    
     def prometheus_status(self, done:bool = False) -> None:
         
         self.__cnthb__ += 1
@@ -383,7 +368,7 @@ class BaseAerospike(object):
                                                 "querymetricvalue": self._query_metric_value,
                                                 "querymetricaerospikevalue": self._aerospike_metric_value,
                                                 "querymetricbigvalue": self._query_metric_big_value,
-                                                "hnswparams": self.hnswstr(),
+                                                "hnswparams": hnswstr(self._idx_hnswparams),
                                                 "queryef": queryef,
                                                 "popresrcevt": resourceevt,
                                                 "popconcurrent": concurrentevt,
@@ -458,18 +443,9 @@ class BaseAerospike(object):
     
     def query(self, query: np.array, limit: int) -> List[vectorTypes.Neighbor]:
         pass
-    
-    def hnswstr(self) -> str:
-        if self._idx_hnswparams is None:
-            return ''
-        if self._idx_hnswparams.batching_params is None:
-            batchingparams = ''
-        else:
-            batchingparams = f"maxrecs:{self._idx_hnswparams.batching_params.max_records}, interval:{self._idx_hnswparams.batching_params.interval}"
-        return f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}"
-            
+       
     def basestring(self) -> str:
-        hnswparams = self.hnswstr()
+        hnswparams = hnswstr(self._idx_hnswparams)
         
         if self._query_hnswparams is None:
             searchhnswparams = ""

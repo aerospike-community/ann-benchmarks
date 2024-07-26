@@ -145,7 +145,8 @@
             "args": [
                     "--dataset", "glove-100-angular",
                     "--idxdrop",
-                    "--concurrency", "10000"                    
+                    "--concurrency", "10000",
+                    "--indexparams", "{\"m\":16, \"efconst\":100, \"ef\":100, \"batching_params\":{\"maxrecs\":10000, \"interval\":10000}, \"caching_params\":{\"max_entries\":\"None\", \"expiry\":\"None\"}, \"healer_params\":{\"max_scan_rate_per_node\":\"None\", \"max_scan_page_size\":\"None\", \"re_index_percent\": \"None\", \"schedule_delay\": \"None\", \"parallelism\": \"None\"}, \"merge_params\":{\"parallelism\": \"None\"}}"
                     ],
             "console": "integratedTerminal"
         },
@@ -242,9 +243,9 @@
             "args": [
                     "--dataset", "gist-960-euclidean",
                     "--logfile", "./hdfquery-gist1.log",                    
-                    "-r", "10",
+                    "-r", "1",
                     "--limit", "10",                    
-                    "--idxname", "ANN-data_euclidean_SQUARED_EUCLIDEAN_960_16_100_100_Idx"
+                    "--idxname", "gist-960-euclidean_Idx"
                     ],
             "console": "integratedTerminal"
         },

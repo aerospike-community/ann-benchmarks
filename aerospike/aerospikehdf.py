@@ -19,6 +19,7 @@ from baseaerospike import BaseAerospike, _distanceNameToAerospikeType as Distanc
 from datasets import DATASETS, load_and_transform_dataset, get_dataset_fn
 from metrics import all_metrics as METRICS, DummyMetric
 from distance import metrics as DISTANCES, Metric as DistanceMetric
+from helpers import set_hnsw_params_attrs, hnswstr
 
 logger = logging.getLogger(__name__)
 
@@ -288,7 +289,7 @@ class Aerospike(BaseAerospike):
             if runtimeArgs.indexparams is None or len(runtimeArgs.indexparams) == 0:
                 self._idx_hnswparams = None
             else:
-                self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(
+                self._idx_hnswparams = set_hnsw_params_attrs(
                                             vectorTypes.HnswParams(),
                                             runtimeArgs.indexparams
                                         )                        
@@ -318,7 +319,7 @@ class Aerospike(BaseAerospike):
             if runtimeArgs.searchparams is None or len(runtimeArgs.searchparams) == 0:
                 self._query_hnswparams = None
             else:
-                self._query_hnswparams = BaseAerospike.set_hnsw_params_attrs(
+                self._query_hnswparams = set_hnsw_params_attrs(
                                             vectorTypes.HnswSearchParams(),
                                             runtimeArgs.searchparams
                                         )
@@ -588,7 +589,7 @@ class Aerospike(BaseAerospike):
                 #If it is a fresh run, this list will not contain the index and we know it needs to be dropped.
                 if self._idx_name in aerospikeIdxNames:
                     self.print_log(f'Index {self._idx_name} being reused (updated)')
-                    self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(vectorTypes.HnswParams(),
+                    self._idx_hnswparams = set_hnsw_params_attrs(vectorTypes.HnswParams(),
                                                                                 idxinfo)                    
                 elif self._idx_drop:
                     await self.drop_index(adminClient)
@@ -596,7 +597,7 @@ class Aerospike(BaseAerospike):
                     self._idx_state = 'Dropped-Created'
                 else:
                     self.print_log(f'Index {self._idx_namespace}.{self._idx_name} being updated')
-                    self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(vectorTypes.HnswParams(),
+                    self._idx_hnswparams = set_hnsw_params_attrs(vectorTypes.HnswParams(),
                                                                                 idxinfo)
             else:
                 await self.create_index(adminClient)
@@ -704,7 +705,7 @@ class Aerospike(BaseAerospike):
             f.attrs["distance"] = self._query_distancecalc
             f.attrs["distance_ann"] = self._ann_distance
             f.attrs["distance_aerospike"] = self._idx_distance.name
-            f.attrs["hnsw"] = self.hnswstr()
+            f.attrs["hnsw"] = hnswstr(self._idx_hnswparams)
             
             if self._query_hnswparams is None:
                 queryef = '' if self._idx_hnswparams is None else str(self._idx_hnswparams.ef)
@@ -781,10 +782,9 @@ class Aerospike(BaseAerospike):
             
             self._idx_state = 'Exists'
             self.print_log(f'Found Index {self._idx_namespace}.{self._idx_name} with Info {idxinfo}')
-            self._idx_hnswparams = BaseAerospike.set_hnsw_params_attrs(vectorTypes.HnswParams(),
-                                                                        idxinfo['hnsw_params'])
+            self._idx_hnswparams = idxinfo['hnsw_params']
             self._idx_binName = idxinfo["field"]
-            self._setName = idxinfo["setFilter"]
+            #self._setName = idxinfo["setFilter"]
             self._namespace = idxinfo["id"]["namespace"]
             if self._query_hnswparams is None and self._idx_hnswparams is not None:           
                 self._query_hnswparams = vectorTypes.HnswSearchParams(ef=self._idx_hnswparams.ef)

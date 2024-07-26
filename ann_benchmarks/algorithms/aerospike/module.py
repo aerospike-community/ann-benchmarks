@@ -149,15 +149,42 @@ class Aerospike(BaseANN):
             return 'docker' in ifh.read()
         
     @staticmethod
-    def SetHnswParamsAttrs(__obj :object, __dict: dict) -> object:
+    def set_hnsw_params_attrs(__obj :object, __dict: dict) -> object:
         for key in __dict: 
             if key == 'batching_params':
                 setattr(
                     __obj,
                     key,
-                    Aerospike.SetHnswParamsAttrs(
+                    Aerospike.set_hnsw_params_attrs(
                             vectorTypes.HnswBatchingParams(),
-                            __dict[key].asdict()
+                            __dict[key],
+                    )
+                )
+            elif key == 'caching_params':
+                setattr(
+                    __obj,
+                    key,
+                    Aerospike.set_hnsw_params_attrs(
+                            vectorTypes.HnswCachingParams(),
+                            __dict[key],
+                    )
+                )
+            elif key == 'healer_params':
+                setattr(
+                    __obj,
+                    key,
+                    Aerospike.set_hnsw_params_attrs(
+                            vectorTypes.HnswHealerParams(),
+                            __dict[key],
+                    )
+                )
+            elif key == 'merge_params':
+                setattr(
+                    __obj,
+                    key,
+                    Aerospike.set_hnsw_params_attrs(
+                            vectorTypes.HnswIndexMergeParams(),
+                            __dict[key],
                     )
                 )
             else:
