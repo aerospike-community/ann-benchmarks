@@ -21,6 +21,8 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.util.types import Attributes
 
 from aerospike_vector_search import types as vectorTypes
+from aerospike_vector_search import AdminClient as vectorAdminClient
+
 from metrics import all_metrics as METRICS
 from helpers import set_hnsw_params_attrs, hnswstr
 
@@ -115,6 +117,13 @@ class BaseAerospike(object):
             type=int
         )
         parser.add_argument(
+            "--vectorqueuehb",
+            metavar="SECS",           
+            help="Vector Queue Depth Monitor Heart Beat in secs",
+            default=30,
+            type=int
+        )
+        parser.add_argument(
             "--exitdelay",
             metavar="wait",           
             help="upon exist application will sleep",
@@ -190,10 +199,14 @@ class BaseAerospike(object):
         self._canchecknbors : bool = False
         self._query_distancecalc : str = None
         
+        self._vector_queue_hb : int = runtimeArgs.vectorqueuehb
+        self._vector_queue_thread : Thread = None
+        
         self._logging_init(runtimeArgs, logger)
         
         self._heartbeat_stage = 0
-        self._start_prometheus_heartbeat()        
+        self._start_prometheus_heartbeat()
+        self._start_vector_queue_heartbeat()
 
     def _prometheus_init(self, runtimeArgs: argparse.Namespace) -> None:
         
@@ -237,6 +250,11 @@ class BaseAerospike(object):
                                                             description="The amount of time it took t drop the idx")
         
         self._prometheus_heartbeat_gauge = self._meter.create_gauge("aerospike.hdf.heartbeat")
+        
+        self._vector_queue_gauge = self._meter.create_gauge("aerospike.hdf.vectorqueuedepth", 
+                                                                unit="1",
+                                                                description="Vector Queue Depth"
+                                                      )
         
         self._prometheus_hb : int = runtimeArgs.prometheushb
         
@@ -386,7 +404,8 @@ class BaseAerospike(object):
         while self._prometheus_hb > 0:
             i += 1
             self.prometheus_status()
-            sleep(self._prometheus_hb)
+            if self._prometheus_hb > 0:
+                sleep(self._prometheus_hb)
         self._logger.debug(f"Heartbeating Ended")
             
     def _start_prometheus_heartbeat(self) -> None:
@@ -394,7 +413,52 @@ class BaseAerospike(object):
             self._logger.info(f"Starting Heartbeat at {self._prometheus_hb} secs")
             self._heartbeat_thread = Thread(target = self._prometheus_heartbeat)
             self._heartbeat_thread.start()
+      
+    def vector_queue_status(self, adminclient : vectorAdminClient, done:bool = False) -> None:
+        
+        if self._idx_name is None or self._idx_namespace is None:
+            return
+        
+        try:
+            if done:
+                depth = 0
+            else:
+                depth = adminclient.index_get_status(namespace=self._idx_namespace,
+                                                        name=self._idx_name,
+                                                        timeout=2)
+            if depth is not None:
+                self._vector_queue_gauge.set(depth,
+                                            {"ns": '' if self._namespace is None else self._namespace,
+                                                "set": '' if self._setName is None else self._setName,
+                                                "idxns": self._idx_namespace,
+                                                "idx": self._idx_name
+                                                })
+        except Exception as e:
+            self._logger.exception(f"index_get_status failed ns={self._idx_namespace}, name={self._idx_name}")
+      
+    def _vector_queue_heartbeat(self) -> None:
+        from time import sleep
+        
+        with vectorAdminClient(seeds=self._host,
+                                listener_name=self._listern,
+                                is_loadbalancer=self._useloadbalancer
+            ) as adminClient:
+            self._logger.debug(f"Vector Heartbeating Start")
+            i : int = 0        
+            while self._vector_queue_hb > 0:
+                i += 1
+                self.vector_queue_status(adminClient)
+                if self._vector_queue_hb > 0:
+                    sleep(self._vector_queue_hb)
+            self.vector_queue_status(adminClient, True)
+        self._logger.debug(f"Vector Heartbeating Ended")
             
+    def _start_vector_queue_heartbeat(self) -> None:
+        if self._vector_queue_thread is None and self._vector_queue_hb > 0:
+            self._logger.info(f"Starting Vector Heartbeat at {self._vector_queue_hb} secs")
+            self._vector_queue_thread = Thread(target = self._vector_queue_heartbeat)
+            self._vector_queue_thread.start()
+
     def flush_log(self) -> None:
         if(self._logger.handlers is not None):
             for handler in self._logger.handlers:
@@ -429,6 +493,12 @@ class BaseAerospike(object):
             self._prometheus_hb = 0
             self._heartbeat_thread.join(timeout=hbt+1)
             self._logger.info(f"Shutdown Heartbeat...")
+            
+        if self._vector_queue_thread is not None:
+            hbt = self._vector_queue_hb
+            self._vector_queue_hb = 0
+            self._vector_queue_thread.join(timeout=hbt+1)
+            self._logger.info(f"Shutdown Vector Heartbeat...")
                         
         self._prometheus_meter_provider.force_flush(1000)
         self._prometheus_metric_reader.force_flush(1000)
