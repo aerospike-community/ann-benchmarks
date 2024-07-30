@@ -418,9 +418,11 @@ class Aerospike(BaseAerospike):
         self._idx_state = 'Created'
 
     async def _wait_for_idx_completion(self, client: vectorASyncClient):
+        
+        self._waitidx = True        
         self._waitidx_counter.add(1, {"ns":self._idx_namespace,"idx": self._idx_name, "type":"Wait"})
+        
         try:
-            self._waitidx = True
             await client.wait_for_index_completion(namespace=self._idx_namespace,
                                                     name=self._idx_name)
         except Exception as e:
@@ -434,22 +436,47 @@ class Aerospike(BaseAerospike):
             self._waitidx = False
             
     async def _put_wait_completion_handler(self, key: int, embedding, i: int, client: vectorASyncClient, logLevel: int) -> None:
-        s = time.time()
-        await self._wait_for_idx_completion(client)                    
-        t = time.time()
-        if logLevel == logging.WARNING:
-            self.print_log(msg=f"Index Completed Time (sec) = {t - s}, Going to Reissue Puts for Idx: {self._idx_namespace}.{self._idx_name}",
+        
+        if self._idx_resource_cnt == 0:
+            self._idx_resource_cnt += 1
+            s = time.time()
+            await self._wait_for_idx_completion(client)                    
+            t = time.time()
+            if logLevel == logging.WARNING:
+                self.print_log(msg=f"Index Completed Time (sec) = {t - s}, Going to Reissue Puts for Idx: {self._idx_namespace}.{self._idx_name}",
                                 logLevel=logging.WARNING)
+            else:
+                logger.debug(msg=f"Index Completed Time (sec) = {t - s}, Going to Reissue Puts for Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}")
         else:
-            logger.debug(msg=f"Index Completed Time (sec) = {t - s}, Going to Reissue Puts for Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}")
-        await self.put_vector(key, embedding, i, client, True)
-        self._pausePuts = False
-        if logLevel == logging.WARNING:
-            self.print_log(msg=f"Resuming population for Idx: {self._idx_namespace}.{self._idx_name}",
-                                logLevel=logging.WARNING)
-        else:
-            logger.debug(msg=f"Resuming population for Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}")
+            self._idx_resource_cnt += 1
+            await asyncio.sleep(10)
             
+        try:
+            
+            #If true we need to sleep here waiting for index completion
+            # since this wasn't the task that called wait for completion
+            while self._waitidx:
+                logger.debug(msg=f"Wait for Index Completed. Sleeping until completion done for Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}")            
+                await asyncio.sleep(60)
+            
+            await self.put_vector(key, embedding, i, client, True)
+        except Exception as e:
+            print(f'\n**Exception: "{e}" **\r\n')
+            logger.exception(f"Wait for Completion for Idx Resource Exhausted Failure on Idx: {self._idx_namespace}.{self._idx_name}")
+            self.flush_log()
+            self._exception_counter.add(1, {"exception_type":e, "handled_by_user":False,"ns":self._idx_namespace,"idx":self._idx_name})            
+            raise
+        finally:
+            self._idx_resource_cnt -= 1        
+            if(self._idx_resource_cnt <= 0):
+                self._pausePuts = False
+                self._idx_resource_cnt = 0
+                if logLevel == logging.WARNING:
+                    self.print_log(msg=f"Resuming population for Idx: {self._idx_namespace}.{self._idx_name}",
+                                        logLevel=logging.WARNING)
+                else:
+                    logger.debug(msg=f"Resuming population for Count: {i}, Key: {key}, Idx: {self._idx_namespace}.{self._idx_name}")
+                    
     async def _put_wait_sleep_handler(self, key: int, embedding, i: int, client: vectorASyncClient, logLevel: int) -> None:
         
         if self._idx_resource_cnt == 0:
