@@ -125,10 +125,10 @@ class BaseAerospike(object):
             type=int
         )
         parser.add_argument(
-            "--vectorqueuehb",
+            "--vectorqueqry",
             metavar="SECS",           
-            help="Vector Queue Depth Monitor Heart Beat in secs",
-            default=30,
+            help="Vector Queue Depth Monitor Query every secs",
+            default=15,
             type=int
         )
         parser.add_argument(
@@ -210,8 +210,8 @@ class BaseAerospike(object):
         self._query_metric : dict[str,any] = None
         self._query_distancecalc : str = None
         
-        self._vector_queue_hb : int = runtimeArgs.vectorqueuehb
-        self._vector_queue_thread : Thread = None
+        self._vector_queue_qry_time : int = runtimeArgs.vectorqueqry
+        self._vector_queue_qry_thread : Thread = None
         
         self._logging_init(runtimeArgs, logger)
         
@@ -425,25 +425,25 @@ class BaseAerospike(object):
             self._heartbeat_thread = Thread(target = self._prometheus_heartbeat)
             self._heartbeat_thread.start()
       
-    def vector_queue_status(self, adminclient : vectorAdminClient, done:bool = False) -> None:
+    def vector_queue_status(self, adminclient : vectorAdminClient, queryapi:bool = True, done:bool = False) -> None:
         
         if self._idx_name is None or self._idx_namespace is None:
             return
         
         try:
             if done:
-                depth = 0
-            else:
-                depth = adminclient.index_get_status(namespace=self._idx_namespace,
+                self._vector_queue_depth = 0
+            elif queryapi:
+                self._vector_queue_depth = adminclient.index_get_status(namespace=self._idx_namespace,
                                                         name=self._idx_name,
                                                         timeout=2)
-            if depth is not None:
-                self._vector_queue_gauge.set(depth,
-                                            {"ns": '' if self._namespace is None else self._namespace,
-                                                "set": '' if self._setName is None else self._setName,
-                                                "idxns": self._idx_namespace,
-                                                "idx": self._idx_name
-                                                })
+            if self._vector_queue_depth is not None:
+                self._vector_queue_gauge.set(self._vector_queue_depth,
+                                                {"ns": '' if self._namespace is None else self._namespace,
+                                                    "set": '' if self._setName is None else self._setName,
+                                                    "idxns": self._idx_namespace,
+                                                    "idx": self._idx_name
+                                                    })
         except Exception as e:
             self._logger.exception(f"index_get_status failed ns={self._idx_namespace}, name={self._idx_name}")
       
@@ -455,20 +455,30 @@ class BaseAerospike(object):
                                 is_loadbalancer=self._useloadbalancer
             ) as adminClient:
             self._logger.debug(f"Vector Heartbeating Start")
-            i : int = 0        
-            while self._vector_queue_hb > 0:
+            i : int = 0
+            queryapicnt = round(self._vector_queue_qry_time / self._prometheus_hb)
+            queryapi:bool = True
+            self._vector_queue_depth = 0
+            while self._vector_queue_qry_time > 0:
                 i += 1
-                self.vector_queue_status(adminClient)
-                if self._vector_queue_hb > 0:
-                    sleep(self._vector_queue_hb)
+                if i >= queryapicnt:
+                    queryapi = True
+                    i = 0
+                self.vector_queue_status(adminClient,
+                                         queryapi=queryapi)
+                if self._vector_queue_qry_time > 0:
+                    sleep(self._prometheus_hb)
+                queryapi = False
             self.vector_queue_status(adminClient, True)
         self._logger.debug(f"Vector Heartbeating Ended")
             
     def _start_vector_queue_heartbeat(self) -> None:
-        if self._vector_queue_thread is None and self._vector_queue_hb > 0:
-            self._logger.info(f"Starting Vector Heartbeat at {self._vector_queue_hb} secs")
-            self._vector_queue_thread = Thread(target = self._vector_queue_heartbeat)
-            self._vector_queue_thread.start()
+        if (self._vector_queue_qry_thread is None
+                and self._vector_queue_qry_time > 0
+                and self._prometheus_hb > 0):
+            self._logger.info(f"Starting Vector Heartbeat at {self._vector_queue_qry_time} secs")
+            self._vector_queue_qry_thread = Thread(target = self._vector_queue_heartbeat)
+            self._vector_queue_qry_thread.start()
 
     def flush_log(self) -> None:
         if(self._logger.handlers is not None):
@@ -505,10 +515,10 @@ class BaseAerospike(object):
             self._heartbeat_thread.join(timeout=hbt+1)
             self._logger.info(f"Shutdown Heartbeat...")
             
-        if self._vector_queue_thread is not None:
-            hbt = self._vector_queue_hb
-            self._vector_queue_hb = 0
-            self._vector_queue_thread.join(timeout=hbt+1)
+        if self._vector_queue_qry_thread is not None:
+            hbt = self._vector_queue_qry_time
+            self._vector_queue_qry_time = 0
+            self._vector_queue_qry_thread.join(timeout=hbt+1)
             self._logger.info(f"Shutdown Vector Heartbeat...")
                         
         self._prometheus_meter_provider.force_flush(1000)
