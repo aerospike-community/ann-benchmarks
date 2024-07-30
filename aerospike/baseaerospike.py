@@ -25,6 +25,7 @@ from aerospike_vector_search import AdminClient as vectorAdminClient
 
 from metrics import all_metrics as METRICS
 from helpers import set_hnsw_params_attrs, hnswstr
+from dsiterator import DSIterator
 
 _distanceNameToAerospikeType: Dict[str, vectorTypes.VectorDistanceMetric] = {
     'angular': vectorTypes.VectorDistanceMetric.COSINE,
@@ -81,7 +82,14 @@ class BaseAerospike(object):
             '-l', "--vectorloadbalancer",            
             help="Use Vector's DB Load Balancer",
             action='store_true'
-        )                          
+        )
+        parser.add_argument(
+            "--storagethreshold",
+            metavar="MULTIPLIER",           
+            help="A storage multiplier used to determine is the dataset is consider large. 0 to try to fit everything into memory.",
+            default=4,
+            type=int
+        )
         parser.add_argument(
             '-L', "--logfile",
             metavar="LOG",
@@ -155,7 +163,11 @@ class BaseAerospike(object):
                     self._host.append(vectorTypes.HostPort(host=host,port=self._port))
                 elif len(parts) == 2:
                     self._host.append(vectorTypes.HostPort(host=parts[0],port=parts[1]))
-                    
+
+        if runtimeArgs.storagethreshold is not None:
+            from dshdfiterator import DSHDFIterator
+            DSHDFIterator.set_storage_threshold(runtimeArgs.storagethreshold)
+            
         self._listern = None          
         self._useloadbalancer = runtimeArgs.vectorloadbalancer        
         
@@ -182,9 +194,9 @@ class BaseAerospike(object):
         self._waitidx : bool = None
         self._datasetname : str = None
         self._dimensions = None
-        self._trainarray : Union[np.ndarray, List[np.ndarray]] = None
-        self._queryarray : Union[np.ndarray, List[np.ndarray]] = None
-        self._neighbors : Union[np.ndarray, List[np.ndarray]] = None
+        self._trainarray : Union[DSIterator, None] = None
+        self._queryarray : Union[DSIterator, None] = None
+        self._neighbors : Union[DSIterator, None] = None
         self._pausedPuts : bool = False
         self._heartbeat_thread : Thread = None
         self._query_nbrlimit : int = None
@@ -196,7 +208,6 @@ class BaseAerospike(object):
         self._query_metric_big_value : float = None
         self._aerospike_metric_value : float = None
         self._query_metric : dict[str,any] = None
-        self._canchecknbors : bool = False
         self._query_distancecalc : str = None
         
         self._vector_queue_hb : int = runtimeArgs.vectorqueuehb
