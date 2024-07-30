@@ -35,7 +35,7 @@ class DSHDFIterator(DSIterator):
         
         if memoryAvaiable / dssize >= storage_threshold:
              return DSArrayIterator(dataset, name, dtype)
-         
+                 
         return DSHDFIterator(dataset, name, dtype)
 
     def __init__(self, dataset : h5py.Dataset, name : str, dtype : Optional[str] = None):
@@ -47,6 +47,8 @@ class DSHDFIterator(DSIterator):
         super().__init__(self._dataset.shape,
                             name,
                             self._dataset.dtype.name)
+        
+        print(f"{self} will not be completely placed into memory but paged to save memory space.")
                 
     def __iter__(self):
         ''''''
@@ -89,5 +91,5 @@ class DSHDFIterator(DSIterator):
         return numpy.array(self._dataset, dtype=self.dtype)
     
     def __str__(self) -> str:
-        return f"DSHDFIterator{{name:{self.name}, shape:{self.shape}}}"
+        return f"DSHDFIterator{{name:{self.name}, shape:{self.shape}, large: True}}"
         
