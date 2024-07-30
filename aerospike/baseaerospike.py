@@ -450,27 +450,33 @@ class BaseAerospike(object):
     def _vector_queue_heartbeat(self) -> None:
         from time import sleep
         
-        with vectorAdminClient(seeds=self._host,
-                                listener_name=self._listern,
-                                is_loadbalancer=self._useloadbalancer
-            ) as adminClient:
-            self._logger.debug(f"Vector Heartbeating Start")
-            i : int = 0
-            queryapicnt = round(self._vector_queue_qry_time / self._prometheus_hb)
-            queryapi:bool = True
-            self._vector_queue_depth = 0
-            while self._vector_queue_qry_time > 0:
-                i += 1
-                if i >= queryapicnt:
-                    queryapi = True
-                    i = 0
-                self.vector_queue_status(adminClient,
-                                         queryapi=queryapi)
-                if self._vector_queue_qry_time > 0:
-                    sleep(self._prometheus_hb)
-                queryapi = False
-            self.vector_queue_status(adminClient, True)
-        self._logger.debug(f"Vector Heartbeating Ended")
+        try:
+            with vectorAdminClient(seeds=self._host,
+                                    listener_name=self._listern,
+                                    is_loadbalancer=self._useloadbalancer
+                ) as adminClient:
+                self._logger.debug(f"Vector Heartbeating Start")
+                i : int = 0
+                queryapicnt = round(self._vector_queue_qry_time / self._prometheus_hb)
+                queryapi:bool = True
+                self._vector_queue_depth = 0
+                while self._vector_queue_qry_time > 0:
+                    i += 1
+                    if i >= queryapicnt:
+                        queryapi = True
+                        i = 0
+                    self.vector_queue_status(adminClient,
+                                            queryapi=queryapi)
+                    if self._vector_queue_qry_time > 0:
+                        sleep(self._prometheus_hb)
+                    queryapi = False
+                self.vector_queue_status(adminClient, True)
+            self._logger.debug(f"Vector Heartbeating Ended")
+        except Exception as e:
+            self._logger.exception("Exception occurred tring to obtain Index Status")
+            self._vector_queue_qry_time = 0
+            print(f"Error: Index Status Query Failed with {e}")
+            
             
     def _start_vector_queue_heartbeat(self) -> None:
         if (self._vector_queue_qry_thread is None
