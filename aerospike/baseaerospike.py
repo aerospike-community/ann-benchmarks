@@ -426,27 +426,36 @@ class BaseAerospike(object):
             self._heartbeat_thread.start()
       
     def vector_queue_status(self, adminclient : vectorAdminClient, queryapi:bool = True, done:bool = False) -> None:
-        
+        from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
+
         if self._idx_name is None or self._idx_namespace is None:
             return
         
-        try:
-            if done:
-                self._vector_queue_depth = 0
-            elif queryapi:
+        if done:
+            self._vector_queue_depth = 0
+        elif queryapi:
+            try:                
                 self._vector_queue_depth = adminclient.index_get_status(namespace=self._idx_namespace,
                                                         name=self._idx_name,
                                                         timeout=2)
-            if self._vector_queue_depth is not None:
-                self._vector_queue_gauge.set(self._vector_queue_depth,
-                                                {"ns": '' if self._namespace is None else self._namespace,
-                                                    "set": '' if self._setName is None else self._setName,
-                                                    "idxns": self._idx_namespace,
-                                                    "idx": self._idx_name
-                                                    })
-        except Exception as e:
-            self._logger.exception(f"index_get_status failed ns={self._idx_namespace}, name={self._idx_name}")
-      
+            except vectorTypes.AVSServerError as avse:
+                    self._vector_queue_depth = None 
+                    if avse.rpc_error.code() != vectorResultCodes.StatusCode.NOT_FOUND:
+                        self._logger.exception(f"index_get_status failed ns={self._idx_namespace}, name={self._idx_name}")
+                        self._vector_queue_qry_time = 0
+            except Exception as e:
+                self._logger.exception(f"index_get_status failed ns={self._idx_namespace}, name={self._idx_name}")
+                self._vector_queue_depth = None
+                self._vector_queue_qry_time = 0
+                
+        if self._vector_queue_depth is not None:
+            self._vector_queue_gauge.set(self._vector_queue_depth,
+                                            {"ns": '' if self._namespace is None else self._namespace,
+                                                "set": '' if self._setName is None else self._setName,
+                                                "idxns": self._idx_namespace,
+                                                "idx": self._idx_name
+                                                })
+        
     def _vector_queue_heartbeat(self) -> None:
         from time import sleep
         
