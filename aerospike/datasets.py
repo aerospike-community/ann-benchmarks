@@ -7,6 +7,12 @@ import h5py
 import numpy
 from typing import Any, Callable, Dict, Tuple, Optional, List, Union
 
+from dsiterator import DSIterator
+from dshdfiterator import DSHDFIterator
+from dspkiterator import DSPKIterator
+from dssparseiterator import DSSparseIterator
+from dsarrayiterator import DSArrayIterator
+
 def download(source_url: str, destination_path: str) -> None:
     """
     Downloads a file from the provided source URL to the specified destination path
@@ -88,14 +94,14 @@ def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int
     return hdf5_file, dimension
 
 def load_and_transform_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[
-        Union[numpy.ndarray, List[numpy.ndarray]],
-        Union[numpy.ndarray, List[numpy.ndarray]],
-        Union[numpy.ndarray, List[numpy.ndarray]],
-        Union[numpy.ndarray, List[numpy.ndarray]],
+        DSIterator,
+        DSIterator,
+        DSIterator,
+        DSIterator,
         str,
         h5py.File,
         int,
-        Union[numpy.ndarray, List[numpy.ndarray], None]]:
+        DSIterator]:
     """Loads and transforms the dataset.
 
     Args:
@@ -105,24 +111,21 @@ def load_and_transform_dataset(dataset_name: str, hdfpath : str = None) -> Tuple
         Tuple: Transformed datasets.
     """    
     D, dimension = get_dataset(dataset_name, hdfpath)
-    X_train = numpy.array(D["train"])
-    X_test = numpy.array(D["test"])
     distance = D.attrs["distance"]
-
-    print(f"Got a train set of size ({X_train.shape[0]} * {dimension})")
-    print(f"Got {len(X_test)} queries")
-
+    
     train, test, neighbors, distances, primarykeys = dataset_transform(D)
-    if primarykeys is not None and primarykeys.dtype == numpy.dtype('O'):
-        primarykeys = None
+    
+    print(f"Got a train set of size ({train.shape[0]} * {dimension})")
+    print(f"Got {len(test)} queries")
+    
     return train, test, neighbors, distances, distance, D, dimension, primarykeys
 
 def dataset_transform(dataset: h5py.Dataset) -> Tuple[
-    Union[numpy.ndarray[Any, numpy.dtype[Any]], list[numpy.ndarray]],
-    Union[numpy.ndarray[Any, numpy.dtype[Any]], list[numpy.ndarray]],
-    Union[numpy.ndarray[Any, numpy.dtype[Any]]],
-    Union[numpy.ndarray[Any, numpy.dtype[Any]], list[numpy.ndarray]],
-    Union[numpy.ndarray[Any, numpy.dtype[Any]], list[numpy.ndarray], None]]:    
+    DSIterator,
+    DSIterator,
+    DSIterator,
+    DSIterator,
+    DSIterator]:    
     """
     Transforms the dataset from the HDF5 format to conventional numpy format.
 
@@ -135,25 +138,32 @@ def dataset_transform(dataset: h5py.Dataset) -> Tuple[
     Returns:
         Tuple[Union[np.ndarray, List[np.ndarray]], Union[np.ndarray, List[np.ndarray]]]: Tuple of training and testing data in conventional format.
     """
-    from distance import convert_sparse_to_list    
     
+    train_dtype = dataset.attrs.get("train_dtype", None)
+    test_dtype = dataset.attrs.get("test_dtype", None)
+    neighbors_dtype = dataset.attrs.get("neighbors_dtype", None)
+    distances_dtype = dataset.attrs.get("distances_dtype", None)
+   
     if dataset.attrs.get("type", "dense") != "sparse":
         return (
-            numpy.array(dataset["train"]),
-            numpy.array(dataset["test"]),
-            numpy.array(dataset.get("neighbors")),
-            numpy.array(dataset.get("distances")),
-            numpy.array(dataset.get("primarykeys"))
+            DSHDFIterator.determine_iterator_large(dataset, "train", train_dtype),
+            DSArrayIterator(dataset, "test", test_dtype),
+            DSArrayIterator(dataset, "neighbors", neighbors_dtype),
+            DSArrayIterator(dataset, "distances", distances_dtype),
+            DSPKIterator(dataset, "primarykeys")
         )
 
+    def getsparseds(dataset, name : str, sizename : str, dtype : str) -> DSIterator:
+        return DSArrayIterator(dataset, name, dtype) if dataset.get(sizename) is None else DSSparseIterator(dataset, name, dataset[sizename])
+    
     # we store the dataset as a list of integers, accompanied by a list of lengths in hdf5
     # so we transform it back to the format expected by the algorithms here (array of array of ints)
     return (
-        convert_sparse_to_list(dataset["train"], dataset["size_train"]),
-        convert_sparse_to_list(dataset["test"], dataset["size_test"]),
-        numpy.array(dataset.get("neighbors")) if dataset.get("size_neighbors") is None else convert_sparse_to_list(dataset["neighbors"], dataset["size_neighbors"]),
-        numpy.array(dataset.get(dataset.get("distances")) if dataset.get("size_distances") is None else convert_sparse_to_list(dataset["distances"], dataset["size_distances"])),
-        None
+        getsparseds(dataset, "train", "size_train", train_dtype),
+        getsparseds(dataset, "test", "size_test", test_dtype),
+        getsparseds(dataset, "neighbors", "size_neighbors", neighbors_dtype),
+        getsparseds(dataset, "distances", "size_distances", distances_dtype),
+        DSPKIterator(dataset, "primarykeys")
     )
 
 def write_output(train: numpy.ndarray, test: numpy.ndarray, fn: str, distance: str, point_type: str = "float", count: int = 100) -> None:

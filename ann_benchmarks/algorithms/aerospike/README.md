@@ -32,7 +32,6 @@ Below are the Environmental Variables:
 
 -   AVS_HOST -- The AVS Server's Address. Defaults to "localhost"
 -   AVS_PORT -- The AVS Server's Port. Defaults to 5000
--   AVS_VERIFY_TLS -- A Boolean value to determine if TLS connection is required. Defaults to True.
 -   AVS_USELOADBALANCER -- The AVS Server's Address is a Load Balancer. Default False.
 -   AVS_NAMESPACE -- The Vector's Namespace. Defaults to "test"
 -   AVS_SET -- The Vector's Set name. Defaults to "ANN-data"

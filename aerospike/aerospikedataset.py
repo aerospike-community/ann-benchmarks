@@ -14,6 +14,7 @@ from aerospike_vector_search import types as vectorTypes
 from aerospike_vector_search.aio import AdminClient as vectorASyncAdminClient, Client as vectorASyncClient
 from metrics import all_metrics as METRICS, DummyMetric
 from distance import metrics as DISTANCES, Metric as DistanceMetric
+from helpers import set_hnsw_params_attrs
 
 logger = logging.getLogger(__name__)
 logFileHandler = None
@@ -51,12 +52,7 @@ class AerospikeDS():
             '-l', "--vectorloadbalancer",            
             help="Use Vector's DB Load Balancer",
             action='store_true'
-        )
-        parser.add_argument(
-            '-T', "--vectortls",            
-            help="Use TLS to connect to the Vector DB Server",
-            action='store_true'
-        )
+        )        
         parser.add_argument(
             "--hdf",
             metavar="HDFFILE",
@@ -184,9 +180,9 @@ class AerospikeDS():
         for pos, host in enumerate(runtimeArgs.vectorhosts):
             parts = host.split(':')
             if len(parts) == 1:
-                self._vector_hosts.append(vectorTypes.HostPort(host=host,port=5000,is_tls=bool(runtimeArgs.vectortls)))
+                self._vector_hosts.append(vectorTypes.HostPort(host=host,port=5000))
             elif len(parts) == 2:
-                self._vector_hosts.append(vectorTypes.HostPort(host=parts[0],port=int(parts[1]),is_tls=bool(runtimeArgs.vectortls)))
+                self._vector_hosts.append(vectorTypes.HostPort(host=parts[0],port=int(parts[1])))
 
         self._as_namespace : str = None
         self._as_set : str = None
@@ -198,7 +194,7 @@ class AerospikeDS():
         self._vector_name : str = runtimeArgs.indexname
         self._as_vectorbinname : str = None
         self._pk_consecutivenbrs : bool = False
-        self._vector_searchparams = None if runtimeArgs.searchparams is None else AerospikeDS.set_hnsw_params_attrs(vectorTypes.HnswSearchParams(), runtimeArgs.searchparams)
+        self._vector_searchparams = None if runtimeArgs.searchparams is None else set_hnsw_params_attrs(vectorTypes.HnswSearchParams(), runtimeArgs.searchparams)
         self._vector_distance : vectorTypes.VectorDistanceMetric = None
         self._vector_hnsw : dict = None
         self._vector_dimensions : int = None
@@ -261,23 +257,7 @@ class AerospikeDS():
     @staticmethod
     def _vector_hostport_str(vectorhosts : List[vectorTypes.HostPort]) -> str:
         return ",".join(f"{hp.host}:{hp.port}" for hp in vectorhosts)
-    
-    @staticmethod
-    def set_hnsw_params_attrs(__obj :object, __dict: dict) -> object:
-        for key in __dict: 
-            if key == 'batching_params':
-                setattr(
-                    __obj,
-                    key,
-                    AerospikeDS.set_hnsw_params_attrs(
-                            vectorTypes.HnswBatchingParams(),
-                            __dict[key].asdict()
-                    )
-                )
-            else:
-                setattr(__obj, key, __dict[key])
-        return __obj
-
+        
     async def __aenter__(self):
         return self
  
@@ -291,6 +271,8 @@ class AerospikeDS():
         indexInfo = [(index if index["id"]["namespace"] == self._vector_namespace
                             and index["id"]["name"] == self._vector_name else None)
                         for index in existingIndexes]
+        if all(v is None for v in indexInfo):
+            return None
         return next(i for i in indexInfo if i is not None)
     
     async def populate_vector_info(self) -> None:

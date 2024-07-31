@@ -1,8 +1,9 @@
 h5py
 numpy
+scipy
+psutil
 aerospike
 aerospike-vector-search
 opentelemetry-api
 opentelemetry-sdk
 opentelemetry-exporter-prometheus
-scipy
