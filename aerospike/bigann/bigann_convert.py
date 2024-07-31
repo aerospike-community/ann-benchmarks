@@ -127,11 +127,21 @@ class BigAnnConvert():
             f.attrs["metrictype"] = self._bigann_searchtype
             f.attrs["point_type"] = self._bigann_dataset[0].dtype.name.rstrip(digits)
             f.attrs["defaultsearchcount"] = self._bigann_default_search_count
-            print(f"train size: {self._bigann_dataset.shape[0]} * {self._bigann_dataset.shape[1]}")
-            print(f"test size:  {self._bigann_query.shape[0]} * {self._bigann_query.shape[1]}")
+            print(f"train size: {self._bigann_dataset.shape[0]} * {self._bigann_dataset.shape[1]}")            
             f.create_dataset("train", data=self._bigann_dataset)
+            print("train dataset completed")
+            print(f"test size:  {self._bigann_query.shape[0]} * {self._bigann_query.shape[1]}")            
             f.create_dataset("test", data=self._bigann_query)
+            print("test dataset completed")
+            print(f"neighbors size:  {self._bigann_neighbors.shape[0]} * {self._bigann_neighbors.shape[1]}")            
             f.create_dataset("neighbors", data=self._bigann_neighbors)
+            print("neighbors dataset completed")
+            print(f"distances size:  {self._bigann_distances.shape[0]} * {self._bigann_distances.shape[1]}")            
             f.create_dataset("distances", data=self._bigann_distances)
+            print("distances dataset completed")            
+            f.attrs["train_dtype"] = self._bigann_dataset.dtype.name
+            f.attrs["test_dtype"] = self._bigann_query.dtype.name
+            f.attrs["neighbors_dtype"] = self._bigann_neighbors.dtype.name
+            f.attrs["distances_dtype"] = self._bigann_distances.dtype.name
             hdfpath = f.filename
             print(f"Created HDF dataset '{hdfpath}'")

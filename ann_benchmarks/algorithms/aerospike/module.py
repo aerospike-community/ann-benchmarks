@@ -112,12 +112,6 @@ class Aerospike(BaseANN):
             self._setName = f'{self._setName}_{setNameType}_{self._dims}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}'
         self._idx_name = f'{self._setName}_Idx'
         
-        self._verifyTLS = os.environ.get("AVS_VERIFY_TLS")
-        if self._verifyTLS is None or self._verifyTLS.lower() in ['true', '1', 't', '']:
-            self._verifyTLS = True
-        else:
-            self._verifyTLS = False
-            
         self._idx_sleep = int(os.environ.get("APP_INDEX_SLEEP") or 0)
         self._populateTasks = int(os.environ.get("APP_POPULATE_TASKS") or 5000)
         pingAVS = os.environ.get("APP_PINGAVS")
@@ -134,7 +128,7 @@ class Aerospike(BaseANN):
         self._query_hnswsearchparams = None
         
         if pingAVS:
-            print(f'Aerospike: Trying Ping to {self._host} {self._verifyTLS} {self._listern}')
+            print(f'Aerospike: Trying Ping to {self._host} {self._listern}')
             pingresult = PingHost(self._host, verbose=True)
             print(pingresult)
             logger.info(pingresult)
@@ -142,8 +136,7 @@ class Aerospike(BaseANN):
         Aerospike.PrintLog('Try Create Sync Client')
         self._syncClient = vectorSyncClient(
                                     seeds=vectorTypes.HostPort(host=self._host,
-                                                            port=self._port,
-                                                            is_tls=self._verifyTLS), 
+                                                            port=self._port), 
                                     listener_name=self._listern,
                                     is_loadbalancer=self._isloadbalancer)
         
@@ -164,9 +157,40 @@ class Aerospike(BaseANN):
                     key,
                     Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswBatchingParams(),
-                            __dict[key].asdict()
+                            __dict[key],
                     )
                 )
+            elif key == 'caching_params':
+                setattr(
+                    __obj,
+                    key,
+                    Aerospike.SetHnswParamsAttrs(
+                            vectorTypes.HnswCachingParams(),
+                            __dict[key],
+                    )
+                )
+            elif key == 'healer_params':
+                setattr(
+                    __obj,
+                    key,
+                    Aerospike.SetHnswParamsAttrs(
+                            vectorTypes.HnswHealerParams(),
+                            __dict[key],
+                    )
+                )
+            elif key == 'merge_params':
+                setattr(
+                    __obj,
+                    key,
+                    Aerospike.SetHnswParamsAttrs(
+                            vectorTypes.HnswIndexMergeParams(),
+                            __dict[key],
+                    )
+                )
+            elif (type(__dict[key]) == str
+                    and (__dict[key].lower() == "none"
+                        or __dict[key].lower() == "null")):
+                setattr(__obj, key, None)
             else:
                 setattr(__obj, key, __dict[key])
         return __obj
@@ -296,7 +320,7 @@ class Aerospike(BaseANN):
         populateIdx = True
             
         async with vectorASyncAdminClient(
-                seeds=vectorTypes.HostPort(host=self._host, port=self._port, is_tls=self._verifyTLS),
+                seeds=vectorTypes.HostPort(host=self._host, port=self._port),
                 listener_name=self._listern,
                 is_loadbalancer=self._isloadbalancer
             ) as adminClient:
@@ -325,7 +349,7 @@ class Aerospike(BaseANN):
         if populateIdx:
             self._puasePuts = False
             Aerospike.PrintLog(f'Populating Index {self._namespace}.{self._idx_name}')
-            async with vectorASyncClient(seeds=vectorTypes.HostPort(host=self._host, port=self._port, is_tls=self._verifyTLS),
+            async with vectorASyncClient(seeds=vectorTypes.HostPort(host=self._host, port=self._port),
                                             listener_name=self._listern,
                                             is_loadbalancer=self._isloadbalancer
                         ) as client:

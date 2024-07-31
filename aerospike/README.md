@@ -89,12 +89,6 @@ Note: if “—hosts” argument is used, only the first host in the list is use
 
 (default: False)
 
-\-T, --vectortls
-
-Use TLS to connect to the Vector Server
-
-(default: False)
-
 \-n NS, --namespace NS
 
 The Aerospike Namespace  
@@ -230,12 +224,6 @@ Note: if “—hosts” argument is used, only the first host in the list is use
 
 (default: False)
 
-\-T, --vectortls
-
-Use TLS to connect to the Vector Server
-
-(default: False)
-
 \-N NS, --idxnamespace NS
 
 Aerospike Namespace where the vector index will be located.  
@@ -344,10 +332,6 @@ Example: 'hosta:5000' or 'hostb' (default: ['localhost:5000'])
 \-l, --vectorloadbalancer
 
 Use Vector's DB Load Balancer (default: False)
-
-\-T, --vectortls
-
-Use TLS to connect to the Vector DB Server (default: False)
 
 \-idxns INDEXNAME, --indexnamespace INDEXNAME
 
