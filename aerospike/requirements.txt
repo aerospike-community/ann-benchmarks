@@ -7,4 +7,3 @@ aerospike-vector-search
 opentelemetry-api
 opentelemetry-sdk
 opentelemetry-exporter-prometheus
-scipy
