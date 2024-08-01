@@ -1,2 +1,0 @@
-aerospike-vector-search==0.6.1
-pythonping==1.1.4
