@@ -21,3 +21,4 @@ aerospike/data/*
 aerospike/results/*
 aerospike/data
 aerospike/results
+.venv/*
