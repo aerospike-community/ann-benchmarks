@@ -129,6 +129,10 @@ The default is to select the index type based on the ANN dataset
 The Vector's Index Params (HnswParams) as defined by the Vector Phyton API.  
 (default: {"m": 16, "ef_construction": 100, "ef": 100})
 
+\--storagethreshold MULTIPLIER  
+A storage multiplier used to determine how the “training” dataset is loaded. It is either loaded completely in memory or is memory mapped (paged into memory when needed). The multiplier is simply how many “training” datasets can fit into available physical memory. For example, a multiplier of 4 (default) means that if at least 4 times the size of the “training” dataset can fit in available memory, it will be loaded into memory. If it cannot, it will be memory mapped and paged when needed. A value of 0 means always try to load it into memory. A value of -1 means to always memory map this dataset.   
+(default: 4)
+
 \-L LOG, --logfile LOG
 
 The logging file path, if provided. The default is to stdout.
