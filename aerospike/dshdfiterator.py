@@ -33,7 +33,7 @@ class DSHDFIterator(DSIterator):
             
         dssize = ds.size * dstype.itemsize
         
-        if memoryAvaiable / dssize >= storage_threshold:
+        if storage_threshold >= 0 and memoryAvaiable / dssize >= storage_threshold:
              return DSArrayIterator(dataset, name, dtype)
                  
         return DSHDFIterator(dataset, name, dtype)

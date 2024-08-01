@@ -7,10 +7,22 @@
       "type": "datasource",
       "pluginId": "prometheus",
       "pluginName": "Prometheus"
+    },
+    {
+      "name": "DS_EXPRESSION",
+      "label": "Expression",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "__expr__"
     }
   ],
   "__elements": {},
   "__requires": [
+    {
+      "type": "datasource",
+      "id": "__expr__",
+      "version": "1.0.0"
+    },
     {
       "type": "panel",
       "id": "barchart",
@@ -149,7 +161,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\"}",
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -222,7 +234,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\"}",
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -295,7 +307,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\"}",
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -368,7 +380,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\"}",
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -442,7 +454,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\"}",
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -605,7 +617,7 @@
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": false,
-          "expr": "label_join(aerospike_hdf_heartbeat{instance=~\"$client\"}, \"fullname\", \".\", \"ns\",\"set\")",
+          "expr": "label_join(aerospike_hdf_heartbeat{instance=~\"$client\", ns=~\"$namespace\", set=~\"$set\"}, \"fullname\", \".\", \"ns\", \"set\")",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -678,7 +690,7 @@
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": false,
-          "expr": "label_join(aerospike_hdf_heartbeat{instance=~\"$client\"}, \"fullname\", \".\", \"idxns\",\"idx\")",
+          "expr": "label_join(aerospike_hdf_heartbeat{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}, \"fullname\", \".\", \"idxns\",\"idx\")",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -752,8 +764,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -951,6 +962,8 @@
           },
           "fieldMinMax": false,
           "mappings": [],
+          "max": 1,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1056,7 +1069,10 @@
           "color": {
             "mode": "thresholds"
           },
+          "fieldMinMax": false,
           "mappings": [],
+          "min": 0,
+          "noValue": "0",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1076,22 +1092,21 @@
         "x": 6,
         "y": 11
       },
-      "id": 670,
+      "id": 671,
       "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
+        "minVizHeight": 75,
+        "minVizWidth": 75,
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "",
+          "fields": "/^sum\\(aerospike_hdf_populate_total\\{instance=~\"172\\\\\\\\\\.28\\\\\\\\\\.86\\\\\\\\\\.158:9464\", ns=~\"test\", set=~\"glove\\-100\\-angular\"\\}\\)$/",
           "values": false
         },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
       },
       "pluginVersion": "10.4.2",
       "targets": [
@@ -1101,19 +1116,177 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "sum(aerospike_hdf_populate_total{instance=~\"$client\", ns=\"$namespace\", set=\"$set\"})",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", ns=~\"$namespace\", set=~\"$set\"}",
+          "format": "table",
           "fullMetaSearch": false,
+          "hide": false,
           "includeNullMetadata": true,
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A",
           "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "sum(aerospike_hdf_populate_total{instance=~\"$client\", ns=~\"$namespace\", set=~\"$set\"})",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B",
+          "useBackend": false
         }
       ],
       "title": "Current Upserted Vectors",
-      "type": "stat"
+      "transformations": [
+        {
+          "id": "configFromData",
+          "options": {
+            "configRefId": "A",
+            "mappings": [
+              {
+                "fieldName": "poprecs",
+                "handlerKey": "max"
+              },
+              {
+                "fieldName": "Time",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "__name__",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "action",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "anndist",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "dataset",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "dims",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "hnswparams",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "idx",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "idxbin",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "idxdist",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "idxns",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "idxstate",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "instance",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "job",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "ns",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "paused",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "popconcurrent",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "popresrcevt",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "popwait",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "queries",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "querydistance",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "queryef",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "querymetricaerospikevalue",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "querymetricbigvalue",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "querymetricvalue",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "querynbrlmt",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "queryruns",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "remainingRecs",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "remainingquerynbrs",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "set",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "Value",
+                "handlerKey": "__ignore"
+              }
+            ]
+          }
+        }
+      ],
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -1512,6 +1685,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "Number on the left are the uncommited vectors and the number on the right are the commited vectors to the DB",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1520,6 +1694,7 @@
           "decimals": 0,
           "fieldMinMax": false,
           "mappings": [],
+          "noValue": "0",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1542,16 +1717,18 @@
       "id": 669,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
         "showPercentChange": false,
-        "textMode": "auto",
+        "textMode": "value",
         "wideLayout": true
       },
       "pluginVersion": "10.4.2",
@@ -1564,7 +1741,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_hdf_vectorqueuedepth",
+          "expr": "aerospike_hdf_vectorqueuedepth{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1573,9 +1750,60 @@
           "range": false,
           "refId": "A",
           "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "sum(aerospike_hdf_populate_total{instance=~\"$client\", ns=~\"$namespace\", set=~\"$set\"})",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B",
+          "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "__expr__",
+            "uid": "${DS_EXPRESSION}"
+          },
+          "expression": "$B - $A",
+          "hide": false,
+          "refId": "C",
+          "type": "math"
         }
       ],
       "title": "Index Merge Queue Depth",
+      "transformations": [
+        {
+          "id": "configFromData",
+          "options": {
+            "configRefId": "B",
+            "mappings": []
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "C \\{.*",
+            "renamePattern": "committed"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "aerospike_hdf_.*",
+            "renamePattern": "uncommitted"
+          }
+        }
+      ],
       "type": "stat"
     },
     {
@@ -2652,8 +2880,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -2715,7 +2942,6 @@
       "type": "barchart"
     }
   ],
-  "refresh": "5s",
   "schemaVersion": 39,
   "tags": [
     "Monitoring",
@@ -2891,8 +3117,8 @@
     ]
   },
   "time": {
-    "from": "now-5m",
-    "to": "now"
+    "from": "2024-08-01T01:21:02.624Z",
+    "to": "2024-08-01T01:41:56.131Z"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -2922,6 +3148,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 31,
+  "version": 39,
   "weekStart": ""
 }
