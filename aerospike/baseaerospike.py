@@ -86,7 +86,7 @@ class BaseAerospike(object):
         parser.add_argument(
             "--storagethreshold",
             metavar="MULTIPLIER",           
-            help="A storage multiplier used to determine is the dataset is consider large. 0 to try to fit everything into memory.",
+            help="A storage multiplier used to determine is the training dataset can be loaded into memory. 0 indicates try to load it into memory and -1 to only use paging (memory mapped).",
             default=4,
             type=int
         )
