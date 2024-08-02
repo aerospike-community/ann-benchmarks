@@ -796,7 +796,7 @@ class Aerospike(BaseAerospike):
             self.print_log(f'Found Index {self._idx_namespace}.{self._idx_name} with Info {idxinfo}')
             self._idx_hnswparams = idxinfo['hnsw_params']
             self._idx_binName = idxinfo["field"]
-            #self._setName = idxinfo["setFilter"]
+            self._setName = idxinfo["sets"]
             self._namespace = idxinfo["id"]["namespace"]
             if self._query_hnswparams is None and self._idx_hnswparams is not None:           
                 self._query_hnswparams = vectorTypes.HnswSearchParams(ef=self._idx_hnswparams.ef)

@@ -294,9 +294,9 @@ class AerospikeDS():
                 raise FileNotFoundError(f"Vector Index {self._vector_namespace}.{self._vector_name} not found")
 
             self._as_namespace : str = idxAttribs['storage']['namespace']
-            self._as_set : str = idxAttribs['setFilter']
+            self._as_set : str = idxAttribs['sets']
             self._as_vectorbinname : str = idxAttribs["field"]
-            self._vector_distance : vectorTypes.VectorDistanceMetric = vectorTypes.VectorDistanceMetric[idxAttribs["vectorDistanceMetric"]]
+            self._vector_distance : vectorTypes.VectorDistanceMetric = vectorTypes.VectorDistanceMetric(idxAttribs["vector_distance_metric"])
             self._vector_hnsw : dict = idxAttribs['hnsw_params']
             self._vector_dimensions : int = idxAttribs['dimensions']
             self._vector_ann_distance : str = next((anndisttype for anndisttype, disttype in DISTANCETYPES.items() if disttype == self._vector_distance))

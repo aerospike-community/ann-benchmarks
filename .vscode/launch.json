@@ -259,7 +259,7 @@
                     "--hosts", "localhost:3000",
                     "--hdf", "${input:enterHDFFile}",
                     "--logfile", "./hdfcreatedataset.log",
-                    "--indexname", "HDF-data_Idx",
+                    "--indexname", "${input:enterDatasetIdxName}",
                     "--records", "-1"
                     ],
             "justMyCode": false,
@@ -326,6 +326,12 @@
         "type": "promptString",
         "description": "Enter HDF Path",
         "default": "bigtest"
+      },
+      {
+        "id": "enterDatasetIdxName",
+        "type": "promptString",
+        "description": "Enter Index Name",
+        "default": "random-xs-20-angular_Idx"
       }
   ]
 }
