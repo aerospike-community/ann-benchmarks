@@ -690,6 +690,7 @@ class Aerospike(BaseAerospike):
                 print('\n')
                 self.print_log(f"Index Put {i:,} Recs in {t - s} (secs), TPS: {i/(t - s):,}")
             
+            self.prometheus_status(force=True)
             if self._idx_nowait:
                 self.print_log(f"Index Population Completed")
             else:

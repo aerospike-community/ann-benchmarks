@@ -305,24 +305,25 @@ class BaseAerospike(object):
             else:
                 loggerASClient.setLevel(logging.getLevelName(self._asLogLevel))       
 
-    def prometheus_status(self, done:bool = False) -> None:
+    def prometheus_status(self, done:bool = False, force : bool = False) -> None:
         
         self.__cnthb__ += 1
         
-        if self._heartbeat_stage == 0:
-            if self._heartbeat_current_stage == self._heartbeat_stage:
-                return
-            self._heartbeat_current_stage = self._heartbeat_stage
+        if not force:
+            if self._heartbeat_stage == 0:
+                if self._heartbeat_current_stage == self._heartbeat_stage:
+                    return
+                self._heartbeat_current_stage = self._heartbeat_stage
+                
+            if self._heartbeat_stage == 1:
+                if self._heartbeat_current_stage == self._heartbeat_stage:
+                    return
+                self._heartbeat_current_stage = self._heartbeat_stage
+            if self._heartbeat_stage == 2:
+                if self._heartbeat_current_stage == self._heartbeat_stage:
+                    return
+                self._heartbeat_current_stage = self._heartbeat_stage
             
-        if self._heartbeat_stage == 1:
-            if self._heartbeat_current_stage == self._heartbeat_stage:
-                return
-            self._heartbeat_current_stage = self._heartbeat_stage
-        if self._heartbeat_stage == 2:
-            if self._heartbeat_current_stage == self._heartbeat_stage:
-                return
-            self._heartbeat_current_stage = self._heartbeat_stage
-           
         pausestate : str = None
         if done:
             pausestate = "Done"
