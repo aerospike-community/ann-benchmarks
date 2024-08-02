@@ -25,12 +25,6 @@
     },
     {
       "type": "panel",
-      "id": "barchart",
-      "name": "Bar chart",
-      "version": ""
-    },
-    {
-      "type": "panel",
       "id": "gauge",
       "name": "Gauge",
       "version": ""
@@ -40,6 +34,12 @@
       "id": "grafana",
       "name": "Grafana",
       "version": "10.4.2"
+    },
+    {
+      "type": "panel",
+      "id": "heatmap",
+      "name": "Heatmap",
+      "version": ""
     },
     {
       "type": "datasource",
@@ -2889,45 +2889,17 @@
       "description": "The number of queries that fall within a certain latency buckets in milliseconds",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "series",
-            "axisLabel": "Queries",
-            "axisPlacement": "auto",
-            "axisSoftMin": 0,
-            "fillOpacity": 71,
-            "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "lineWidth": 3,
             "scaleDistribution": {
               "type": "linear"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
             }
           },
-          "decimals": 0,
-          "fieldMinMax": false,
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "locale"
+          "fieldMinMax": false
         },
         "overrides": []
       },
@@ -2939,27 +2911,44 @@
       },
       "id": 656,
       "options": {
-        "barRadius": 0,
-        "barWidth": 0.67,
-        "fullHighlight": false,
-        "groupWidth": 0.75,
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "calculate": false,
+        "cellGap": 1,
+        "cellValues": {
+          "unit": "locale"
         },
-        "orientation": "auto",
-        "showValue": "never",
-        "stacking": "normal",
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "reverse": false,
+          "scale": "exponential",
+          "scheme": "RdYlBu",
+          "steps": 64
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 0
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
         "tooltip": {
           "mode": "single",
-          "sort": "none"
+          "showColorScale": false,
+          "yHistogram": false
         },
-        "xField": "Time",
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 0
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "clockms"
+        }
       },
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -2982,9 +2971,10 @@
         }
       ],
       "title": "Vector Search Latency Buckets (ms)",
-      "type": "barchart"
+      "type": "heatmap"
     }
   ],
+  "refresh": "",
   "schemaVersion": 39,
   "tags": [
     "Monitoring",
@@ -3160,8 +3150,8 @@
     ]
   },
   "time": {
-    "from": "now-5m",
-    "to": "now"
+    "from": "2024-08-02T19:34:22.859Z",
+    "to": "2024-08-02T19:35:41.096Z"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -3191,6 +3181,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 42,
+  "version": 43,
   "weekStart": ""
 }
