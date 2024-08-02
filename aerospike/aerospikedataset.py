@@ -268,7 +268,8 @@ class AerospikeDS():
         existingIndexes = await adminClient.index_list()
         if len(existingIndexes) == 0:
             return None
-        indexInfo = [(index if index["id"]["namespace"] == self._vector_namespace
+        indexInfo = [(index if (index["id"]["namespace"] == self._vector_namespace
+                                    or index["storage"]["namespace"] == self._vector_namespace)
                             and index["id"]["name"] == self._vector_name else None)
                         for index in existingIndexes]
         if all(v is None for v in indexInfo):
@@ -293,7 +294,8 @@ class AerospikeDS():
                 self.print_log(f'populate_vector_info: Vector Index: {self._vector_namespace}.{self._vector_name}, not found')
                 raise FileNotFoundError(f"Vector Index {self._vector_namespace}.{self._vector_name} not found")
 
-            self._as_namespace : str = idxAttribs['storage']['namespace']
+            self._as_namespace : str = idxAttribs['id']['namespace']
+            self._vector_namespace = idxAttribs['storage']['namespace']
             self._as_set : str = idxAttribs['sets']
             self._as_vectorbinname : str = idxAttribs["field"]
             self._vector_distance : vectorTypes.VectorDistanceMetric = vectorTypes.VectorDistanceMetric(idxAttribs["vector_distance_metric"])

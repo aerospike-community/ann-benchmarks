@@ -76,6 +76,22 @@
             "justMyCode": false,
             "console": "integratedTerminal"
         }, 
+        {            
+            "name": "Python Debugger: hdf_import diff namespaces (prompt DS)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_import.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "${input:enterDataset}",
+                    "--concurrency", "5000",
+                    "--idxnamespace", "testidx",
+                    "--idxdrop",
+                    "--logfile", "./hdfimport.log"
+                    ],
+            "justMyCode": false,
+            "console": "integratedTerminal"
+        }, 
         {           
             "name": "Python Debugger: hdf_import (prompt HDF)",
             "type": "debugpy",
@@ -173,7 +189,21 @@
             "args": [
                     "--dataset", "${input:enterDataset}",
                     "--logfile", "./hdfquery.log",
-                    "-r", "1"
+                    "-r", "5"
+                    ],
+            "console": "integratedTerminal"
+        }, 
+        {
+            "name": "Python Debugger: hdf_query diff namespaces(prompt DS)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_query.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--dataset", "${input:enterDataset}",
+                    "--idxnamespace", "testidx",
+                    "--logfile", "./hdfquery.log",
+                    "-r", "5"
                     ],
             "console": "integratedTerminal"
         },        

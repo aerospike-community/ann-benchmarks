@@ -391,7 +391,7 @@ class Aerospike(BaseAerospike):
     async def drop_index(self, adminClient: vectorASyncAdminClient) -> None:
         self.print_log(f'Dropping Index {self._idx_namespace}.{self._idx_name}')
         s = time.time()
-        await adminClient.index_drop(namespace=self._idx_namespace,
+        await adminClient.index_drop(namespace=self._namespace,
                                             name=self._idx_name)
         t = time.time()
         self._dropidx_histogram.record(t-s, {"ns":self._idx_namespace,"idx": self._idx_name})
@@ -423,7 +423,7 @@ class Aerospike(BaseAerospike):
         self._waitidx_counter.add(1, {"ns":self._idx_namespace,"idx": self._idx_name, "type":"Wait"})
         
         try:
-            await client.wait_for_index_completion(namespace=self._idx_namespace,
+            await client.wait_for_index_completion(namespace=self._namespace,
                                                     name=self._idx_name)
         except Exception as e:
             print(f'\n**Exception: "{e}" **\r\n')
@@ -564,7 +564,8 @@ class Aerospike(BaseAerospike):
         existingIndexes = await adminClient.index_list()
         if len(existingIndexes) == 0:
             return None
-        indexInfo = [(index if index["id"]["namespace"] == self._idx_namespace
+        indexInfo = [(index if (index["id"]["namespace"] == self._idx_namespace
+                                    or index["storage"]["namespace"] == self._idx_namespace)
                             and index["id"]["name"] == self._idx_name else None)
                         for index in existingIndexes]
         if all(v is None for v in indexInfo):
@@ -596,6 +597,11 @@ class Aerospike(BaseAerospike):
                 self.print_log(f'Index {self._idx_namespace}.{self._idx_name} Already Exists. Idx Info: {idxinfo}')
                 self._idx_state = 'Exists'
                 
+                if idxinfo['storage']['namespace'] != self._idx_namespace:
+                    if self._idx_namespace is not None:
+                        self.print_log(f"Index {self._idx_name} was found in namespace {idxinfo['storage']['namespace']} but {self._idx_namespace} was given. Using found namespace.", logging.WARN)
+                    self._idx_namespace = idxinfo['storage']['namespace']
+                    
                 #since this can be an external DB (not in a container), we need to clean up from prior runs
                 #if the index name is in this list, we know it was created in this run group and don't need to drop the index.
                 #If it is a fresh run, this list will not contain the index and we know it needs to be dropped.
@@ -727,11 +733,11 @@ class Aerospike(BaseAerospike):
             
             f.attrs["expect_extra"] = False
             f.attrs["index_size"] = 0
-            if self._namespace == self._idx_namespace:
-                f.attrs["name"] = f'{self._namespace}.{self._setName}.{self._idx_name}, ef:{queryef}, hnsw:{f.attrs["hnsw"]}, k:{self._query_nbrlimit}'
-            else:
-                f.attrs["name"] = f'{self._namespace}.{self._setName}.{self._idx_name}, ef:{queryef}, hnsw:{f.attrs["hnsw"]}, k:{self._query_nbrlimit}'
-                
+            f.attrs["name"] = f'{self._namespace}.{self._setName}.{self._idx_namespace}.{self._idx_name}, ef:{queryef}, hnsw:{f.attrs["hnsw"]}, k:{self._query_nbrlimit}'
+
+            f.attrs["set_name"] = f'{self._namespace}.{self._setName}'            
+            f.attrs["index_name"] = f'{self._idx_namespace}.{self._idx_name}'
+            
             f.attrs["run_count"] = self._query_runs
             
             if self._query_distance is not None:
@@ -800,7 +806,11 @@ class Aerospike(BaseAerospike):
             self._namespace = idxinfo["id"]["namespace"]
             if self._query_hnswparams is None and self._idx_hnswparams is not None:           
                 self._query_hnswparams = vectorTypes.HnswSearchParams(ef=self._idx_hnswparams.ef)
-                       
+            if idxinfo['storage']['namespace'] != self._idx_namespace:
+                if self._idx_namespace is not None:
+                    self.print_log(f"Index {self._idx_name} was found in namespace {idxinfo['storage']['namespace']} but {self._idx_namespace} was given. Using found namespace.", logging.WARN)
+                self._idx_namespace = idxinfo['storage']['namespace']
+                    
         self.print_log(f'Starting Query Runs ({self._query_runs}) on {self._idx_namespace}.{self._idx_name}')
         metricfunc = None
         distancemetric : DistanceMetric= None
@@ -1009,7 +1019,7 @@ class Aerospike(BaseAerospike):
         try:
             latency : int
             s = time.time_ns()
-            result = await client.vector_search(namespace=self._idx_namespace,
+            result = await client.vector_search(namespace=self._namespace,
                                                 index_name=self._idx_name,
                                                 query=query,
                                                 limit=self._query_nbrlimit,

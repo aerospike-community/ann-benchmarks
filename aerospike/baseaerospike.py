@@ -435,12 +435,13 @@ class BaseAerospike(object):
             self._vector_queue_depth = 0
         elif queryapi:
             try:                
-                self._vector_queue_depth = adminclient.index_get_status(namespace=self._idx_namespace,
+                self._vector_queue_depth = adminclient.index_get_status(namespace=self._namespace,
                                                         name=self._idx_name,
                                                         timeout=2)
             except vectorTypes.AVSServerError as avse:
                     self._vector_queue_depth = None 
-                    if avse.rpc_error.code() != vectorResultCodes.StatusCode.NOT_FOUND:
+                    if (avse.rpc_error.code() != vectorResultCodes.StatusCode.NOT_FOUND
+                            and avse.rpc_error.code() != vectorResultCodes.StatusCode.ABORTED):
                         self._logger.exception(f"index_get_status failed ns={self._idx_namespace}, name={self._idx_name}")
                         self._vector_queue_qry_time = 0
             except Exception as e:
@@ -515,8 +516,9 @@ class BaseAerospike(object):
     async def shutdown(self, waitforcompletion:bool):
         
         if waitforcompletion and self._sleepexit > 0:
-            self.prometheus_status(True)            
+            self.prometheus_status(True)
             self.print_log(f'existing sleeping {self._sleepexit}')
+            await asyncio.sleep(5)            
             self._prometheus_meter_provider.force_flush()
             self._prometheus_metric_reader.force_flush()            
             await asyncio.sleep(self._sleepexit)
