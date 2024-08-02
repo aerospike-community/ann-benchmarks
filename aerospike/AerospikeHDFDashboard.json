@@ -143,9 +143,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "dataset",
           "values": false
         },
@@ -167,9 +165,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
@@ -218,9 +216,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "idxdist",
           "values": false
         },
@@ -242,9 +238,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
@@ -293,9 +289,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "poprecs",
           "values": false
         },
@@ -317,9 +311,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
@@ -368,9 +362,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "dims",
           "values": false
         },
@@ -392,9 +384,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
@@ -466,9 +458,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
@@ -523,7 +515,7 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 4,
+        "w": 3,
         "x": 18,
         "y": 1
       },
@@ -567,141 +559,6 @@
       "type": "stat"
     },
     {
-      "collapsed": true,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 6
-      },
-      "id": 660,
-      "panels": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "description": "",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": -1,
-                "drawStyle": "line",
-                "fillOpacity": 16,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "stepAfter",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "decimals": 0,
-              "fieldMinMax": false,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  }
-                ]
-              },
-              "unit": "locale"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 13,
-            "w": 24,
-            "x": 0,
-            "y": 10
-          },
-          "id": 640,
-          "options": {
-            "legend": {
-              "calcs": [
-                "max",
-                "lastNotNull"
-              ],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "none"
-            }
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "exemplar": false,
-              "expr": "aerospike_hdf_exception{ns=~\"$idxns\", instance=~\"$client\", idx=~\"$idxname\", run=~\"$QueryRun\"}",
-              "format": "time_series",
-              "fullMetaSearch": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "{{instance}} - {{ns}}.{{idx}} Run: {{run}} {{exception_type}}",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "aerospike_hdf_exception{ns=~\"$namespace\", instance=~\"$client\", set=~\"$set\"}",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "{{instance}} - {{ns}}.{{set}} {{exception_type}}",
-              "range": true,
-              "refId": "B",
-              "useBackend": false
-            }
-          ],
-          "title": "Exceptions",
-          "type": "timeseries"
-        }
-      ],
-      "title": "Exceptions",
-      "type": "row"
-    },
-    {
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -731,9 +588,9 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 10,
+        "w": 9,
         "x": 0,
-        "y": 7
+        "y": 6
       },
       "id": 663,
       "options": {
@@ -742,9 +599,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "/^fullname$/",
           "values": false
         },
@@ -766,9 +621,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
@@ -806,9 +661,9 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 12,
-        "x": 10,
-        "y": 7
+        "w": 9,
+        "x": 9,
+        "y": 6
       },
       "id": 664,
       "options": {
@@ -817,9 +672,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "/^fullname$/",
           "values": false
         },
@@ -841,9 +694,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
@@ -857,7 +710,142 @@
         "h": 1,
         "w": 24,
         "x": 0,
+        "y": 9
+      },
+      "id": 660,
+      "panels": [],
+      "title": "Exceptions",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": -1,
+            "drawStyle": "line",
+            "fillOpacity": 16,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 24,
+        "x": 0,
         "y": 10
+      },
+      "id": 640,
+      "options": {
+        "legend": {
+          "calcs": [
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_exception{ns=~\"$idxns\", instance=~\"$client\", idx=~\"$idxname\", run=~\"$QueryRun\"}",
+          "format": "time_series",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "{{instance}} - {{ns}}.{{idx}} Run: {{run}} {{exception_type}}",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "aerospike_hdf_exception{ns=~\"$namespace\", instance=~\"$client\", set=~\"$set\"}",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "{{instance}} - {{ns}}.{{set}} {{exception_type}}",
+          "range": true,
+          "refId": "B",
+          "useBackend": false
+        }
+      ],
+      "title": "Exceptions",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 23
       },
       "id": 651,
       "panels": [],
@@ -920,7 +908,7 @@
         "h": 5,
         "w": 3,
         "x": 0,
-        "y": 11
+        "y": 24
       },
       "id": 649,
       "options": {
@@ -929,9 +917,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "paused",
           "values": false
         },
@@ -954,9 +940,9 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "B",
           "useBackend": false
         }
@@ -999,7 +985,7 @@
         "h": 5,
         "w": 3,
         "x": 3,
-        "y": 11
+        "y": 24
       },
       "id": 626,
       "options": {
@@ -1007,9 +993,7 @@
         "minVizWidth": 75,
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "",
           "values": false
         },
@@ -1032,9 +1016,9 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "B",
           "useBackend": false
         }
@@ -1106,7 +1090,7 @@
         "h": 5,
         "w": 3,
         "x": 6,
-        "y": 11
+        "y": 24
       },
       "id": 671,
       "options": {
@@ -1117,7 +1101,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^sum\\(aerospike_hdf_populate_total\\{instance=~\"172\\\\\\\\\\.28\\\\\\\\\\.86\\\\\\\\\\.158:9464\", ns=~\"test\", set=~\"random\\-xs\\-20\\-angular\"\\}\\)$/",
+          "fields": "/^totcommits$/",
           "values": false
         },
         "showThresholdLabels": false,
@@ -1173,132 +1157,15 @@
               {
                 "fieldName": "poprecs",
                 "handlerKey": "max"
-              },
-              {
-                "fieldName": "Time",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "__name__",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "action",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "anndist",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "dataset",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "dims",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "hnswparams",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "idx",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "idxbin",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "idxdist",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "idxns",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "idxstate",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "instance",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "job",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "ns",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "paused",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "popconcurrent",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "popresrcevt",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "popwait",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "queries",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "querydistance",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "queryef",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "querymetricaerospikevalue",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "querymetricbigvalue",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "querymetricvalue",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "querynbrlmt",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "queryruns",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "remainingRecs",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "remainingquerynbrs",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "set",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "Value",
-                "handlerKey": "__ignore"
               }
             ]
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^sum\\(.+",
+            "renamePattern": "totcommits"
           }
         }
       ],
@@ -1336,7 +1203,7 @@
         "h": 5,
         "w": 3,
         "x": 9,
-        "y": 11
+        "y": 24
       },
       "id": 669,
       "options": {
@@ -1366,7 +1233,7 @@
           "editorMode": "builder",
           "exemplar": false,
           "expr": "aerospike_hdf_vectorqueuedepth{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
-          "format": "time_series",
+          "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": true,
@@ -1486,7 +1353,7 @@
         "h": 5,
         "w": 3,
         "x": 12,
-        "y": 11
+        "y": 24
       },
       "id": 666,
       "options": {
@@ -1495,9 +1362,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "/^idxstate$/",
           "values": false
         },
@@ -1520,9 +1385,9 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "B",
           "useBackend": false
         }
@@ -1584,9 +1449,9 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
+        "w": 6,
         "x": 15,
-        "y": 11
+        "y": 24
       },
       "id": 665,
       "options": {
@@ -1595,9 +1460,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "/^popconcurrent$/",
           "values": false
         },
@@ -1620,9 +1483,9 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "B",
           "useBackend": false
         }
@@ -1684,9 +1547,9 @@
       },
       "gridPos": {
         "h": 2,
-        "w": 2,
+        "w": 3,
         "x": 15,
-        "y": 14
+        "y": 27
       },
       "id": 668,
       "options": {
@@ -1695,9 +1558,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "/^popresrcevt$/",
           "values": false
         },
@@ -1720,9 +1581,9 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "B",
           "useBackend": false
         }
@@ -1784,9 +1645,9 @@
       },
       "gridPos": {
         "h": 2,
-        "w": 2,
-        "x": 17,
-        "y": 14
+        "w": 3,
+        "x": 18,
+        "y": 27
       },
       "id": 667,
       "options": {
@@ -1795,9 +1656,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "/^popwait$/",
           "values": false
         },
@@ -1820,9 +1679,9 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "B",
           "useBackend": false
         }
@@ -1932,7 +1791,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 29
       },
       "id": 638,
       "options": {
@@ -1976,7 +1835,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "aerospike_hdf_waitidxcompletion{ns=\"$idxns\", idx=\"$idxname\", instance=~\"$client\"}",
+          "expr": "aerospike_hdf_waitidxcompletion{ns=~\"$idxns\", idx=~\"$idxname\", instance=~\"$client\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1996,7 +1855,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 38
       },
       "id": 652,
       "panels": [],
@@ -2035,7 +1894,7 @@
         "h": 5,
         "w": 3,
         "x": 0,
-        "y": 26
+        "y": 39
       },
       "id": 646,
       "options": {
@@ -2044,9 +1903,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "queryruns",
           "values": false
         },
@@ -2068,9 +1925,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
@@ -2110,7 +1967,7 @@
         "h": 5,
         "w": 3,
         "x": 3,
-        "y": 26
+        "y": 39
       },
       "id": 650,
       "options": {
@@ -2119,9 +1976,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "queries",
           "values": false
         },
@@ -2143,9 +1998,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
@@ -2185,7 +2040,7 @@
         "h": 5,
         "w": 3,
         "x": 6,
-        "y": 26
+        "y": 39
       },
       "id": 647,
       "options": {
@@ -2194,9 +2049,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "querynbrlmt",
           "values": false
         },
@@ -2218,9 +2071,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
@@ -2259,7 +2112,7 @@
         "h": 5,
         "w": 2,
         "x": 9,
-        "y": 26
+        "y": 39
       },
       "id": 659,
       "options": {
@@ -2268,9 +2121,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "queryef",
           "values": false
         },
@@ -2292,9 +2143,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
@@ -2335,7 +2186,7 @@
         "h": 5,
         "w": 3,
         "x": 11,
-        "y": 26
+        "y": 39
       },
       "id": 648,
       "options": {
@@ -2343,9 +2194,7 @@
         "minVizWidth": 75,
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "",
           "values": false
         },
@@ -2368,9 +2217,9 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "B",
           "useBackend": false
         }
@@ -2457,7 +2306,7 @@
         "h": 5,
         "w": 2,
         "x": 14,
-        "y": 26
+        "y": 39
       },
       "id": 653,
       "options": {
@@ -2466,9 +2315,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": [],
           "fields": "/^recalltype$/",
           "values": false
         },
@@ -2492,9 +2339,9 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "B",
           "useBackend": false
         }
@@ -2548,7 +2395,7 @@
         "h": 5,
         "w": 2,
         "x": 16,
-        "y": 26
+        "y": 39
       },
       "id": 654,
       "options": {
@@ -2558,7 +2405,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "firstNotNull"
           ],
           "fields": "querymetricvalue",
           "values": false
@@ -2639,7 +2486,7 @@
         "h": 5,
         "w": 3,
         "x": 18,
-        "y": 26
+        "y": 39
       },
       "id": 661,
       "options": {
@@ -2730,7 +2577,7 @@
         "h": 5,
         "w": 3,
         "x": 21,
-        "y": 26
+        "y": 39
       },
       "id": 657,
       "options": {
@@ -2838,7 +2685,7 @@
         "h": 13,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 44
       },
       "id": 610,
       "options": {
@@ -2907,13 +2754,14 @@
         "h": 15,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 57
       },
       "id": 656,
       "options": {
         "calculate": false,
         "cellGap": 1,
         "cellValues": {
+          "decimals": 0,
           "unit": "locale"
         },
         "color": {
@@ -2922,7 +2770,7 @@
           "mode": "scheme",
           "reverse": false,
           "scale": "exponential",
-          "scheme": "RdYlBu",
+          "scheme": "RdBu",
           "steps": 64
         },
         "exemplars": {
@@ -2945,7 +2793,7 @@
         "yAxis": {
           "axisPlacement": "left",
           "reverse": false,
-          "unit": "clockms"
+          "unit": "ms"
         }
       },
       "pluginVersion": "10.4.2",
@@ -2974,7 +2822,7 @@
       "type": "heatmap"
     }
   ],
-  "refresh": "",
+  "refresh": "5s",
   "schemaVersion": 39,
   "tags": [
     "Monitoring",
@@ -3150,8 +2998,8 @@
     ]
   },
   "time": {
-    "from": "2024-08-02T20:23:21.033Z",
-    "to": "2024-08-02T20:25:26.656Z"
+    "from": "now-1h",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -3181,6 +3029,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 44,
+  "version": 8,
   "weekStart": ""
 }
