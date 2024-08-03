@@ -120,6 +120,21 @@
                     "--exhaustedevt", "600"
                     ],
             "console": "integratedTerminal"
+        },
+        {           
+            "name": "Python Debugger: hdf_import Sleep 30 mins large (prompt HDF)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_import.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--hdf", "${input:enterHDFFile}",
+                    "--concurrency", "10000",
+                    "--idxdrop",
+                    "--logfile", "./hdfimport-hdf.log",
+                    "--exhaustedevt", "1800"
+                    ],
+            "console": "integratedTerminal"
         }, 
         {           
             "name": "Python Debugger: hdf_import angular (prompt HDF)",
