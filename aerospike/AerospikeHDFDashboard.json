@@ -2035,7 +2035,7 @@
           "useBackend": false
         }
       ],
-      "title": "Committed vs Uncommitted  to DB ",
+      "title": "Upserted vs Committed vs Uncommitted  to DB  (Vectors)",
       "transformations": [
         {
           "id": "renameByRegex",
@@ -3197,7 +3197,7 @@
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {
@@ -3228,6 +3228,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 10,
+  "version": 11,
   "weekStart": ""
 }
