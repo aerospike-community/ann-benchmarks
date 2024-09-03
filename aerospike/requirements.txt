@@ -3,7 +3,7 @@ numpy
 psutil
 scipy
 aerospike
-aerospike-vector-search=1.0.1.dev1
+aerospike-vector-search==1.1.0.dev3
 opentelemetry-api
 opentelemetry-sdk
 opentelemetry-exporter-prometheus
