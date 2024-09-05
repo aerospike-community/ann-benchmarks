@@ -16,7 +16,5 @@ float:
           #[AllOps] #Default Performs all operations (populate idx and query). Values are IdxPopulateOnly, QueryOnly, AllOps (default)
           ]
         query_args: [ #Query HnswSearchParams, e.g., [{ef: 3}], optional
-          []  
-      ]
-      
-      
+          []
+        ]

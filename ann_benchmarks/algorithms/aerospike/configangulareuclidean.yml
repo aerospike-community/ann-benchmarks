@@ -10,11 +10,11 @@ float:
       cosine:
         args: [
           [cosine],
-          [{m: 16, ef_construction: 100, ef: 100}] 
+          [{m: 16, ef_construction: 100, ef: 100}]
         ]
-        query_args: [ 
-          []  
-      ]
+        query_args: [
+          []
+        ]
   euclidean:
   - base_args: ['@metric',  '@dimension']
     constructor: Aerospike
@@ -24,11 +24,10 @@ float:
     name: aerospike
     run_groups:
       SQUARED_EUCLIDEAN:
-              args: [
-                [SQUARED_EUCLIDEAN], #Idx Type
-                [{m: 16, ef_construction: 100, ef: 100}]
-              ]      
-              query_args: [ 
-                []  
-              ]
- 
+        args: [
+          [SQUARED_EUCLIDEAN], #Idx Type
+          [{m: 16, ef_construction: 100, ef: 100}]
+        ]
+        query_args: [
+          []
+        ]
