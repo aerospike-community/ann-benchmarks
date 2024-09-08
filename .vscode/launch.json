@@ -61,7 +61,7 @@
                      "--timeout", "7200"],
             "console": "integratedTerminal"
         },
-        {            
+        {
             "name": "Python Debugger: hdf_import (prompt DS)",
             "type": "debugpy",
             "request": "launch",
@@ -75,8 +75,8 @@
                     ],
             "justMyCode": false,
             "console": "integratedTerminal"
-        }, 
-        {            
+        },
+        {
             "name": "Python Debugger: hdf_import diff namespaces (prompt DS)",
             "type": "debugpy",
             "request": "launch",
@@ -91,8 +91,8 @@
                     ],
             "justMyCode": false,
             "console": "integratedTerminal"
-        }, 
-        {           
+        },
+        {
             "name": "Python Debugger: hdf_import (prompt HDF)",
             "type": "debugpy",
             "request": "launch",
@@ -102,11 +102,42 @@
                     "--hdf", "${input:enterHDFFile}",
                     "--concurrency", "5000",
                     "--idxdrop",
-                    "--logfile", "./hdfimport-hdf.log"                    
+                    "--logfile", "./hdfimport-hdf.log"
                     ],
             "console": "integratedTerminal"
-        }, 
-        {           
+        },
+        {
+            "name": "Python Debugger: hdf_import Sleep Healer (prompt HDF)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_import.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--hdf", "${input:enterHDFFile}",
+                    "--concurrency", "5000",
+                    "--idxdrop",
+                    "--logfile", "./hdfimport-hdf.log",
+                    "--exhaustedevt", "-2"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_import Sleep Healer No Idx Wait (prompt HDF)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/aerospike/hdf_import.py",
+            "cwd": "${workspaceFolder}/aerospike",
+            "args": [
+                    "--hdf", "${input:enterHDFFile}",
+                    "--concurrency", "5000",
+                    "--idxdrop",
+                    "--logfile", "./hdfimport-hdf.log",
+                    "--exhaustedevt", "-2",
+                    "--idxnowait"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Python Debugger: hdf_import Sleep 10 mins (prompt HDF)",
             "type": "debugpy",
             "request": "launch",
@@ -121,7 +152,7 @@
                     ],
             "console": "integratedTerminal"
         },
-        {           
+        {
             "name": "Python Debugger: hdf_import Sleep 30 mins large (prompt HDF)",
             "type": "debugpy",
             "request": "launch",
@@ -135,8 +166,8 @@
                     "--exhaustedevt", "1800"
                     ],
             "console": "integratedTerminal"
-        }, 
-        {           
+        },
+        {
             "name": "Python Debugger: hdf_import angular (prompt HDF)",
             "type": "debugpy",
             "request": "launch",
@@ -147,10 +178,10 @@
                     "--concurrency", "5000",
                     "--distancetype", "COSINE",
                     "--idxdrop",
-                    "--logfile", "./hdfimport-angular.log",                    
+                    "--logfile", "./hdfimport-angular.log",
                     ],
             "console": "integratedTerminal"
-        },          
+        },
         {
             "name": "Python Debugger: hdf_import LB",
             "type": "debugpy",
@@ -166,7 +197,7 @@
                      "--vectorloadbalancer"
                     ],
             "console": "integratedTerminal"
-        },        
+        },
         {
             "name": "Python Debugger: hdf_import glove (no log)",
             "type": "debugpy",
@@ -207,7 +238,7 @@
                     "-r", "5"
                     ],
             "console": "integratedTerminal"
-        }, 
+        },
         {
             "name": "Python Debugger: hdf_query diff namespaces(prompt DS)",
             "type": "debugpy",
@@ -221,7 +252,7 @@
                     "-r", "5"
                     ],
             "console": "integratedTerminal"
-        },        
+        },
         {
             "name": "Python Debugger: hdf_query (proimpt HDF)",
             "type": "debugpy",
@@ -287,9 +318,9 @@
             "cwd": "${workspaceFolder}/aerospike",
             "args": [
                     "--dataset", "gist-960-euclidean",
-                    "--logfile", "./hdfquery-gist1.log",                    
+                    "--logfile", "./hdfquery-gist1.log",
                     "-r", "1",
-                    "--limit", "10",                    
+                    "--limit", "10",
                     "--idxname", "gist-960-euclidean_Idx"
                     ],
             "console": "integratedTerminal"
@@ -309,7 +340,7 @@
                     ],
             "justMyCode": false,
             "console": "integratedTerminal"
-        },        
+        },
         {
             "name": "Python Debugger: bigann_download (prompt)",
             "type": "debugpy",

@@ -29,7 +29,7 @@ The maximum number of concurrent tasks (N) used to population the index.
 “N’ Values are:
 
 -   \< 0 – All records are upserted, concurrently waiting for the upsert confirmation once all upserts are submitted
--   0 -- Disable Population  
+-   0 -- Disable Population
     If the index doesn’t existence, it is created. The “wait for index completion” is still being performed.
 -   1 -- One record is upserted and confirmed at a time (sync)
 -   \> 1 -- The number of records upserted and confirmed, concurrently (async)
@@ -52,7 +52,8 @@ This determines how the Resource Exhausted event is handled. This event occurs w
 
 “EVT” Values are:
 
--   \< 0 – All population events are stopped and will not resume until the index merger queue is cleared. This is done by “waiting for index completion” to occur. Once the queue is cleared, the population will be restarted.
+-   -1 – All population events are stopped and will not resume until the index merger queue is cleared. This is done by “waiting for index completion” to occur. Once the queue is cleared, the population will be restarted.
+-  -2 -- Ignore the in-memory queue full error. These records will be written to storage and later, the index healer will pick them for indexing.
 -   0 -- Disable event handling (just re-throws the exception)
 -   \>= 1 – All population events are stopped, and the module will wait for “EVT” seconds. Once the interval is reached, the population will be restarted.
 
@@ -74,7 +75,7 @@ The Vector Server’s IP Address or Host Name (default: localhost)
 
 \-A HOST:PORT [HOST:PORT ...], --hosts HOST:PORT [HOST:PORT ...]
 
-A list of host and optional port. Each pair is separated by a space.  
+A list of host and optional port. Each pair is separated by a space.
 Example: 'hosta:5000' or 'hostb' (default: [localhost:5000])
 
 If provided, each population request is distributed over the list of hosts.
@@ -91,46 +92,46 @@ Note: if “—hosts” argument is used, only the first host in the list is use
 
 \-n NS, --namespace NS
 
-The Aerospike Namespace  
+The Aerospike Namespace
 (default: test)
 
 \-N NS, --idxnamespace NS
 
-Aerospike Namespace where the vector index will be located.  
+Aerospike Namespace where the vector index will be located.
 Defaults to the value of “—namespace”.
 
 \-s SET, --setname SET
 
-The Aerospike Set Name  
+The Aerospike Set Name
 (default: HDF-data)
 
 \-I IDX, --idxname IDX
 
-The Vector Index Name.  
+The Vector Index Name.
 Defaults to the Set Name (--setname) with the suffix of '_idx'
 
 \-g, --generatedetailsetname
 
-Generates a unique Set Name (--setname) based on distance type, dimensions, index params, etc.  
+Generates a unique Set Name (--setname) based on distance type, dimensions, index params, etc.
 (default: False)
 
 \-b BIN, --vectorbinname BIN
 
-The Aerospike Bin Name where the vector is stored  
+The Aerospike Bin Name where the vector is stored
 (default: “HDF_embedding”)
 
 \-D DIST, --distancetype DIST
 
-The Vector's Index Distance Type as defined by the Vector Phyton API.  
+The Vector's Index Distance Type as defined by the Vector Phyton API.
 The default is to select the index type based on the ANN dataset
 
 \-P PARM, --indexparams PARM
 
-The Vector's Index Params (HnswParams) as defined by the Vector Phyton API.  
+The Vector's Index Params (HnswParams) as defined by the Vector Phyton API.
 (default: {"m": 16, "ef_construction": 100, "ef": 100})
 
-\--storagethreshold MULTIPLIER  
-A storage multiplier used to determine how the “training” dataset is loaded. It is either loaded completely in memory or is memory mapped (paged into memory when needed). The multiplier is simply how many “training” datasets can fit into available physical memory. For example, a multiplier of 4 (default) means that if at least 4 times the size of the “training” dataset can fit in available memory, it will be loaded into memory. If it cannot, it will be memory mapped and paged when needed. A value of 0 means always try to load it into memory. A value of -1 means to always memory map this dataset.   
+\--storagethreshold MULTIPLIER
+A storage multiplier used to determine how the “training” dataset is loaded. It is either loaded completely in memory or is memory mapped (paged into memory when needed). The multiplier is simply how many “training” datasets can fit into available physical memory. For example, a multiplier of 4 (default) means that if at least 4 times the size of the “training” dataset can fit in available memory, it will be loaded into memory. If it cannot, it will be memory mapped and paged when needed. A value of 0 means always try to load it into memory. A value of -1 means to always memory map this dataset.
 (default: 4)
 
 \-L LOG, --logfile LOG
@@ -185,8 +186,8 @@ A HDF file that can be an ANN HDF file, or one created by “[hdf_create_dataset
 
 \-r RUNS, --runs RUNS
 
-The number of times the query requests will run based on the ANN dataset.  
-For example: If the ANN dataset request 1,000 queries and if this value is 10; The total number of query requests will be 10,000 (1,000 \* 10).  
+The number of times the query requests will run based on the ANN dataset.
+For example: If the ANN dataset request 1,000 queries and if this value is 10; The total number of query requests will be 10,000 (1,000 \* 10).
 (default: 10)
 
 \--limit NEEIGHBORS
@@ -195,12 +196,12 @@ The number of neighbors to return from each query request. If this value is less
 
 \--parallel
 
-Each “run” is conducted concurrently  
+Each “run” is conducted concurrently
 (default: False)
 
 \--check
 
-Each query result is checked to determine if the result is correct.  
+Each query result is checked to determine if the result is correct.
 {default False)
 
 \-p port, --vectorport port
@@ -213,7 +214,7 @@ The Vector Server’s IP Address or Host Name (default: localhost)
 
 \-A HOST:PORT [HOST:PORT ...], --hosts HOST:PORT [HOST:PORT ...]
 
-A list of host and optional port. Each pair is separated by a space.  
+A list of host and optional port. Each pair is separated by a space.
 Example: 'hosta:5000' or 'hostb' (default: [localhost:5000])
 
 If provided, each query request is distributed over the list of hosts.
@@ -230,27 +231,27 @@ Note: if “—hosts” argument is used, only the first host in the list is use
 
 \-N NS, --idxnamespace NS
 
-Aerospike Namespace where the vector index will be located.  
+Aerospike Namespace where the vector index will be located.
 Defaults to the value of “—namespace”.
 
 \-s SET, --setname SET
 
-The Aerospike Set Name  
+The Aerospike Set Name
 (default: HDF-data)
 
 \-I IDX, --idxname IDX
 
-The Vector Index Name.  
+The Vector Index Name.
 Defaults to the Set Name (--setname) with the suffix of '_idx'
 
 \-g, --generatedetailsetname
 
-Generates a unique Set Name (--setname) based on distance type, dimensions, index params, etc.  
+Generates a unique Set Name (--setname) based on distance type, dimensions, index params, etc.
 (default: False)
 
 \-S PARM, --searchparams PARM
 
-The Vector's Search Params (HnswParams) as defined by the Vector Phyton API.  
+The Vector's Search Params (HnswParams) as defined by the Vector Phyton API.
 Defaults to --indexparams
 
 \--metric TYPE
@@ -272,7 +273,7 @@ If provided, this will override the ANN distance type as defined in the dataset.
 -   squared_euclidean
 -   angular
 
-\--dontadustdistance  
+\--dontadustdistance
 If provided, the ANN default distance formula is always used regardless of the ANN or “distancecalc” values.
 
 \-L LOG, --logfile LOG
@@ -450,7 +451,7 @@ This will download the Big ANN dataset files and place the files into the defaul
 
 Below are the arguments:
 
--   \--dataset name  
+-   \--dataset name
     You can find more information about the Big ANN datasets [here](https://big-ann-benchmarks.com/neurips23.html). Name is:
     -   'bigann-1B'
     -   'bigann-100M'

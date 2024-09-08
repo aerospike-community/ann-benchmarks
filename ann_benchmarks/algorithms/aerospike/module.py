@@ -38,7 +38,8 @@ class Aerospike(BaseANN):
                     hnswParams: dict,
                     uniqueSetIdxName: bool = True,
                     dropIdx: bool = True,
-                    actions: str = "ALLOPS"):
+                    actions: str = "ALLOPS",
+                    ignoreExhaustedEvent: bool = False):
 
         global logFileHandler
         global loggingEnabled
@@ -83,6 +84,7 @@ class Aerospike(BaseANN):
                                     )
 
         self._idx_drop = dropIdx
+        self._idx_ignoreExhEvt = ignoreExhaustedEvent
         dropIdxOverride = os.environ.get("APP_DROP_IDX")
         if dropIdxOverride is not None:
             self._idx_drop = dropIdxOverride.lower() in ['true', '1', 't']
@@ -91,7 +93,7 @@ class Aerospike(BaseANN):
         #self._password = os.environ.get("APP_PASSWORD") or ""
         self._host = os.environ.get("AVS_HOST") or "localhost"
         self._port = int(os.environ.get("AVS_PORT") or 5000)
-        self._listern = None #os.environ.get("AVS_ADVERTISED_LISTENER") or None          
+        self._listern = None #os.environ.get("AVS_ADVERTISED_LISTENER") or None
         self._isloadbalancer = os.environ.get("AVS_USELOADBALANCER")
         if self._isloadbalancer is not None and self._isloadbalancer.lower() in ['true', '1', 't', '']:
             self._isloadbalancer = True
@@ -230,7 +232,7 @@ class Aerospike(BaseANN):
         result = True
         if self._idx_sleep > 0:
             while (any(index["id"]["namespace"] == self._namespace
-                                    and index["id"]["name"] == self._idx_name 
+                                    and index["id"]["name"] == self._idx_name
                                 for index in existingIndexes)):
                 if loopTimes>= self._idx_sleep:
                     print(f'\n')
@@ -244,12 +246,12 @@ class Aerospike(BaseANN):
 
         t = time.time()
         print('\n')
-        Aerospike.PrintLog(f'Result: {result}, Drop Index Time (sec) = {t - s}')        
+        Aerospike.PrintLog(f'Result: {result}, Drop Index Time (sec) = {t - s}')
         return result
 
     async def CreateIndex(self, adminClient: vectorASyncAdminClient) -> None:
         global aerospikeIdxNames
-        Aerospike.PrintLog(f'Creating Index {self._namespace}.{self._idx_name}')        
+        Aerospike.PrintLog(f'Creating Index {self._namespace}.{self._idx_name}')
         s = time.time()
         await adminClient.index_create(namespace=self._namespace,
                                                 name=self._idx_name,
@@ -269,6 +271,7 @@ class Aerospike(BaseANN):
                 await client.upsert(namespace=self._namespace,
                                     set_name=self._setName,
                                     key=key,
+                                    ignore_mem_queue_full=self._idx_ignoreExhEvt,
                                     record_data={
                                         self._idx_binName:embedding.tolist()
                                     }
@@ -285,7 +288,7 @@ class Aerospike(BaseANN):
                         logger.debug(f"Resource Exhausted on Put on Count: {i}, Key: {key}, Idx: {self._namespace}.{self._setName}.{self._idx_name}. Going to Pause Population and Wait for Idx Completion...")
                     s = time.time()
                     await client.wait_for_index_completion(namespace=self._namespace,
-                                                            name=self._idx_name)            
+                                                            name=self._idx_name)
                     t = time.time()
                     if logLevel == logging.WARNING:
                         Aerospike.PrintLog(msg=f"Index Completed Time (sec) = {t - s}, Going to Reissue Puts for Idx: {self._namespace}.{self._setName}.{self._idx_name}",
@@ -399,7 +402,7 @@ class Aerospike(BaseANN):
     def fit(self, X: np.array) -> None:
 
         if self._actions == OperationActions.QUERYONLY:
-            Aerospike.PrintLog(f'No Idx Population: {self} Shape: {X.shape}')            
+            Aerospike.PrintLog(f'No Idx Population: {self} Shape: {X.shape}')
             return
 
         Aerospike.PrintLog(f'Start fit: {self} Shape: {X.shape}')
@@ -432,11 +435,11 @@ class Aerospike(BaseANN):
                                                     index_name=self._idx_name,
                                                     query=q.tolist(),
                                                     limit=n,
-                                                    search_params=self._query_hnswsearchparams)            
+                                                    search_params=self._query_hnswsearchparams)
             result_ids = [neighbor.key.key for neighbor in result]
             if self._checkResult:
                 if len(result_ids) == 0:
-                    Aerospike.PrintLog(f'No Query Results for {self._idx_name}', logging.WARNING)                    
+                    Aerospike.PrintLog(f'No Query Results for {self._idx_name}', logging.WARNING)
                 zeroDist = [record.key.key for record in result if record.distance == 0]
                 if len(zeroDist) > 0:
                     Aerospike.PrintLog(f'Zero Distance Found for {self._idx_name} Keys: {zeroDist}', logging.WARNING)
@@ -452,4 +455,4 @@ class Aerospike(BaseANN):
     def __str__(self):
         batchingparams = f"maxrecs:{self._idx_hnswparams.batching_params.max_records}, interval:{self._idx_hnswparams.batching_params.interval}"
         hnswparams = f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}"
-        return f"Aerospike([{self._metric}, {self._host}:{self._port}, {self._isloadbalancer}, {self._namespace}.{self._setName}.{self._idx_name}, {self._idx_type}, {self._idx_value}, {self._dims}, {self._actions}, {self._idx_sleep}, {self._populateTasks}, {{{hnswparams}}}, {{{self._query_hnswsearchparams}}}])"
+        return f"Aerospike([{self._metric}, {self._host}:{self._port}, {self._isloadbalancer}, {self._namespace}.{self._setName}.{self._idx_name}, {self._idx_type}, {self._idx_value}, {self._dims}, {self._actions}, {self._idx_sleep}, {self._idx_ignoreExhEvt}, {self._populateTasks}, {{{hnswparams}}}, {{{self._query_hnswsearchparams}}}])"

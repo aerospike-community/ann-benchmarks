@@ -14,6 +14,7 @@ float:
           [True], #Unique Set/Index Name (optional, default True). The created Set/Index Name is based on Idx Type, Dims, M, EF_const, and EF. If false, only Idx Type
           [True] #True to Drop Idx and Re-Populate, optional default true
           #[AllOps] #Default Performs all operations (populate idx and query). Values are IdxPopulateOnly, QueryOnly, AllOps (default)
+          #[False] #If True, the exhausted resource event is handled by the Handler. Default is false.
         ]
         query_args: [ #Query HnswSearchParams, e.g., [{ef: 3}], optional
           []

@@ -25,13 +25,13 @@ from dsiterator import DSIterator
 logger = logging.getLogger(__name__)
 
 aerospikeIdxNames : list = []
-      
+
 class Aerospike(BaseAerospike):
-    
+
     @staticmethod
     def parse_arguments_population(parser: argparse.ArgumentParser) -> None:
         '''
-        Adds the arguments required to populate an index. 
+        Adds the arguments required to populate an index.
         '''
         group = parser.add_mutually_exclusive_group(required=True)
         group.add_argument(
@@ -130,8 +130,10 @@ class Aerospike(BaseAerospike):
             help='''
     This determines how the Resource Exhausted event is handled.
     Values are:
-        -  < 0 -- All population events are stopped and will not resume until the Idx queue is cleared
-                    (wait for idx completion).
+        -   -1 -- All population events are stopped and will not resume until the Idx queue is cleared
+                    (wait for idx completion). This is the default.
+        -   -2 -- Ignore the in-memory queue full error. These records will be written to storage
+                    and later, the index healer will pick them for indexing
         -    0 -- Disable event handling (just re-throws the exception)
         - >= 1 -- All population events are stopped and this is the number of seconds to wait before re-starting the population.
                     This needs to be a large enough number to allow the Idx queue to somewhat clear.
@@ -538,6 +540,7 @@ class Aerospike(BaseAerospike):
                     await client.upsert(namespace=self._namespace,
                                         set_name=self._setName,
                                         key=key,
+                                        ignore_mem_queue_full= self._idx_resource_event == -2,
                                         record_data={
                                             self._idx_binName:embedding.tolist()
                                         }
@@ -560,7 +563,7 @@ class Aerospike(BaseAerospike):
             self._pausePuts = False
             raise
 
-    async def index_exist(self, adminClient: vectorASyncAdminClient) -> Union[dict, None]:        
+    async def index_exist(self, adminClient: vectorASyncAdminClient) -> Union[dict, None]:
         existingIndexes = await adminClient.index_list()
         if len(existingIndexes) == 0:
             return None

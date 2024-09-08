@@ -212,6 +212,8 @@ class BaseAerospike(object):
 
         self._vector_queue_qry_time : int = runtimeArgs.vectorqueqry
         self._vector_queue_qry_thread : Thread = None
+        self._vector_Committed : Union[int, None] = None
+        self._vector_queue_depth : Union[int, None] = None
 
         self._logging_init(runtimeArgs, logger)
 
@@ -258,7 +260,7 @@ class BaseAerospike(object):
 
         self._prometheus_heartbeat_gauge = self._meter.create_gauge("aerospike.hdf.heartbeat")
 
-        self._vector_queue_gauge = self._meter.create_gauge("aerospike.hdf.vectorqueuedepth", 
+        self._vector_queue_gauge = self._meter.create_gauge("aerospike.hdf.vectorqueuedepth",
                                                                 description="Vector Queue Depth"
                                                       )
 
@@ -347,8 +349,10 @@ class BaseAerospike(object):
 
         resourceevt = ''
         if self._idx_resource_event is not None:
-            if self._idx_resource_event < 0:
+            if self._idx_resource_event == -1 or self._idx_resource_event < -2:
                 resourceevt = 'Wait Idx'
+            if self._idx_resource_event == -2:
+                resourceevt = 'Healer'
             elif self._idx_resource_event > 0:
                 resourceevt = f"Sleep {self._idx_resource_event} secs"
             else:
@@ -370,6 +374,19 @@ class BaseAerospike(object):
             else:
                 waitevt = "Wait for Completion"
 
+        poprecs = None if self._trainarray is None else len(self._trainarray)
+        remainingRecs = self._remainingrecs
+        if (self._vector_queue_depth is not None
+                and poprecs is not None
+                and self._actions is not None
+                and OperationActions.POPULATION in self._actions):
+            if remainingRecs is None:
+                self._vector_Committed = 0
+            else:
+                vectorcommit = (poprecs - remainingRecs) - self._vector_queue_depth
+                if self._vector_Committed is None or vectorcommit > self._vector_Committed:
+                    self._vector_Committed = vectorcommit
+
         self._prometheus_heartbeat_gauge.set(self.__cnthb__,
                                              {"ns": '' if self._namespace is None else self._namespace,
                                                 "set": '' if self._setName is None else self._setName,
@@ -379,7 +396,7 @@ class BaseAerospike(object):
                                                 "idxdist": None if self._idx_distance is None else self._idx_distance.name,
                                                 "anndist": self._ann_distance,
                                                 "dims": self._dimensions,
-                                                "poprecs": None if self._trainarray is None else len(self._trainarray),
+                                                "poprecs": poprecs,
                                                 "queries": None if self._queryarray is None else len(self._queryarray),
                                                 "querynbrlmt": self._query_nbrlimit,
                                                 "queryruns": self._query_runs,
@@ -387,7 +404,7 @@ class BaseAerospike(object):
                                                 "dataset":self._datasetname,
                                                 "paused": pausestate,
                                                 "action": None if self._actions is None else self._actions.name,
-                                                "remainingRecs" : self._remainingrecs,
+                                                "remainingRecs" : remainingRecs,
                                                 "remainingquerynbrs" : self._remainingquerynbrs,
                                                 "querymetric": '' if self._query_metric is None else self._query_metric["type"],
                                                 "querymetricvalue": self._query_metric_value,
@@ -399,7 +416,8 @@ class BaseAerospike(object):
                                                 "popconcurrent": concurrentevt,
                                                 "popwait" : waitevt,
                                                 "idxstate": self._idx_state,
-                                                "querydistance": self._ann_distance if self._query_distancecalc is None else self._query_distancecalc
+                                                "querydistance": self._ann_distance if self._query_distancecalc is None else self._query_distancecalc,
+                                                "popcommitted": self._vector_Committed
                                                 })
 
     def _prometheus_heartbeat(self) -> None:
@@ -434,6 +452,7 @@ class BaseAerospike(object):
                 self._vector_queue_depth = adminclient.index_get_status(namespace=self._namespace,
                                                         name=self._idx_name,
                                                         timeout=2)
+
             except vectorTypes.AVSServerError as avse:
                     self._vector_queue_depth = None
                     if (avse.rpc_error.code() != vectorResultCodes.StatusCode.NOT_FOUND
@@ -466,6 +485,7 @@ class BaseAerospike(object):
                 queryapicnt = round(self._vector_queue_qry_time / self._prometheus_hb)
                 queryapi:bool = True
                 self._vector_queue_depth = 0
+                self._vector_queue_total = None
                 while self._vector_queue_qry_time > 0:
                     i += 1
                     if i >= queryapicnt:
@@ -476,7 +496,7 @@ class BaseAerospike(object):
                     if self._vector_queue_qry_time > 0:
                         sleep(self._prometheus_hb)
                     queryapi = False
-                self.vector_queue_status(adminClient, True)
+                self.vector_queue_status(adminClient, done=True)
             self._logger.debug(f"Vector Heartbeating Ended")
         except Exception as e:
             self._logger.exception("Exception occurred tring to obtain Index Status")
