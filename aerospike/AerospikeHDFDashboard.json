@@ -7,28 +7,10 @@
       "type": "datasource",
       "pluginId": "prometheus",
       "pluginName": "Prometheus"
-    },
-    {
-      "name": "DS_EXPRESSION",
-      "label": "Expression",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "__expr__"
     }
   ],
   "__elements": {},
   "__requires": [
-    {
-      "type": "datasource",
-      "id": "__expr__",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "barchart",
-      "name": "Bar chart",
-      "version": ""
-    },
     {
       "type": "panel",
       "id": "gauge",
@@ -40,6 +22,12 @@
       "id": "grafana",
       "name": "Grafana",
       "version": "10.4.2"
+    },
+    {
+      "type": "panel",
+      "id": "heatmap",
+      "name": "Heatmap",
+      "version": ""
     },
     {
       "type": "datasource",
@@ -403,6 +391,96 @@
       "fieldConfig": {
         "defaults": {
           "color": {
+            "fixedColor": "red",
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#6ED0E0",
+                "value": 100
+              },
+              {
+                "color": "#EAB839",
+                "value": 500
+              },
+              {
+                "color": "#EF843C",
+                "value": 750
+              },
+              {
+                "color": "#E24D42",
+                "value": 1000
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "id": 662,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(aerospike_hdf_exception_total{instance=~\"$client\"})",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Errors",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
             "fixedColor": "light-blue",
             "mode": "fixed"
           },
@@ -422,9 +500,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
-        "w": 4,
-        "x": 12,
+        "h": 8,
+        "w": 6,
+        "x": 16,
         "y": 1
       },
       "id": 658,
@@ -466,96 +544,6 @@
         }
       ],
       "title": "HNSW Params",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "red",
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "fieldMinMax": false,
-          "mappings": [],
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "#6ED0E0",
-                "value": 100
-              },
-              {
-                "color": "#EAB839",
-                "value": 500
-              },
-              {
-                "color": "#EF843C",
-                "value": 750
-              },
-              {
-                "color": "#E24D42",
-                "value": 1000
-              }
-            ]
-          },
-          "unit": "locale"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 4,
-        "x": 16,
-        "y": 1
-      },
-      "id": 662,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "sum(aerospike_hdf_exception{instance=~\"$client\"})",
-          "format": "table",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Errors",
       "type": "stat"
     },
     {
@@ -802,9 +790,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "disableTextWrap": false,
-              "editorMode": "builder",
+              "editorMode": "code",
               "exemplar": false,
-              "expr": "aerospike_hdf_exception{ns=~\"$idxns\", instance=~\"$client\", idx=~\"$idxname\", run=~\"$QueryRun\"}",
+              "expr": "aerospike_hdf_exception_total{ns=~\"$idxns\", instance=~\"$client\", idx=~\"$idxname\", run=~\"$QueryRun\"}",
               "format": "time_series",
               "fullMetaSearch": false,
               "includeNullMetadata": true,
@@ -820,8 +808,8 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "aerospike_hdf_exception{ns=~\"$namespace\", instance=~\"$client\", set=~\"$set\"}",
+              "editorMode": "code",
+              "expr": "aerospike_hdf_exception_total{ns=~\"$namespace\", instance=~\"$client\", set=~\"$set\"}",
               "fullMetaSearch": false,
               "hide": false,
               "includeNullMetadata": true,
@@ -905,7 +893,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 6,
         "w": 3,
         "x": 0,
         "y": 11
@@ -982,7 +970,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 6,
         "w": 3,
         "x": 3,
         "y": 11
@@ -1087,7 +1075,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 6,
         "w": 3,
         "x": 6,
         "y": 11
@@ -1293,7 +1281,300 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "Number on the left are the committed vectors and the number on the right are the uncommitted vectors to the DB.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "semi-dark-green",
+                "value": 0
+              },
+              {
+                "color": "green",
+                "value": 1000
+              },
+              {
+                "color": "light-green",
+                "value": 50000.0001
+              },
+              {
+                "color": "yellow",
+                "value": 100000
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 3,
+        "x": 9,
+        "y": 11
+      },
+      "id": 669,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "sum(aerospike_hdf_populate_total{instance=~\"$client\", ns=~\"$namespace\", set=~\"$set\"})",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B",
+          "useBackend": false
+        }
+      ],
+      "title": "Records Committed to DB",
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Committed",
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "popcommitted"
+              ],
+              "reducer": "max"
+            },
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "UnCommitted",
+            "binary": {
+              "left": "sum(aerospike_hdf_populate_total{instance=~\"172\\\\.28\\\\.86\\\\.158:9464\", ns=~\"test\", set=~\"glove-100-angular\"})",
+              "operator": "-",
+              "right": "Committed"
+            },
+            "mode": "binary",
+            "reduce": {
+              "include": [
+                "sum(aerospike_hdf_populate_total{instance=~\"172\\\\.28\\\\.86\\\\.158:9464\", ns=~\"test\", set=~\"glove-100-angular\"})"
+              ],
+              "reducer": "sum"
+            },
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": false,
+              "Value 2": true,
+              "__name__": true,
+              "action": true,
+              "anndist": true,
+              "dataset": true,
+              "dims": true,
+              "hnswparams": true,
+              "idx": false,
+              "idxbin": true,
+              "idxdist": true,
+              "idxns": false,
+              "idxstate": true,
+              "instance": true,
+              "job": true,
+              "ns": false,
+              "paused": true,
+              "popcommitted": true,
+              "popconcurrent": true,
+              "poprecs": false,
+              "popresrcevt": true,
+              "popwait": true,
+              "queries": true,
+              "querydistance": true,
+              "queryef": true,
+              "querymetricaerospikevalue": true,
+              "querymetricbigvalue": true,
+              "querymetricvalue": true,
+              "querynbrlmt": true,
+              "queryruns": true,
+              "remainingquerynbrs": true,
+              "set": false,
+              "sum(aerospike_hdf_populate_total{instance=~\"172\\\\.28\\\\.86\\\\.158:9464\", ns=~\"test\", set=~\"glove-100-angular\"})": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {}
+          }
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "fieldMinMax": true,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 11
+      },
+      "id": 672,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_vectorqueuedepth{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
+          "format": "time_series",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "{{instance}} {{idxns}}.{{idx}}",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Records Queued to be Merged into DB",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "If a resource exhausted error occurs, what action should be performed. ",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1341,12 +1622,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 3,
         "w": 3,
-        "x": 9,
+        "x": 18,
         "y": 11
       },
-      "id": 666,
+      "id": 668,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -1354,7 +1635,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [],
-          "fields": "/^idxstate$/",
+          "fields": "/^popresrcevt$/",
           "values": false
         },
         "showPercentChange": false,
@@ -1383,7 +1664,7 @@
           "useBackend": false
         }
       ],
-      "title": "Index Status",
+      "title": "Exhausted Resource Handling",
       "type": "stat"
     },
     {
@@ -1439,9 +1720,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 3,
         "w": 3,
-        "x": 12,
+        "x": 21,
         "y": 11
       },
       "id": 665,
@@ -1482,104 +1763,6 @@
         }
       ],
       "title": "Concurrency",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "If a resource exhausted error occurs, what action should be performed. ",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "fieldMinMax": false,
-          "mappings": [
-            {
-              "options": {
-                "Done": {
-                  "color": "purple",
-                  "index": 0,
-                  "text": "Done"
-                },
-                "Paused": {
-                  "color": "red",
-                  "index": 1,
-                  "text": "Paused"
-                },
-                "Running": {
-                  "color": "green",
-                  "index": 3,
-                  "text": "Running"
-                },
-                "Waiting": {
-                  "color": "yellow",
-                  "index": 2,
-                  "text": "Waiting"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "purple",
-                "value": null
-              }
-            ]
-          },
-          "unit": "string"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 3,
-        "x": 15,
-        "y": 11
-      },
-      "id": 668,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [],
-          "fields": "/^popresrcevt$/",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", ns=~\"$namespace\", set=~\"$set\"}",
-          "format": "table",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "B",
-          "useBackend": false
-        }
-      ],
-      "title": "Exhausted Resource Handling",
       "type": "stat"
     },
     {
@@ -1635,10 +1818,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 3,
         "w": 3,
         "x": 18,
-        "y": 11
+        "y": 14
       },
       "id": 667,
       "options": {
@@ -1685,50 +1868,72 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Number on the left are the uncommited vectors and the number on the right are the commited vectors to the DB",
+      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
-          "decimals": 0,
           "fieldMinMax": false,
-          "mappings": [],
-          "noValue": "0",
+          "mappings": [
+            {
+              "options": {
+                "Done": {
+                  "color": "purple",
+                  "index": 0,
+                  "text": "Done"
+                },
+                "Paused": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "Paused"
+                },
+                "Running": {
+                  "color": "green",
+                  "index": 3,
+                  "text": "Running"
+                },
+                "Waiting": {
+                  "color": "yellow",
+                  "index": 2,
+                  "text": "Waiting"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "blue",
+                "color": "purple",
                 "value": null
               }
             ]
           },
-          "unit": "locale"
+          "unit": "string"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 3,
         "w": 3,
         "x": 21,
-        "y": 11
+        "y": 14
       },
-      "id": 669,
+      "id": 666,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
+          "calcs": [],
+          "fields": "/^idxstate$/",
           "values": false
         },
         "showPercentChange": false,
-        "textMode": "value",
+        "textMode": "auto",
         "wideLayout": true
       },
       "pluginVersion": "10.4.2",
@@ -1741,69 +1946,19 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_hdf_vectorqueuedepth{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
-          "format": "time_series",
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", ns=~\"$namespace\", set=~\"$set\"}",
+          "format": "table",
           "fullMetaSearch": false,
+          "hide": false,
           "includeNullMetadata": true,
           "instant": true,
           "legendFormat": "__auto",
           "range": false,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "sum(aerospike_hdf_populate_total{instance=~\"$client\", ns=~\"$namespace\", set=~\"$set\"})",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
           "refId": "B",
           "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "__expr__",
-            "uid": "${DS_EXPRESSION}"
-          },
-          "expression": "$B - $A",
-          "hide": false,
-          "refId": "C",
-          "type": "math"
         }
       ],
-      "title": "Index Merge Queue Depth",
-      "transformations": [
-        {
-          "id": "configFromData",
-          "options": {
-            "configRefId": "B",
-            "mappings": []
-          }
-        },
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "C \\{.*",
-            "renamePattern": "committed"
-          }
-        },
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "aerospike_hdf_.*",
-            "renamePattern": "uncommitted"
-          }
-        }
-      ],
+      "title": "Index Status",
       "type": "stat"
     },
     {
@@ -1908,7 +2063,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 17
       },
       "id": 638,
       "options": {
@@ -1952,7 +2107,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "aerospike_hdf_waitidxcompletion{ns=\"$idxns\", idx=\"$idxname\", instance=~\"$client\"}",
+          "expr": "aerospike_hdf_waitidxcompletion_total{ns=\"$idxns\", idx=\"$idxname\", instance=~\"$client\"}",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -1972,7 +2127,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 26
       },
       "id": 652,
       "panels": [],
@@ -2011,7 +2166,7 @@
         "h": 5,
         "w": 3,
         "x": 0,
-        "y": 26
+        "y": 27
       },
       "id": 646,
       "options": {
@@ -2084,7 +2239,7 @@
         "h": 5,
         "w": 3,
         "x": 3,
-        "y": 26
+        "y": 27
       },
       "id": 650,
       "options": {
@@ -2157,7 +2312,7 @@
         "h": 5,
         "w": 3,
         "x": 6,
-        "y": 26
+        "y": 27
       },
       "id": 647,
       "options": {
@@ -2229,7 +2384,7 @@
         "h": 5,
         "w": 2,
         "x": 9,
-        "y": 26
+        "y": 27
       },
       "id": 659,
       "options": {
@@ -2303,7 +2458,7 @@
         "h": 5,
         "w": 3,
         "x": 11,
-        "y": 26
+        "y": 27
       },
       "id": 648,
       "options": {
@@ -2423,7 +2578,7 @@
         "h": 5,
         "w": 2,
         "x": 14,
-        "y": 26
+        "y": 27
       },
       "id": 653,
       "options": {
@@ -2512,7 +2667,7 @@
         "h": 5,
         "w": 2,
         "x": 16,
-        "y": 26
+        "y": 27
       },
       "id": 654,
       "options": {
@@ -2601,7 +2756,7 @@
         "h": 5,
         "w": 3,
         "x": 18,
-        "y": 26
+        "y": 27
       },
       "id": 661,
       "options": {
@@ -2690,7 +2845,7 @@
         "h": 5,
         "w": 3,
         "x": 21,
-        "y": 26
+        "y": 27
       },
       "id": 657,
       "options": {
@@ -2796,7 +2951,7 @@
         "h": 13,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 32
       },
       "id": 610,
       "options": {
@@ -2847,44 +3002,17 @@
       "description": "The number of queries that fall within a certain latency buckets in milliseconds",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "series",
-            "axisLabel": "Queries",
-            "axisPlacement": "auto",
-            "axisSoftMin": 0,
-            "fillOpacity": 71,
-            "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "lineWidth": 3,
             "scaleDistribution": {
               "type": "linear"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
             }
           },
-          "decimals": 0,
-          "fieldMinMax": false,
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "locale"
+          "fieldMinMax": false
         },
         "overrides": []
       },
@@ -2892,31 +3020,49 @@
         "h": 15,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 45
       },
-      "id": 656,
+      "id": 673,
       "options": {
-        "barRadius": 0,
-        "barWidth": 0.67,
-        "fullHighlight": false,
-        "groupWidth": 0.75,
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "calculate": false,
+        "cellGap": 1,
+        "cellValues": {
+          "decimals": 0,
+          "unit": "locale"
         },
-        "orientation": "auto",
-        "showValue": "never",
-        "stacking": "normal",
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "reverse": false,
+          "scale": "exponential",
+          "scheme": "RdYlBu",
+          "steps": 64
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
         "tooltip": {
           "mode": "single",
-          "sort": "none"
+          "showColorScale": false,
+          "yHistogram": true
         },
-        "xField": "Time",
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 0
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "ms"
+        }
       },
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -2926,7 +3072,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "sum by(le) (aerospike_hdf_queryhist_milliseconds_bucket{ns=~\"$idxns\", idx=~\"$idxname\", instance=~\"$client\", run=~\"$QueryRun\"})",
+          "expr": "sum by(le) (aerospike_hdf_queryhist_ms_bucket{ns=~\"$idxns\", idx=~\"$idxname\", instance=~\"$client\", run=~\"$QueryRun\"})",
           "format": "heatmap",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -2939,9 +3085,10 @@
         }
       ],
       "title": "Vector Search Latency Buckets (ms)",
-      "type": "barchart"
+      "type": "heatmap"
     }
   ],
+  "refresh": "5s",
   "schemaVersion": 39,
   "tags": [
     "Monitoring",
@@ -3117,8 +3264,8 @@
     ]
   },
   "time": {
-    "from": "2024-08-01T01:21:02.624Z",
-    "to": "2024-08-01T01:41:56.131Z"
+    "from": "now-5m",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -3148,6 +3295,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 39,
+  "version": 13,
   "weekStart": ""
 }
