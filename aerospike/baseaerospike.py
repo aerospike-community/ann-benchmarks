@@ -351,7 +351,7 @@ class BaseAerospike(object):
         if self._idx_resource_event is not None:
             if self._idx_resource_event == -1 or self._idx_resource_event < -2:
                 resourceevt = 'Wait Idx'
-            if self._idx_resource_event == -2:
+            elif self._idx_resource_event == -2:
                 resourceevt = 'Healer'
             elif self._idx_resource_event > 0:
                 resourceevt = f"Sleep {self._idx_resource_event} secs"
