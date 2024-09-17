@@ -1,6 +1,7 @@
 h5py
 numpy
 psutil
+pythonping
 scipy
 aerospike
 aerospike-vector-search==2.0.0
