@@ -17,7 +17,7 @@ def download(source_url: str, destination_path: str) -> None:
     """
     Downloads a file from the provided source URL to the specified destination path
     only if the file doesn't already exist at the destination.
-    
+
     Args:
         source_url (str): The URL of the file to download.
         destination_path (str): The local path where the file should be saved.
@@ -30,39 +30,39 @@ def download(source_url: str, destination_path: str) -> None:
 def get_dataset_fn(dataset_name: str, folder:str = "data") -> Tuple[str,str]:
     """
     Returns the full file path for a given dataset name in the data directory.
-    
+
     Args:
         dataset_name (str): The name of the dataset.
-    
+
     Returns:
         str: The full file path of the dataset and the dataset name.
     """
     if not os.path.exists(folder):
         os.mkdir(folder)
-        
+
     filename, fileext = os.path.splitext(dataset_name)
     filenamewext : str = dataset_name
-    
+
     if fileext is None or not fileext:
         filenamewext = f"{filename}.hdf5"
-        
+
     if (filenamewext[0] == os.path.sep
             or filenamewext.startswith(f"{folder}{os.path.sep}")
             or filenamewext.startswith(f".{os.path.sep}")):
         splitpath = os.path.split(filename)
         return filenamewext, splitpath[1]
-    
+
     return os.path.join(folder, filenamewext), filename
 
 def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int]:
     """
     Fetches a dataset by downloading it from a known URL or creating it locally
-    if it's not already present. The dataset file is then opened for reading, 
+    if it's not already present. The dataset file is then opened for reading,
     and the file handle and the dimension of the dataset are returned.
-    
+
     Args:
         dataset_name (str): The name of the dataset.
-    
+
     Returns:
         Tuple[h5py.File, int]: A tuple containing the opened HDF5 file object and
             the dimension of the dataset.
@@ -71,7 +71,7 @@ def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int
         hdf5_filename, dataset_name = get_dataset_fn(dataset_name)
     else:
         hdf5_filename = hdfpath
-        
+
     if dataset_name in DATASETS.keys():
         try:
             dataset_url = f"https://ann-benchmarks.com/{dataset_name}.hdf5"
@@ -85,7 +85,7 @@ def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int
         DATASETS.update({dataset_name:hdf5_filename})
     else:
         raise FileNotFoundError(f"HDF File '{hdf5_filename}' doesn't exist.")
-    
+
     hdf5_file = h5py.File(hdf5_filename, "r")
 
     # here for backward compatibility, to ensure old datasets can still be used with newer versions
@@ -109,15 +109,15 @@ def load_and_transform_dataset(dataset_name: str, hdfpath : str = None) -> Tuple
 
     Returns:
         Tuple: Transformed datasets.
-    """    
+    """
     D, dimension = get_dataset(dataset_name, hdfpath)
     distance = D.attrs["distance"]
-    
+
     train, test, neighbors, distances, primarykeys = dataset_transform(D)
-    
+
     print(f"Got a train set of size ({train.shape[0]} * {dimension})")
     print(f"Got {len(test)} queries")
-    
+
     return train, test, neighbors, distances, distance, D, dimension, primarykeys
 
 def dataset_transform(dataset: h5py.Dataset) -> Tuple[
@@ -125,7 +125,7 @@ def dataset_transform(dataset: h5py.Dataset) -> Tuple[
     DSIterator,
     DSIterator,
     DSIterator,
-    DSIterator]:    
+    DSIterator]:
     """
     Transforms the dataset from the HDF5 format to conventional numpy format.
 
@@ -138,12 +138,12 @@ def dataset_transform(dataset: h5py.Dataset) -> Tuple[
     Returns:
         Tuple[Union[np.ndarray, List[np.ndarray]], Union[np.ndarray, List[np.ndarray]]]: Tuple of training and testing data in conventional format.
     """
-    
+
     train_dtype = dataset.attrs.get("train_dtype", None)
     test_dtype = dataset.attrs.get("test_dtype", None)
     neighbors_dtype = dataset.attrs.get("neighbors_dtype", None)
     distances_dtype = dataset.attrs.get("distances_dtype", None)
-   
+
     if dataset.attrs.get("type", "dense") != "sparse":
         return (
             DSHDFIterator.determine_iterator_large(dataset, "train", train_dtype),
@@ -155,7 +155,7 @@ def dataset_transform(dataset: h5py.Dataset) -> Tuple[
 
     def getsparseds(dataset, name : str, sizename : str, dtype : str) -> DSIterator:
         return DSArrayIterator(dataset, name, dtype) if dataset.get(sizename) is None else DSSparseIterator(dataset, name, dataset[sizename])
-    
+
     # we store the dataset as a list of integers, accompanied by a list of lengths in hdf5
     # so we transform it back to the format expected by the algorithms here (array of array of ints)
     return (
@@ -171,7 +171,7 @@ def write_output(train: numpy.ndarray, test: numpy.ndarray, fn: str, distance: s
     Writes the provided training and testing data to an HDF5 file. It also computes 
     and stores the nearest neighbors and their distances for the test set using a 
     brute-force approach.
-    
+
     Args:
         train (numpy.ndarray): The training data.
         test (numpy.ndarray): The testing data.
@@ -221,17 +221,17 @@ param: train and test are arrays of arrays of indices.
 
 def write_sparse_output(train: numpy.ndarray, test: numpy.ndarray, fn: str, distance: str, dimension: int, count: int = 100) -> None:
     """
-    Writes the provided sparse training and testing data to an HDF5 file. It also computes 
-    and stores the nearest neighbors and their distances for the test set using a 
+    Writes the provided sparse training and testing data to an HDF5 file. It also computes
+    and stores the nearest neighbors and their distances for the test set using a
     brute-force approach.
-    
+
     Args:
         train (numpy.ndarray): The sparse training data.
         test (numpy.ndarray): The sparse testing data.
         filename (str): The name of the HDF5 file to which data should be written.
         distance_metric (str): The distance metric to use for computing nearest neighbors.
         dimension (int): The dimensionality of the data.
-        neighbors_count (int, optional): The number of nearest neighbors to compute for 
+        neighbors_count (int, optional): The number of nearest neighbors to compute for
             each point in the test set. Defaults to 100.
     """
     from bruteforce import BruteForceBLAS
@@ -281,12 +281,12 @@ def write_sparse_output(train: numpy.ndarray, test: numpy.ndarray, fn: str, dist
 def train_test_split(X: numpy.ndarray, test_size: int = 10000, dimension: int = None) -> Tuple[numpy.ndarray, numpy.ndarray]:
     """
     Splits the provided dataset into a training set and a testing set.
-    
+
     Args:
         X (numpy.ndarray): The dataset to split.
-        test_size (int, optional): The number of samples to include in the test set. 
+        test_size (int, optional): The number of samples to include in the test set.
             Defaults to 10000.
-        dimension (int, optional): The dimensionality of the data. If not provided, 
+        dimension (int, optional): The dimensionality of the data. If not provided,
             it will be inferred from the second dimension of X. Defaults to None.
 
     Returns:

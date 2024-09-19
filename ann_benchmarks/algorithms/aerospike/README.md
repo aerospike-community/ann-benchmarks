@@ -1,5 +1,7 @@
 # Backoff Logic when encountering Resource Exhausted
 
+This only applies when "ignoreExhaustedEvent" is true in the config.yml (default is false). When this value is True, any exhausted resource event will be handled by the healer.
+
 # The “back-off” logic is as follows:
 
 -   When the exception is received:
@@ -128,17 +130,17 @@ float:
           [{m: 8, ef_construction: 64, ef: 8},
             {m: 16, ef_construction: 128, ef: 8} ],
 #Unique Set/Index Name (optional, default True). See the “AVS_SET” environment variable above.
-          [True], 
+          [True],
 #True to Drop Idx and Re-Populate, optional default true. See “APP_DROP_IDX” environment variable above.
           [True],
 #Determines what phases are executed. Values are:
 #	IdxPopulateOnly – only conduct the populate index phase,
 #	QueryOnly – only perform the vector search phase,
 #	AllOps – All phases (optional default value)
-          [AllOps] 
+          [AllOps]
         ]
 #This grouping is required
-        query_args: [ 
+        query_args: [
 # If provided (optional), overrides the HnswParams defined above for the vector search phase
           [null, #Uses default defined above
             {ef: 10} #Override “ef” above
@@ -158,8 +160,8 @@ float:
               args: [
                 [SQUARED_EUCLIDEAN], #Idx Type
                 [{m: 16, ef_construction: 100, ef: 100}]
-              ]      
-              query_args: [ 
-                []  
+              ]
+              query_args: [
+                []
               ]
 ```

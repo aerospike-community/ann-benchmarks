@@ -268,7 +268,8 @@ class AerospikeDS():
         existingIndexes = await adminClient.index_list()
         if len(existingIndexes) == 0:
             return None
-        indexInfo = [(index if index["id"]["namespace"] == self._vector_namespace
+        indexInfo = [(index if (index["id"]["namespace"] == self._vector_namespace
+                                    or index["storage"]["namespace"] == self._vector_namespace)
                             and index["id"]["name"] == self._vector_name else None)
                         for index in existingIndexes]
         if all(v is None for v in indexInfo):
@@ -293,10 +294,11 @@ class AerospikeDS():
                 self.print_log(f'populate_vector_info: Vector Index: {self._vector_namespace}.{self._vector_name}, not found')
                 raise FileNotFoundError(f"Vector Index {self._vector_namespace}.{self._vector_name} not found")
 
-            self._as_namespace : str = idxAttribs['storage']['namespace']
-            self._as_set : str = idxAttribs['setFilter']
+            self._as_namespace : str = idxAttribs['id']['namespace']
+            self._vector_namespace = idxAttribs['storage']['namespace']
+            self._as_set : str = idxAttribs['sets']
             self._as_vectorbinname : str = idxAttribs["field"]
-            self._vector_distance : vectorTypes.VectorDistanceMetric = vectorTypes.VectorDistanceMetric[idxAttribs["vectorDistanceMetric"]]
+            self._vector_distance : vectorTypes.VectorDistanceMetric = vectorTypes.VectorDistanceMetric(idxAttribs["vector_distance_metric"])
             self._vector_hnsw : dict = idxAttribs['hnsw_params']
             self._vector_dimensions : int = idxAttribs['dimensions']
             self._vector_ann_distance : str = next((anndisttype for anndisttype, disttype in DISTANCETYPES.items() if disttype == self._vector_distance))
