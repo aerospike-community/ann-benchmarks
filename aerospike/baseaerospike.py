@@ -451,7 +451,7 @@ class BaseAerospike(object):
             try:
                 self._vector_queue_depth = adminclient.index_get_status(namespace=self._namespace,
                                                         name=self._idx_name,
-                                                        timeout=2)
+                                                        timeout=2).unmerged_record_count
 
             except vectorTypes.AVSServerError as avse:
                     self._vector_queue_depth = None
