@@ -1,5 +1,4 @@
 import asyncio
-import os
 import numpy as np
 import time
 import logging
@@ -23,8 +22,7 @@ from opentelemetry.util.types import Attributes
 from aerospike_vector_search import types as vectorTypes
 from aerospike_vector_search import AdminClient as vectorAdminClient
 
-from metrics import all_metrics as METRICS
-from helpers import set_hnsw_params_attrs, hnswstr
+from helpers import hnswstr
 from dsiterator import DSIterator
 
 _distanceNameToAerospikeType: Dict[str, vectorTypes.VectorDistanceMetric] = {
@@ -168,7 +166,7 @@ class BaseAerospike(object):
             from dshdfiterator import DSHDFIterator
             DSHDFIterator.set_storage_threshold(runtimeArgs.storagethreshold)
 
-        self._listern = None
+        self._listener = None
         self._useloadbalancer = runtimeArgs.vectorloadbalancer
 
         self._namespace : str = None
@@ -477,7 +475,7 @@ class BaseAerospike(object):
 
         try:
             with vectorAdminClient(seeds=self._host,
-                                    listener_name=self._listern,
+                                    listener_name=self._listener,
                                     is_loadbalancer=self._useloadbalancer
                 ) as adminClient:
                 self._logger.debug(f"Vector Heartbeating Start")
