@@ -10,8 +10,8 @@ from typing import Iterable, List, Any
 from pythonping import ping as PingHost
 from importlib.metadata import version
 
-from aerospike_vector_search import types as vectorTypes, Client as vectorSyncClient
-from aerospike_vector_search.aio import AdminClient as vectorASyncAdminClient, Client as vectorASyncClient
+from aerospike_vector_search import types as vectorTypes, Client as vectorSyncClient, Index as vectorIndex
+from aerospike_vector_search.aio import Client as vectorASyncClient
 from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
 
 from ..base.module import BaseANN
@@ -162,7 +162,7 @@ class Aerospike(BaseANN):
                             __dict[key],
                     )
                 )
-            elif key == 'caching_params':
+            elif key == 'index_caching_params' or key == 'caching_params':
                 setattr(
                     __obj,
                     key,
@@ -186,6 +186,15 @@ class Aerospike(BaseANN):
                     key,
                     Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswIndexMergeParams(),
+                            __dict[key],
+                    )
+                )
+            elif key == 'record_caching_params':
+                setattr(
+                    __obj,
+                    key,
+                    Aerospike.SetHnswParamsAttrs(
+                            vectorTypes.HnswCachingParams(),
                             __dict[key],
                     )
                 )
@@ -219,15 +228,15 @@ class Aerospike(BaseANN):
             clientCloseTask = self._syncClient.close()
         Aerospike.FlushLog()
 
-    async def DropIndex(self, adminClient: vectorASyncAdminClient) -> bool:
+    async def DropIndex(self, client: vectorASyncClient) -> bool:
         Aerospike.PrintLog(f'Dropping Index {self._namespace}.{self._idx_name}')
         result = False
         s = time.time()
 
-        await adminClient.index_drop(namespace=self._namespace,
+        await client.index_drop(namespace=self._namespace,
                                             name=self._idx_name)
 
-        existingIndexes = await adminClient.index_list()
+        existingIndexes = await client.index_list()
         loopTimes = 0
         result = True
         if self._idx_sleep > 0:
@@ -242,18 +251,18 @@ class Aerospike(BaseANN):
                 loopTimes += 1
                 print('Aerospike: Waiting on Index Drop [%d]\r'%loopTimes, end="")
                 await asyncio.sleep(1)
-                existingIndexes = await adminClient.index_list()
+                existingIndexes = await client.index_list()
 
         t = time.time()
         print('\n')
         Aerospike.PrintLog(f'Result: {result}, Drop Index Time (sec) = {t - s}')
         return result
 
-    async def CreateIndex(self, adminClient: vectorASyncAdminClient) -> None:
+    async def CreateIndex(self, client: vectorASyncClient) -> None:
         global aerospikeIdxNames
         Aerospike.PrintLog(f'Creating Index {self._namespace}.{self._idx_name}')
         s = time.time()
-        await adminClient.index_create(namespace=self._namespace,
+        await client.index_create(namespace=self._namespace,
                                                 name=self._idx_name,
                                                 sets=self._setName,
                                                 vector_field=self._idx_binName,
@@ -264,6 +273,42 @@ class Aerospike(BaseANN):
         t = time.time()
         Aerospike.PrintLog(f'Index Creation Time (sec) = {t - s}')
         aerospikeIdxNames.append(self._idx_name)
+
+    async def WaitForIndexing(self, client: vectorASyncClient):
+        Aerospike.PrintLog("waiting for indexing to complete")
+        idxParams = await client.index_get(namespace=self._namespace,
+                                            name=self._idx_name)
+        s = time.time()
+        index = await client.index(namespace=self._namespace,
+                                    name=self._idx_name)
+        verticies = 0
+        unmerged_recs = 0
+        i = 1
+        time.sleep(1)
+        try:
+            # Wait for the index to have verticies and no unmerged records
+            while verticies == 0 or unmerged_recs > 0:
+                status = await index.status()
+                verticies = status.index_healer_vertices_valid
+                unmerged_recs = status.unmerged_record_count
+                verticies = status.index_healer_vertices_valid
+                if not self._indocker:
+                    print('Aerospike: Secs %d -- Unmerged Idx recs: %d Vertices Idx (healer): %d            \r'%(i,unmerged_recs,verticies), end="")
+                if verticies > 0 and unmerged_recs == 0:
+                    break
+                if unmerged_recs == 0 and verticies == 0:
+                    await client.index_update(namespace=self._namespace,
+                                                name=self._idx_name,
+                                                hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=vectorTypes.HnswHealerParams(schedule="* * * * * ?")))
+                time.sleep(1)
+                i += 1
+            t = time.time()
+            print('\n')
+            Aerospike.PrintLog(f"Index Wait for Completion Time (sec) = {t - s}")
+        finally:
+            await client.index_update(namespace=self._namespace,
+                                            name=self._idx_name,
+                                            hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=idxParams.hnsw_params.healer_params))
 
     async def PutVector(self, key: int, embedding, i: int, client: vectorASyncClient, retry: bool = False) -> None:
         try:
@@ -322,16 +367,15 @@ class Aerospike(BaseANN):
 
         populateIdx = True
 
-        async with vectorASyncAdminClient(
-                seeds=vectorTypes.HostPort(host=self._host, port=self._port),
-                listener_name=self._listern,
-                is_loadbalancer=self._isloadbalancer
-            ) as adminClient:
+        async with vectorASyncClient(seeds=vectorTypes.HostPort(host=self._host, port=self._port),
+                                            listener_name=self._listern,
+                                            is_loadbalancer=self._isloadbalancer
+                        ) as client:
 
             #If exists, no sense to try creation...
-            existingIndexes = await adminClient.index_list()
+            existingIndexes = await client.index_list()
             if(any(index["id"]["namespace"] == self._namespace
-                                    and index["id"]["name"] == self._idx_name 
+                                    and index["id"]["name"] == self._idx_name
                             for index in existingIndexes)):
                 Aerospike.PrintLog(f'Index {self._namespace}.{self._idx_name} Already Exists')
 
@@ -342,20 +386,16 @@ class Aerospike(BaseANN):
                     Aerospike.PrintLog(f'Index {self._namespace}.{self._idx_name} being reused (not re-populated)')
                     populateIdx = False
                 elif self._idx_drop:
-                    if await self.DropIndex(adminClient):
-                        await self.CreateIndex(adminClient)
+                    if await self.DropIndex(client):
+                        await self.CreateIndex(client)
                     else:
                         populateIdx = False
             else:
-                await self.CreateIndex(adminClient)
+                await self.CreateIndex(client)
 
-        if populateIdx:
-            self._puasePuts = False
-            Aerospike.PrintLog(f'Populating Index {self._namespace}.{self._idx_name}')
-            async with vectorASyncClient(seeds=vectorTypes.HostPort(host=self._host, port=self._port),
-                                            listener_name=self._listern,
-                                            is_loadbalancer=self._isloadbalancer
-                        ) as client:
+            if populateIdx:
+                self._puasePuts = False
+                Aerospike.PrintLog(f'Populating Index {self._namespace}.{self._idx_name}')
                 s = time.time()
                 taskPuts = []
                 i = 0
@@ -387,15 +427,14 @@ class Aerospike(BaseANN):
 
                     if not self._indocker:
                         print('Aerospike: Index Put Counter [%d]\r'%i, end="")
+
                 logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")                            
                 await asyncio.gather(*taskPuts)
                 t = time.time()
                 logger.info(f"All Put Tasks Completed")
                 print('\n')
                 Aerospike.PrintLog(f"Index Put {i:,} Recs in {t - s} (secs)")
-                Aerospike.PrintLog("waiting for indexing to complete")
-                await client.wait_for_index_completion(namespace=self._namespace,
-                                                        name=self._idx_name)
+                await self.WaitForIndexing(client)
                 t = time.time()
                 Aerospike.PrintLog(f"Index Total Populating Time and Idx Completed (sec) = {t - s}")
 
@@ -453,6 +492,7 @@ class Aerospike(BaseANN):
     #    return self.batch_latencies
 
     def __str__(self):
-        batchingparams = f"maxrecs:{self._idx_hnswparams.batching_params.max_records}, interval:{self._idx_hnswparams.batching_params.interval}"
-        hnswparams = f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}"
+        batchingparams = f"maxidxrecs:{self._idx_hnswparams.batching_params.max_index_records}, interval:{self._idx_hnswparams.batching_params.index_interval}"
+        healingparams = f"schedule:{self._idx_hnswparams.healer_params.schedule}, parallelism:{self._idx_hnswparams.healer_params.parallelism}"
+        hnswparams = f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}, healer:{{{healingparams}}}"
         return f"Aerospike([{self._metric}, {self._host}:{self._port}, {self._isloadbalancer}, {self._namespace}.{self._setName}.{self._idx_name}, {self._idx_type}, {self._idx_value}, {self._dims}, {self._actions}, {self._idx_sleep}, {self._idx_ignoreExhEvt}, {self._populateTasks}, {{{hnswparams}}}, {{{self._query_hnswsearchparams}}}])"
