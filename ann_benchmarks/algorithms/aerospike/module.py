@@ -3,14 +3,13 @@ import os
 import numpy as np
 import time
 import enum
-import os
 import logging
 
-from typing import Iterable, List, Any
+from typing import Dict, Any # Iterable, List, Any
 from pythonping import ping as PingHost
 from importlib.metadata import version
 
-from aerospike_vector_search import types as vectorTypes, Client as vectorSyncClient, Index as vectorIndex
+from aerospike_vector_search import types as vectorTypes, Client as vectorSyncClient
 from aerospike_vector_search.aio import Client as vectorASyncClient
 from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
 
@@ -57,14 +56,21 @@ class Aerospike(BaseANN):
         if not self._indocker and asLogFile is not None and asLogFile and self._logLevel != "NOTSET":
             print(f"Aerospike: Logging to file {os.getcwd()}/{asLogFile}")
             if logFileHandler is None:
+                level_mapping = {
+                        "DEBUG": logging.DEBUG,
+                        "INFO": logging.INFO,
+                        "WARNING": logging.WARNING,
+                        "ERROR": logging.ERROR,
+                        "CRITICAL": logging.CRITICAL,
+                }
                 logFileHandler = logging.FileHandler(asLogFile, "w")
                 logFormatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
                 logFileHandler.setFormatter(logFormatter)
                 if self._asLogLevel is not None and self._asLogLevel:
                     loggerASClient.addHandler(logFileHandler)
-                    loggerASClient.setLevel(logging.getLevelName(self._asLogLevel))
+                    loggerASClient.setLevel(level_mapping[self._asLogLevel.upper()])
                 logger.addHandler(logFileHandler)
-                logger.setLevel(logging.getLevelName(self._logLevel))
+                logger.setLevel(level_mapping[self._logLevel.upper()])
             self._logFileHandler = logFileHandler
             loggingEnabled = True
             logger.info(f'Start Aerospike ANN Client: Metric: {metric}, Dimension: {dimension}')
@@ -89,8 +95,8 @@ class Aerospike(BaseANN):
         if dropIdxOverride is not None:
             self._idx_drop = dropIdxOverride.lower() in ['true', '1', 't']
 
-        #self._username = os.environ.get("APP_USERNAME") or ""
-        #self._password = os.environ.get("APP_PASSWORD") or ""
+        self._username = os.environ.get("APP_USERNAME")
+        self._password = os.environ.get("APP_PASSWORD")
         self._host = os.environ.get("AVS_HOST") or "localhost"
         self._port = int(os.environ.get("AVS_PORT") or 5000)
         self._listern = None #os.environ.get("AVS_ADVERTISED_LISTENER") or None
@@ -135,12 +141,19 @@ class Aerospike(BaseANN):
             print(pingresult)
             logger.info(pingresult)
 
-        Aerospike.PrintLog('Try Create Sync Client')
-        self._syncClient = vectorSyncClient(
+        Aerospike.PrintLog('Try Create Query Client')
+        self._queryClient = vectorSyncClient(
                                     seeds=vectorTypes.HostPort(host=self._host,
-                                                            port=self._port), 
+                                                            port=self._port),
                                     listener_name=self._listern,
-                                    is_loadbalancer=self._isloadbalancer)
+                                    is_loadbalancer=self._isloadbalancer,
+                                    username=self._username,
+                                    password=self._password)
+
+        self._population_tot_time_sec:float = 0
+        self._idx_completion_time_sec:float = 0
+        self._upserted_time_sec:float = 0
+        self._upserted_vectors:int = 0
 
         Aerospike.PrintLog(f'init completed: {self}')
 
@@ -198,7 +211,7 @@ class Aerospike(BaseANN):
                             __dict[key],
                     )
                 )
-            elif (type(__dict[key]) == str
+            elif (type(__dict[key]) is str
                     and (__dict[key].lower() == "none"
                         or __dict[key].lower() == "null")):
                 setattr(__obj, key, None)
@@ -224,8 +237,8 @@ class Aerospike(BaseANN):
         """Clean up BaseANN once it is finished being used."""
         Aerospike.PrintLog(f'done: {self}')
 
-        if self._syncClient is not None:
-            clientCloseTask = self._syncClient.close()
+        if self._queryClient is not None:
+            self._queryClient.close()
         Aerospike.FlushLog()
 
     async def DropIndex(self, client: vectorASyncClient) -> bool:
@@ -244,7 +257,7 @@ class Aerospike(BaseANN):
                                     and index["id"]["name"] == self._idx_name
                                 for index in existingIndexes)):
                 if loopTimes>= self._idx_sleep:
-                    print(f'\n')
+                    print('\n')
                     Aerospike.PrintLog("Drop Index Timed Out!", logging.WARNING)
                     result = False
                     break
@@ -281,22 +294,21 @@ class Aerospike(BaseANN):
         s = time.time()
         index = await client.index(namespace=self._namespace,
                                     name=self._idx_name)
-        verticies = 0
+        vertices = 0
         unmerged_recs = 0
         i = 1
         time.sleep(1)
         try:
-            # Wait for the index to have verticies and no unmerged records
-            while verticies == 0 or unmerged_recs > 0:
+            # Wait for the index to have Vertices and no unmerged records
+            while vertices == 0 or unmerged_recs > 0:
                 status = await index.status()
-                verticies = status.index_healer_vertices_valid
+                vertices = status.index_healer_vertices_valid
                 unmerged_recs = status.unmerged_record_count
-                verticies = status.index_healer_vertices_valid
                 if not self._indocker:
-                    print('Aerospike: Secs %d -- Unmerged Idx recs: %d Vertices Idx (healer): %d            \r'%(i,unmerged_recs,verticies), end="")
-                if verticies > 0 and unmerged_recs == 0:
+                    print('Aerospike: Secs %d -- Unmerged Idx recs: %d Vertices Idx Valid (healer): %d            \r'%(i,unmerged_recs,vertices), end="")
+                if vertices > 0 and unmerged_recs == 0:
                     break
-                if unmerged_recs == 0 and verticies == 0:
+                if unmerged_recs == 0 and vertices == 0:
                     await client.index_update(namespace=self._namespace,
                                                 name=self._idx_name,
                                                 hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=vectorTypes.HnswHealerParams(schedule="* * * * * ?")))
@@ -304,7 +316,8 @@ class Aerospike(BaseANN):
                 i += 1
             t = time.time()
             print('\n')
-            Aerospike.PrintLog(f"Index Wait for Completion Time (sec) = {t - s}")
+            self._idx_completion_time_sec = t - s
+            Aerospike.PrintLog(f"Index Completion Time (sec) = {self._idx_completion_time_sec} Vertices Idx Valid (healer) = {vertices}")
         finally:
             await client.index_update(namespace=self._namespace,
                                             name=self._idx_name,
@@ -369,7 +382,9 @@ class Aerospike(BaseANN):
 
         async with vectorASyncClient(seeds=vectorTypes.HostPort(host=self._host, port=self._port),
                                             listener_name=self._listern,
-                                            is_loadbalancer=self._isloadbalancer
+                                            is_loadbalancer=self._isloadbalancer,
+                                            username=self._username,
+                                            password=self._password
                         ) as client:
 
             #If exists, no sense to try creation...
@@ -422,21 +437,24 @@ class Aerospike(BaseANN):
                         if len(taskPuts) >= self._populateTasks:
                             logger.debug(f"Waiting for Put Tasks ({len(taskPuts)}) to Complete at {i}")
                             await asyncio.gather(*taskPuts)
-                            logger.debug(f"Put Tasks Completed")
+                            logger.debug("Put Tasks Completed")
                             taskPuts.clear()
 
                     if not self._indocker:
                         print('Aerospike: Index Put Counter [%d]\r'%i, end="")
 
-                logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")                            
+                logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")
                 await asyncio.gather(*taskPuts)
                 t = time.time()
-                logger.info(f"All Put Tasks Completed")
+                logger.info("All Put Tasks Completed")
                 print('\n')
-                Aerospike.PrintLog(f"Index Put {i:,} Recs in {t - s} (secs)")
+                self._upserted_time_sec = t - s
+                self._upserted_vectors = i
+                Aerospike.PrintLog(f"Index Put {i:,} Recs in {self._upserted_time_sec} (secs)")
                 await self.WaitForIndexing(client)
                 t = time.time()
-                Aerospike.PrintLog(f"Index Total Populating Time and Idx Completed (sec) = {t - s}")
+                self._population_tot_time_sec = t - s
+                Aerospike.PrintLog(f"Index Total Populating Time and Idx Completed (sec) = {self._population_tot_time_sec}")
 
     def fit(self, X: np.array) -> None:
 
@@ -453,7 +471,7 @@ class Aerospike(BaseANN):
 
     def set_query_arguments(self, hnswParams: dict = None):
         if self._actions == OperationActions.IDXPOPULATEONLY:
-            Aerospike.PrintLog(f'No Query')
+            Aerospike.PrintLog('No Query')
         elif hnswParams is not None and len(hnswParams) > 0:
             self._query_hnswsearchparams = Aerospike.SetHnswParamsAttrs(
                                                     vectorTypes.HnswSearchParams(),
@@ -470,7 +488,7 @@ class Aerospike(BaseANN):
         if self._actions == OperationActions.IDXPOPULATEONLY:
             return []
         else:
-            result = self._syncClient.vector_search(namespace=self._namespace,
+            result = self._queryClient.vector_search(namespace=self._namespace,
                                                     index_name=self._idx_name,
                                                     query=q.tolist(),
                                                     limit=n,
@@ -484,6 +502,34 @@ class Aerospike(BaseANN):
                     Aerospike.PrintLog(f'Zero Distance Found for {self._idx_name} Keys: {zeroDist}', logging.WARNING)
 
             return result_ids
+
+    def get_additional(self) -> Dict[str, Any]:
+        """Returns additional attributes to be stored with the result.
+
+        Returns:
+            dict: A dictionary of additional attributes.
+        """
+        import json
+
+        return {"as_indockercontainer": self._indocker,
+                "as_idx_name": self._idx_name,
+                "as_idx_type": self._idx_type,
+                "as_idx_binname": self._idx_binName,
+                "as_idx_hnswparams": 'None' if self._idx_hnswparams is None else json.dumps(self._idx_hnswparams, default=lambda o: o.__dict__),
+                "as_idx_drop": self._idx_drop,
+                "as_idx_ignoreexhuseevents": self._idx_ignoreExhEvt,
+                "as_actions": self._actions.__str__(),
+                "as_host": self._host,
+                "as_isloadbalancer": 'None' if self._isloadbalancer is None else self._isloadbalancer,
+                "as_namespace": self._namespace,
+                "as_set": self._setName,
+                "as_query_hnswsearchparams": 'None' if self._query_hnswsearchparams is None else json.dumps(self._query_hnswsearchparams, default=lambda o: o.__dict__),
+                "as_query_checkresults": self._checkResult,
+                "as_upserted_vectors": self._upserted_vectors,
+                "as_upserted_time_secs": self._upserted_time_sec,
+                "as_idx_completion_secs": self._idx_completion_time_sec,
+                "as_total_polulation_time_secs": self._population_tot_time_sec
+                }
 
     #def get_batch_results(self):
     #    return self.batch_results
