@@ -5,7 +5,7 @@ import time
 import enum
 import logging
 
-from typing import Dict, Any # Iterable, List, Any
+from typing import Dict, Any, Union # Iterable, List, Any
 from pythonping import ping as PingHost
 from importlib.metadata import version
 
@@ -154,6 +154,10 @@ class Aerospike(BaseANN):
         self._idx_completion_time_sec:float = 0
         self._upserted_time_sec:float = 0
         self._upserted_vectors:int = 0
+        self._train_shape:Union[tuple,None] = None
+        self._query_no_results:int = 0
+        self._query_no_neighbors:int = 0
+        self._idx_Definition:Union[None,vectorTypes.IndexDefinition] = None
 
         Aerospike.PrintLog(f'init completed: {self}')
 
@@ -281,7 +285,9 @@ class Aerospike(BaseANN):
                                                 vector_field=self._idx_binName,
                                                 dimensions=self._dims,
                                                 index_params= self._idx_hnswparams,
-                                                vector_distance_metric=self._idx_value
+                                                vector_distance_metric=self._idx_value,
+                                                index_labels={"Benchmark":"ANN",
+                                                              "ANN_Train_Shape":self._train_shape.__str__()}
                                                 )
         t = time.time()
         Aerospike.PrintLog(f'Index Creation Time (sec) = {t - s}')
@@ -297,7 +303,7 @@ class Aerospike(BaseANN):
         vertices = 0
         unmerged_recs = 0
         i = 1
-        time.sleep(1)
+        await asyncio.sleep(1)
         try:
             # Wait for the index to have Vertices and no unmerged records
             while vertices == 0 or unmerged_recs > 0:
@@ -312,7 +318,7 @@ class Aerospike(BaseANN):
                     await client.index_update(namespace=self._namespace,
                                                 name=self._idx_name,
                                                 hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=vectorTypes.HnswHealerParams(schedule="* * * * * ?")))
-                time.sleep(1)
+                await asyncio.sleep(1)
                 i += 1
             t = time.time()
             print('\n')
@@ -322,6 +328,7 @@ class Aerospike(BaseANN):
             await client.index_update(namespace=self._namespace,
                                             name=self._idx_name,
                                             hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=idxParams.hnsw_params.healer_params))
+            await asyncio.sleep(0.1)
 
     async def PutVector(self, key: int, embedding, i: int, client: vectorASyncClient, retry: bool = False) -> None:
         try:
@@ -377,6 +384,7 @@ class Aerospike(BaseANN):
             X = X.astype(np.float32)
 
         Aerospike.PrintLog(f'fitAsync: {self} Shape: {X.shape}')
+        self._train_shape = X.shape
 
         populateIdx = True
 
@@ -454,7 +462,12 @@ class Aerospike(BaseANN):
                 await self.WaitForIndexing(client)
                 t = time.time()
                 self._population_tot_time_sec = t - s
+
                 Aerospike.PrintLog(f"Index Total Populating Time and Idx Completed (sec) = {self._population_tot_time_sec}")
+                Aerospike.PrintLog(f"Checking Existance of Index {self._idx_name}")
+                self._idx_Definition = await client.index_get(namespace=self._namespace,
+                                                                name=self._idx_name)
+                Aerospike.PrintLog("\tCompleted")
 
     def fit(self, X: np.array) -> None:
 
@@ -497,9 +510,11 @@ class Aerospike(BaseANN):
             if self._checkResult:
                 if len(result_ids) == 0:
                     Aerospike.PrintLog(f'No Query Results for {self._idx_name}', logging.WARNING)
+                    self._query_no_results += 1
                 zeroDist = [record.key.key for record in result if record.distance == 0]
                 if len(zeroDist) > 0:
                     Aerospike.PrintLog(f'Zero Distance Found for {self._idx_name} Keys: {zeroDist}', logging.WARNING)
+                    self._query_no_neighbors += 1
 
             return result_ids
 
@@ -509,26 +524,48 @@ class Aerospike(BaseANN):
         Returns:
             dict: A dictionary of additional attributes.
         """
-        import json
+
+        def jsonDefault(o) -> Any:
+
+            if isinstance(o,enum.Enum):
+                return o.__str__()
+
+            if hasattr(o, '__dict__'):
+                return {k:v for k, v in o.__dict__.items() if not k.startswith('_') and v is not None }
+
+            return o.__str__()
+
+        def getjson(obj) -> str:
+            import json
+
+            if obj is None:
+                return '{}'
+
+            return json.dumps(obj,
+                              default=jsonDefault)
 
         return {"as_indockercontainer": self._indocker,
                 "as_idx_name": self._idx_name,
                 "as_idx_type": self._idx_type,
                 "as_idx_binname": self._idx_binName,
-                "as_idx_hnswparams": 'None' if self._idx_hnswparams is None else json.dumps(self._idx_hnswparams, default=lambda o: o.__dict__),
+                "as_idx_hnswparams": getjson(self._idx_hnswparams),
                 "as_idx_drop": self._idx_drop,
                 "as_idx_ignoreexhuseevents": self._idx_ignoreExhEvt,
+                "as_idx_definition_built": getjson(self._idx_Definition),
                 "as_actions": self._actions.__str__(),
                 "as_host": self._host,
                 "as_isloadbalancer": 'None' if self._isloadbalancer is None else self._isloadbalancer,
                 "as_namespace": self._namespace,
                 "as_set": self._setName,
-                "as_query_hnswsearchparams": 'None' if self._query_hnswsearchparams is None else json.dumps(self._query_hnswsearchparams, default=lambda o: o.__dict__),
+                "as_train_shape": self._train_shape,
+                "as_query_hnswsearchparams": getjson(self._query_hnswsearchparams),
                 "as_query_checkresults": self._checkResult,
+                "as_query_no_result_cnt": self._query_no_results,
+                "as_query_no_neighbors_fnd": self._query_no_neighbors,
                 "as_upserted_vectors": self._upserted_vectors,
                 "as_upserted_time_secs": self._upserted_time_sec,
                 "as_idx_completion_secs": self._idx_completion_time_sec,
-                "as_total_polulation_time_secs": self._population_tot_time_sec
+                "as_total_population_time_secs": self._population_tot_time_sec
                 }
 
     #def get_batch_results(self):
