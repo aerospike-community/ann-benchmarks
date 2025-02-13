@@ -165,3 +165,30 @@ float:
                 []
               ]
 ```
+
+# HDF5 Dataset Additional Attributes
+
+The following attributes are added in the resulting ANN HDF5 dataset (note that all added attributes are prefixed with "as_"):
+
+-   as_indockercontainer – True if this run was within a docker container. False if it was ran natively
+-   as_idx_name – The name of the index
+-   as_idx_type – The Aerospike Vector Index Type
+-   as_idx_binname – The Index’s Bin name
+-   as_idx_hnswparams – The index’s “hnsw” parameters as passed into this run via the config file. Any missing or None values will use the default values defined by Aerospike Vector client/server.
+-   as_idx_drop – True if the index will be dropped
+-   as_idx_ignoreexhuseevents – True to ignore any “Exhausted Resource” errors and the Aerospike Vector Healer will be used to reconcile the index. If false, internal “back-off” logic is ued.
+-   as_idx_definition_built - Only available when the database is populated. The actual Vector Index's definitions with default values.
+-   as_actions – The actions performed in this run (e.g., All actions, Populate Index Only, Query Only, etc.)
+-   as_host – The Aerospike Vector server
+-   as_isloadbalancer – If present, the as_host is a load balancer
+-   as_namespace – The Aerospike Namespace used for the tun
+-   as_set – The Aerospike Set name used for the run
+-   as_train_shape - The dimensions of the training dataset which is used to populate the database.
+-   as_query_hnswsearchparams – The Query’s “hnsw” parameters as passed into this run via the config file. Any missing or None values will use the default values defined by Aerospike Vector client/server.
+-   as_query_checkresults – If true the query results are checked/validated. This should be false for timing runs.
+-   as_query_no_result_cnt - The number of queries that returned empty results. Only available if the query check results are true.
+-   as_query_no_neighbors_fnd - The number of queries that returned no neighbors. Only available if the query check results are true.
+-   as_upserted_vectors – The number of vectors inserted
+-   as_upserted_time_secs – The amount of time to perform all the inserts in seconds. This doesn’t include index build completion.
+-   as_idx_completion_secs – The number of seconds to complete the index build. Does not include inset time.
+-   as_total_polulation_time_secs – The complete time to insert and build the index.
