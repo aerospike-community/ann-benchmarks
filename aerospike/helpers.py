@@ -7,16 +7,16 @@ def set_hnsw_params_attrs(__obj :object, __dict: dict) -> object:
             setattr(
                 __obj,
                 key,
-                set_hnsw_params_attrs(
+                SetHnswParamsAttrs(
                         vectorTypes.HnswBatchingParams(),
                         __dict[key],
                 )
             )
-        elif key == 'caching_params':
+        elif key == 'index_caching_params' or key == 'caching_params':
             setattr(
                 __obj,
                 key,
-                set_hnsw_params_attrs(
+                SetHnswParamsAttrs(
                         vectorTypes.HnswCachingParams(),
                         __dict[key],
                 )
@@ -25,7 +25,7 @@ def set_hnsw_params_attrs(__obj :object, __dict: dict) -> object:
             setattr(
                 __obj,
                 key,
-                set_hnsw_params_attrs(
+                SetHnswParamsAttrs(
                         vectorTypes.HnswHealerParams(),
                         __dict[key],
                 )
@@ -34,14 +34,23 @@ def set_hnsw_params_attrs(__obj :object, __dict: dict) -> object:
             setattr(
                 __obj,
                 key,
-                set_hnsw_params_attrs(
+                SetHnswParamsAttrs(
                         vectorTypes.HnswIndexMergeParams(),
                         __dict[key],
                 )
             )
-        elif (type(__dict[key]) == str
+        elif key == 'record_caching_params':
+            setattr(
+                __obj,
+                key,
+                SetHnswParamsAttrs(
+                        vectorTypes.HnswCachingParams(),
+                        __dict[key],
+                )
+            )
+        elif (type(__dict[key]) is str
                 and (__dict[key].lower() == "none"
-                     or __dict[key].lower() == "null")):
+                    or __dict[key].lower() == "null")):
             setattr(__obj, key, None)
         else:
             setattr(__obj, key, __dict[key])
@@ -53,11 +62,15 @@ def hnswstr(hnswparams : vectorTypes.HnswParams) -> str:
         if hnswparams.batching_params is None:
             batchingparams = ''
         else:
-            batchingparams = f"maxrecs:{hnswparams.batching_params.max_records}, interval:{hnswparams.batching_params.interval}"
-        if hnswparams.caching_params is None:
+            batchingparams = f"maxrecs:{hnswparams.batching_params.max_index_records}, max_reindex:{hnswparams.batching_params.max_reindex_records}, interval:{hnswparams.batching_params.index_interval}"
+        if hnswparams.record_caching_params is None:
             cachingparams = ''
         else:
-            cachingparams = f"max_entries:{hnswparams.caching_params.max_entries}, expiry:{hnswparams.caching_params.expiry}"
+            cachingparams = f"max_entries:{hnswparams.record_caching_params.max_entries}, expiry:{hnswparams.record_caching_params.expiry}"
+        if hnswparams.index_caching_params is None:
+            cachingIdxparams = ''
+        else:
+            cachingIdxparams = f"max_entries:{hnswparams.index_caching_params.max_entries}, expiry:{hnswparams.index_caching_params.expiry}"
         if hnswparams.healer_params is None:
             healerparams = ''
         else:
@@ -67,4 +80,4 @@ def hnswstr(hnswparams : vectorTypes.HnswParams) -> str:
         else:
             mergeparams = f"index_parallelism: {hnswparams.merge_params.index_parallelism}, reindex_parallelism:{hnswparams.merge_params.reindex_parallelism}"
 
-        return f"m:{hnswparams.m}, efconst:{hnswparams.ef_construction}, ef:{hnswparams.ef}, batching:{{{batchingparams}}}, caching:{{{cachingparams}}}, healer:{{{healerparams}}}, merge:{{{mergeparams}}}"
+        return f"m:{hnswparams.m}, efconst:{hnswparams.ef_construction}, ef:{hnswparams.ef}, batching:{{{batchingparams}}}, recordcaching:{{{cachingparams}}}, indexcaching:{{{cachingIdxparams}}} healer:{{{healerparams}}}, merge:{{{mergeparams}}}"

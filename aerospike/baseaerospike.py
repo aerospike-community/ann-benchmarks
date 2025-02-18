@@ -20,8 +20,7 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.util.types import Attributes
 
-from aerospike_vector_search import types as vectorTypes
-from aerospike_vector_search import AdminClient as vectorAdminClient
+from aerospike_vector_search import types as vectorTypes, Client as vectorClient
 
 from metrics import all_metrics as METRICS
 from helpers import set_hnsw_params_attrs, hnswstr
@@ -439,7 +438,7 @@ class BaseAerospike(object):
             self._heartbeat_thread = Thread(target = self._prometheus_heartbeat)
             self._heartbeat_thread.start()
 
-    def vector_queue_status(self, adminclient : vectorAdminClient, queryapi:bool = True, done:bool = False) -> None:
+    def vector_queue_status(self, adminclient : vectorClient, queryapi:bool = True, done:bool = False) -> None:
         from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
 
         if self._idx_name is None or self._idx_namespace is None:
@@ -449,9 +448,10 @@ class BaseAerospike(object):
             self._vector_queue_depth = 0
         elif queryapi:
             try:
-                self._vector_queue_depth = adminclient.index_get_status(namespace=self._namespace,
-                                                        name=self._idx_name,
-                                                        timeout=2)
+                idxStatus = adminclient.index_get_status(namespace=self._namespace,
+                                                            name=self._idx_name,
+                                                            timeout=2)
+                self._vector_queue_depth = idxStatus.unmerged_record_count if idxStatus is None else 0
 
             except vectorTypes.AVSServerError as avse:
                     self._vector_queue_depth = None
@@ -476,9 +476,9 @@ class BaseAerospike(object):
         from time import sleep
 
         try:
-            with vectorAdminClient(seeds=self._host,
-                                    listener_name=self._listern,
-                                    is_loadbalancer=self._useloadbalancer
+            with vectorClient(seeds=self._host,
+                                listener_name=self._listern,
+                                is_loadbalancer=self._useloadbalancer
                 ) as adminClient:
                 self._logger.debug(f"Vector Heartbeating Start")
                 i : int = 0
