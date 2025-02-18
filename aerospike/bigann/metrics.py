@@ -15,7 +15,7 @@ def compute_recall_with_distance_ties(true_ids, true_dists, run_ids, count):
 
     else:
         dist_tie_check = true_dists[count-1] # tie check anchored at count-1 in GT dists
-     
+
         set_end = gt_size
 
         for i in range(count, gt_size):
@@ -27,7 +27,7 @@ def compute_recall_with_distance_ties(true_ids, true_dists, run_ids, count):
         found_tie = set_end > count
 
         recall =  len(set(true_ids[:set_end]) & set(run_ids))
- 
+
     return recall, found_tie
 
 def get_recall_values(true_nn, run_nn, count, count_ties=True):
@@ -41,7 +41,7 @@ def get_recall_values(true_nn, run_nn, count, count_ties=True):
     for i in range(len(run_nn)):
         if count_ties:
             recalls[i], found_tie = compute_recall_with_distance_ties(true_ids[i], true_dists[i], run_nn[i], count)
-            if found_tie: queries_with_ties += 1 
+            if found_tie: queries_with_ties += 1
         else:
             recalls[i] = compute_recall_without_distance_ties(true_ids[i], run_nn[i], count)
     return (np.mean(recalls) / float(count),
@@ -52,16 +52,18 @@ def get_recall_values(true_nn, run_nn, count, count_ties=True):
 def knn(true_nn, run_nn, count, metrics):
     if 'knn' not in metrics:
         print('Computing knn metrics')
-    knn_metrics = metrics.create_group('knn')
-    mean, std, recalls, queries_with_ties = get_recall_values(true_nn, run_nn, count)
-    if queries_with_ties>0:
-            print("Warning: %d/%d queries contained ties accounted for in recall" % (queries_with_ties, len(run_nn)))
-    knn_metrics.attrs['mean'] = mean
-    knn_metrics.attrs['std'] = std
-    knn_metrics['recalls'] = recalls
+        knn_metrics = metrics.create_group('knn')
+        mean, std, recalls, queries_with_ties = get_recall_values(true_nn, run_nn, count)
+        if queries_with_ties>0:
+                print("Warning: %d/%d queries contained ties accounted for in recall" % (queries_with_ties, len(run_nn)))
+        knn_metrics.attrs['mean'] = mean
+        knn_metrics.attrs['std'] = std
+        knn_metrics['recalls'] = recalls
     else:
         print("Found cached result")
     return metrics['knn']
+
+'''
 def ap(true_nn, run_nn, metrics):
     if'ap' not in metrics:
         print('Computing ap metrics')
@@ -161,3 +163,4 @@ all_metrics = {
     },
 
 }
+'''
