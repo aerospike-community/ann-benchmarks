@@ -50,11 +50,11 @@ def set_hnsw_params_attrs(__obj :object, __dict: dict) -> object:
 def hnswstr(hnswparams : vectorTypes.HnswParams) -> str:
         if hnswparams is None:
             return ''
-        if hnswparams.batching_params is None:
+        if not hasattr(hnswparams.batching_params, 'max_records') or hnswparams.batching_params is None:
             batchingparams = ''
         else:
             batchingparams = f"maxrecs:{hnswparams.batching_params.max_records}, interval:{hnswparams.batching_params.interval}"
-        if hnswparams.caching_params is None:
+        if not hasattr(hnswparams, 'caching_params') or hnswparams.caching_params is None:
             cachingparams = ''
         else:
             cachingparams = f"max_entries:{hnswparams.caching_params.max_entries}, expiry:{hnswparams.caching_params.expiry}"
