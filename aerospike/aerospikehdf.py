@@ -432,8 +432,11 @@ class Aerospike(BaseAerospike):
             # Wait for the index to have Vertices and no unmerged records
             while vertices == 0 or unmerged_recs > 0:
                 status = await index.status()
+                self._vector_idx_status = status
                 vertices = status.index_healer_vertices_valid
                 unmerged_recs = status.unmerged_record_count
+                self._vector_uncommited_records = status.index_healer_vector_records_indexed
+                self.vector_queue_status_Record(status)
                 if vertices > 0 and unmerged_recs == 0:
                     break
                 if unmerged_recs == 0 and vertices == 0:
@@ -442,6 +445,12 @@ class Aerospike(BaseAerospike):
                                                 hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=vectorTypes.HnswHealerParams(schedule="* * * * * ?")))
                 await asyncio.sleep(1)
                 i += 1
+        except vectorTypes.AVSServerError as avse:
+                self._vector_uncommited_records = None
+                self._vector_idx_status = None
+                if (avse.rpc_error.code() != vectorResultCodes.StatusCode.NOT_FOUND
+                        and avse.rpc_error.code() != vectorResultCodes.StatusCode.ABORTED):
+                    self._logger.exception(f"index_get_status failed ns={self._idx_namespace}, name={self._idx_name}")
         finally:
             await client.index_update(namespace=self._namespace,
                                             name=self._idx_name,
