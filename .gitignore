@@ -22,3 +22,4 @@ aerospike/results/*
 aerospike/data
 aerospike/results
 .venv/*
+ann_benchmarks/algorithms/aerospike/~$README.md

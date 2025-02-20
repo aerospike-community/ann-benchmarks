@@ -192,3 +192,28 @@ The following attributes are added in the resulting ANN HDF5 dataset (note that 
 -   as_upserted_time_secs – The amount of time to perform all the inserts in seconds. This doesn’t include index build completion.
 -   as_idx_completion_secs – The number of seconds to complete the index build. Does not include inset time.
 -   as_total_polulation_time_secs – The complete time to insert and build the index.
+
+# Installation
+
+## Docker
+
+Need to install docker and the associated python package. Below are the instructions for [Ubuntu](https://docs.docker.com/engine/install/ubuntu/):
+
+1.  \# Add Docker's official GPG key:
+    1.  sudo apt-get update
+    2.  sudo apt-get install ca-certificates curl
+    3.  sudo install -m 0755 -d /etc/apt/keyrings
+    4.  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    5.  sudo chmod a+r /etc/apt/keyrings/docker.asc
+2.  \# Add the repository to Apt sources:
+    1.  echo "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linu\> \$(. /etc/os-release && echo "\${UBUNTU_CODENAME:-\$VERSION_CODENAME}") stable" \| sudo tee /etc/apt/sources.list.d/doc
+3.  sudo apt-get update
+4.  sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+5.  sudo docker run hello-world
+6.  pip3 install docker
+
+# Python Packages
+
+In the “aerospike” folder under “algorithms” folder:
+
+1.  pip3 install -r requirements.txt
