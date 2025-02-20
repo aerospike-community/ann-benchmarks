@@ -107,6 +107,14 @@ class Aerospike(BaseAerospike):
             default=None
         )
         parser.add_argument(
+            '-M', "--indexmode",
+            metavar="MODE",
+            help="This enumeration defines the modes an index can operate in. Defaults to STANDALONE",
+            type=str,
+            choices=[v.name for v in vectorTypes.IndexMode],
+            default=None
+        )
+        parser.add_argument(
             '-P', "--indexparams",
             metavar="PARM",
             type=json.loads,
@@ -288,6 +296,9 @@ class Aerospike(BaseAerospike):
             if runtimeArgs.distancetype is not None and runtimeArgs.distancetype:
                 self._idx_distance = next(v for v in vectorTypes.VectorDistanceMetric if v.name == runtimeArgs.distancetype)
 
+            if runtimeArgs.indexmode is not None and runtimeArgs.indexmode:
+                self._idx_mode = next(v for v in vectorTypes.IndexMode if v.name == runtimeArgs.indexmode)
+
             if runtimeArgs.indexparams is None or len(runtimeArgs.indexparams) == 0:
                 self._idx_hnswparams = None
             else:
@@ -405,6 +416,9 @@ class Aerospike(BaseAerospike):
         global aerospikeIdxNames
         self.print_log(f'Creating Index {self._idx_namespace}.{self._idx_name}')
         s = time.time()
+        if self._idx_mode is None:
+            self._idx_mode = vectorTypes.IndexMode.STANDALONE
+
         await adminClient.index_create(namespace=self._namespace,
                                                 name=self._idx_name,
                                                 sets=self._setName,
@@ -412,7 +426,8 @@ class Aerospike(BaseAerospike):
                                                 dimensions=self._dimensions,
                                                 index_params= self._idx_hnswparams,
                                                 vector_distance_metric=self._idx_distance,
-                                                index_storage= vectorTypes.IndexStorage(namespace=self._idx_namespace)
+                                                index_storage= vectorTypes.IndexStorage(namespace=self._idx_namespace),
+                                                mode=self._idx_mode
                                                 )
         t = time.time()
         self.print_log(f'Index Creation Time (sec) = {t - s}')
@@ -642,6 +657,11 @@ class Aerospike(BaseAerospike):
                         self.print_log(f"Index {self._idx_name} was found in namespace {idxinfo['storage']['namespace']} but {self._idx_namespace} was given. Using found namespace.", logging.WARN)
                     self._idx_namespace = idxinfo['storage']['namespace']
 
+                if idxinfo['mode'] != self._idx_mode:
+                    if self._idx_mode is not None:
+                        self.print_log(f"Index {self._idx_name} is defined with Mode '{idxinfo['mode']}' but mode '{self._idx_mode}' was provided. Using defined mode.", logging.WARN)
+                    self._idx_mode = idxinfo['mode']
+
                 #since this can be an external DB (not in a container), we need to clean up from prior runs
                 #if the index name is in this list, we know it was created in this run group and don't need to drop the index.
                 #If it is a fresh run, this list will not contain the index and we know it needs to be dropped.
@@ -649,6 +669,7 @@ class Aerospike(BaseAerospike):
                     self.print_log(f'Index {self._idx_name} being reused (updated)')
                     self._idx_hnswparams = set_hnsw_params_attrs(vectorTypes.HnswParams(),
                                                                                 idxinfo)
+                    self._idx_mode = idxinfo["mode"]
                 elif self._idx_drop:
                     await self.drop_index(client)
                     await self.create_index(client)
@@ -838,6 +859,7 @@ class Aerospike(BaseAerospike):
             self.print_log(f'Found Index {self._idx_namespace}.{self._idx_name} with Info {idxinfo}')
             self._idx_hnswparams = idxinfo['hnsw_params']
             self._idx_binName = idxinfo["field"]
+            self._idx_mode = idxinfo["mode"]
             self._setName = idxinfo["sets"]
             self._namespace = idxinfo["id"]["namespace"]
             if self._query_hnswparams is None and self._idx_hnswparams is not None:
@@ -1008,7 +1030,7 @@ class Aerospike(BaseAerospike):
             result_ids = [neighbor.key.key for neighbor in result]
 
             if (not self._query_distance_no_adjustments
-                    and self._idx_distance.name == "SQUARED_EUCLIDEAN" 
+                    and self._idx_distance.name == "SQUARED_EUCLIDEAN"
                     and distancemetric.type !=  "squared_euclidean"):
                 aerospike_distances = [sqrt(neighbor.distance) for neighbor in result]
             else:

@@ -178,6 +178,7 @@ class BaseAerospike(object):
         self._idx_binName : str = None
 
         self._idx_distance = None
+        self._idx_mode = None
         self._ann_distance : str = None
         self._idx_hnswparams : vectorTypes.HnswParams = None
         self._query_hnswparams : vectorTypes.HnswSearchParams = None
@@ -423,7 +424,8 @@ class BaseAerospike(object):
                                                 "popwait" : waitevt,
                                                 "idxstate": self._idx_state,
                                                 "querydistance": self._ann_distance if self._query_distancecalc is None else self._query_distancecalc,
-                                                "popcommitted": self._vector_Committed
+                                                "popcommitted": self._vector_Committed,
+                                                "idxmode": self._idx_mode
                                                 })
 
     def _prometheus_heartbeat(self) -> None:
