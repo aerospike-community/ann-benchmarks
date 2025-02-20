@@ -425,7 +425,7 @@ class BaseAerospike(object):
                                                 "idxstate": self._idx_state,
                                                 "querydistance": self._ann_distance if self._query_distancecalc is None else self._query_distancecalc,
                                                 "popcommitted": self._vector_Committed,
-                                                "idxmode": self._idx_mode
+                                                "idxmode": None if self._idx_mode is None else self._idx_mode.name
                                                 })
 
     def _prometheus_heartbeat(self) -> None:

@@ -414,10 +414,11 @@ class Aerospike(BaseAerospike):
 
     async def create_index(self, adminClient: vectorASyncClient) -> None:
         global aerospikeIdxNames
-        self.print_log(f'Creating Index {self._idx_namespace}.{self._idx_name}')
-        s = time.time()
         if self._idx_mode is None:
             self._idx_mode = vectorTypes.IndexMode.STANDALONE
+
+        self.print_log(f'Creating Index {self._idx_namespace}.{self._idx_name} with mode {self._idx_mode.name}')
+        s = time.time()
 
         await adminClient.index_create(namespace=self._namespace,
                                                 name=self._idx_name,
@@ -652,15 +653,16 @@ class Aerospike(BaseAerospike):
                 self.print_log(f'Index {self._idx_namespace}.{self._idx_name} Already Exists. Idx Info: {idxinfo}')
                 self._idx_state = 'Exists'
 
-                if idxinfo['storage']['namespace'] != self._idx_namespace:
-                    if self._idx_namespace is not None:
-                        self.print_log(f"Index {self._idx_name} was found in namespace {idxinfo['storage']['namespace']} but {self._idx_namespace} was given. Using found namespace.", logging.WARN)
-                    self._idx_namespace = idxinfo['storage']['namespace']
+                if not self._idx_drop:
+                    if idxinfo['storage']['namespace'] != self._idx_namespace:
+                        if self._idx_namespace is not None:
+                            self.print_log(f"Index {self._idx_name} was found in namespace {idxinfo['storage']['namespace']} but {self._idx_namespace} was given. Using found namespace.", logging.WARN)
+                        self._idx_namespace = idxinfo['storage']['namespace']
 
-                if idxinfo['mode'] != self._idx_mode:
-                    if self._idx_mode is not None:
-                        self.print_log(f"Index {self._idx_name} is defined with Mode '{idxinfo['mode']}' but mode '{self._idx_mode}' was provided. Using defined mode.", logging.WARN)
-                    self._idx_mode = idxinfo['mode']
+                    if idxinfo['mode'] != self._idx_mode:
+                        if self._idx_mode is not None:
+                            self.print_log(f"Index {self._idx_name} is defined with Mode '{idxinfo['mode']}' but mode '{self._idx_mode}' was provided. Using defined mode.", logging.WARN)
+                        self._idx_mode = idxinfo['mode']
 
                 #since this can be an external DB (not in a container), we need to clean up from prior runs
                 #if the index name is in this list, we know it was created in this run group and don't need to drop the index.
@@ -678,6 +680,7 @@ class Aerospike(BaseAerospike):
                     self.print_log(f'Index {self._idx_namespace}.{self._idx_name} being updated')
                     self._idx_hnswparams = set_hnsw_params_attrs(vectorTypes.HnswParams(),
                                                                                 idxinfo)
+                    self._idx_mode = idxinfo["mode"]
             else:
                 await self.create_index(client)
 
