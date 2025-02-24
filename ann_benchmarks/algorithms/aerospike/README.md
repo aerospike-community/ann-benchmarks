@@ -137,7 +137,12 @@ float:
 #	IdxPopulateOnly – only conduct the populate index phase,
 #	QueryOnly – only perform the vector search phase,
 #	AllOps – All phases (optional default value)
-          [AllOps]
+          [AllOps],
+#	If True, the exhausted resource event is handled by the Handler. #	Default is false.
+    [False], 
+#	Default index mode (IndexMode). Can be DISTRIBUTED or STANDALONE
+#	Note that you can provide this value instead of an operation #	phase value above. If so the operational phases will default to #	“AllOps”.
+          [STANDALONE] 
         ]
 #This grouping is required
         query_args: [
