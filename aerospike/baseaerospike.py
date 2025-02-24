@@ -185,6 +185,7 @@ class BaseAerospike(object):
 
         self._concurrency : int = None
         self._idx_nowait : bool = None
+        self._idx_wait_timeout : int = None
         self._idx_resource_event : int = None
         self._idx_resource_cnt : int = None
         self._idx_state : str = ''
@@ -380,6 +381,12 @@ class BaseAerospike(object):
                 waitevt = "No Wait"
             else:
                 waitevt = "Wait for Completion"
+        waittimeout = ''
+        if not self._idx_nowait and self._idx_wait_timeout is not None:
+            if self._idx_wait_timeout <= 0:
+                waittimeout = "Indefinitely"
+            else:
+                waittimeout = self._idx_wait_timeout
 
         poprecs = None if self._trainarray is None else len(self._trainarray)
         remainingRecs = self._remainingrecs
@@ -425,7 +432,9 @@ class BaseAerospike(object):
                                                 "idxstate": self._idx_state,
                                                 "querydistance": self._ann_distance if self._query_distancecalc is None else self._query_distancecalc,
                                                 "popcommitted": self._vector_Committed,
-                                                "idxmode": None if self._idx_mode is None else self._idx_mode.name
+                                                "idxmode": None if self._idx_mode is None else self._idx_mode.name.title(),
+                                                "idxwaittimeout": waittimeout,
+                                                "idxreadystatus" : None if self._vector_idx_status is None else self._vector_idx_status.index_readiness.name.title()
                                                 })
 
     def _prometheus_heartbeat(self) -> None:
@@ -627,7 +636,7 @@ class BaseAerospike(object):
         else:
             hosts = ','.join(str(hp.host) + ':' + str(hp.port) for hp in self._host)
 
-        return f"BaseAerospike([[{hosts}], {self._useloadbalancer}, {fullName}, {self._idx_distance}, {{{hnswparams}}}{searchhnswparams}])"
+        return f"BaseAerospike([[{hosts}], {self._useloadbalancer}, {fullName}, {self._idx_distance}, {self._idx_mode}, {{{hnswparams}}}{searchhnswparams}])"
 
     def __str__(self):
         if self._idx_namespace == self._namespace:

@@ -30,6 +30,22 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Python Debugger: hdf_import standalone (prompt DS)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/hdf_import.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                    "--dataset", "${input:enterDataset}",
+                    "--concurrency", "5000",
+                    "--idxdrop",
+                    "--indexmode", "STANDALONE",
+                    "--logfile", "./results/hdfimport.log"
+                    ],
+            "justMyCode": false,
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Python Debugger: hdf_import diff namespaces (prompt DS)",
             "type": "debugpy",
             "request": "launch",

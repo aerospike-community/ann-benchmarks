@@ -109,7 +109,7 @@ class Aerospike(BaseAerospike):
         parser.add_argument(
             '-M', "--indexmode",
             metavar="MODE",
-            help="This enumeration defines the modes an index can operate in. Defaults to STANDALONE",
+            help="This enumeration defines the modes an index can operate in. Defaults to DISTRIBUTED",
             type=str,
             choices=[v.name for v in vectorTypes.IndexMode],
             default=None
@@ -154,6 +154,18 @@ class Aerospike(BaseAerospike):
             type=int,
             help="Determines the maximum number of records to populated. a value of -1 (default) all records in the HDF dataset are populated.",
             default=-1,
+        )
+        parser.add_argument(
+            "--idxwaittimeout",
+            metavar="SECS",
+            type=int,
+            help='''
+    The maximum number of seconds to wait for index completion.
+    Values are:
+        - <= 0 -- Wait Indefinitely
+        -  > 0 -- Wait for this number of seconds before proceeding
+    ''',
+            default=0,
         )
         BaseAerospike.parse_arguments(parser)
 
@@ -273,6 +285,7 @@ class Aerospike(BaseAerospike):
             self._idx_drop = runtimeArgs.idxdrop
             self._concurrency = runtimeArgs.concurrency
             self._idx_nowait = runtimeArgs.idxnowait
+            self._idx_wait_timeout = runtimeArgs.idxwaittimeout
             self._idx_resource_event = runtimeArgs.exhaustedevt
             self._idx_resource_cnt = 0
             self._idx_maxrecs = runtimeArgs.maxrecs
@@ -414,8 +427,6 @@ class Aerospike(BaseAerospike):
 
     async def create_index(self, adminClient: vectorASyncClient) -> None:
         global aerospikeIdxNames
-        if self._idx_mode is None:
-            self._idx_mode = vectorTypes.IndexMode.STANDALONE
 
         self.print_log(f'Creating Index {self._idx_namespace}.{self._idx_name} with mode {self._idx_mode.name}')
         s = time.time()
@@ -435,30 +446,42 @@ class Aerospike(BaseAerospike):
         aerospikeIdxNames.append(self._idx_name)
         self._idx_state = 'Created'
 
+    async def IndexStatus(self, client: vectorASyncClient,
+                                index: Union[Any,None]) -> vectorTypes.IndexStatusResponse:
+        if index is None:
+            index = await client.index(namespace=self._namespace,
+                                        name=self._idx_name)
+        return await index.status()
+
     async def WaitForIndexing(self, client: vectorASyncClient):
         idxParams = await client.index_get(namespace=self._namespace,
                                             name=self._idx_name)
         index = await client.index(namespace=self._namespace,
                                     name=self._idx_name)
-        vertices = 0
-        unmerged_recs = 0
         i = 1
+        idxParamsChanged:bool = False
+        print('\n')
         await asyncio.sleep(1)
         try:
             # Wait for the index to have Vertices and no unmerged records
-            while vertices == 0 or unmerged_recs > 0:
-                status = await index.status()
+            while self._idx_wait_timeout <= 0 or i >= self._idx_wait_timeout:
+                status = await self.IndexStatus(client,index)
                 self._vector_idx_status = status
-                vertices = status.index_healer_vertices_valid
-                unmerged_recs = status.unmerged_record_count
                 self._vector_uncommited_records = status.index_healer_vector_records_indexed
                 self.vector_queue_status_Record(status)
-                if vertices > 0 and unmerged_recs == 0:
-                    break
-                if unmerged_recs == 0 and vertices == 0:
-                    await client.index_update(namespace=self._namespace,
-                                                name=self._idx_name,
-                                                hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=vectorTypes.HnswHealerParams(schedule="* * * * * ?")))
+                if self._idx_mode == vectorTypes.IndexMode.STANDALONE:
+                    if self._vector_idx_status.index_readiness == vectorTypes.IndexReadiness.READY:
+                        break
+                elif status.unmerged_record_count == 0:
+                        if not idxParamsChanged and status.unmerged_record_count == 0:
+                            await client.index_update(namespace=self._namespace,
+                                                        name=self._idx_name,
+                                                        hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=vectorTypes.HnswHealerParams(schedule="* * * * * ?")))
+                            idxParamsChanged = True
+                        else:
+                            break
+
+                print('Waiting Index Completion [%d]\r'%i, end="")
                 await asyncio.sleep(1)
                 i += 1
         except vectorTypes.AVSServerError as avse:
@@ -468,7 +491,9 @@ class Aerospike(BaseAerospike):
                         and avse.rpc_error.code() != vectorResultCodes.StatusCode.ABORTED):
                     self._logger.exception(f"index_get_status failed ns={self._idx_namespace}, name={self._idx_name}")
         finally:
-            await client.index_update(namespace=self._namespace,
+            print('\n')
+            if idxParamsChanged:
+                await client.index_update(namespace=self._namespace,
                                             name=self._idx_name,
                                             hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=idxParams.hnsw_params.healer_params))
             await asyncio.sleep(0.1)
@@ -647,6 +672,8 @@ class Aerospike(BaseAerospike):
                                         is_loadbalancer=self._useloadbalancer
             ) as client:
 
+            createIdx:bool = False
+
             #If exists, no sense to try creation...
             idxinfo = await self.index_exist(client)
             if idxinfo is not None:
@@ -674,15 +701,23 @@ class Aerospike(BaseAerospike):
                     self._idx_mode = idxinfo["mode"]
                 elif self._idx_drop:
                     await self.drop_index(client)
-                    await self.create_index(client)
-                    self._idx_state = 'Dropped-Created'
+                    createIdx = True
                 else:
                     self.print_log(f'Index {self._idx_namespace}.{self._idx_name} being updated')
                     self._idx_hnswparams = set_hnsw_params_attrs(vectorTypes.HnswParams(),
                                                                                 idxinfo)
                     self._idx_mode = idxinfo["mode"]
             else:
+                createIdx = True
+
+            if self._idx_mode is None:
+                self._idx_mode = vectorTypes.IndexMode.DISTRIBUTED
+
+            if createIdx and self._idx_mode == vectorTypes.IndexMode.DISTRIBUTED:
+                createIdx = False
                 await self.create_index(client)
+                if self._idx_drop:
+                     self._idx_state = 'Dropped-Created'
 
             self._heartbeat_stage = 3
             self.prometheus_status()
@@ -753,6 +788,12 @@ class Aerospike(BaseAerospike):
             if self._idx_nowait:
                 self.print_log(f"Index Population Completed")
             else:
+                if createIdx:
+                    createIdx = False
+                    await self.create_index(client)
+                    self._idx_state = 'Post-Created'
+                    self.prometheus_status()
+
                 #Wait for Idx to complete
                 self.print_log("waiting for indexing to complete")
                 w = time.time()

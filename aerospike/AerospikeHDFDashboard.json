@@ -1,53 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_PROMETHEUS",
-      "label": "prometheus",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "prometheus",
-      "pluginName": "Prometheus"
-    }
-  ],
-  "__elements": {},
-  "__requires": [
-    {
-      "type": "panel",
-      "id": "gauge",
-      "name": "Gauge",
-      "version": ""
-    },
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "10.4.2"
-    },
-    {
-      "type": "panel",
-      "id": "heatmap",
-      "name": "Heatmap",
-      "version": ""
-    },
-    {
-      "type": "datasource",
-      "id": "prometheus",
-      "name": "Prometheus",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "stat",
-      "name": "Stat",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -74,9 +25,8 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
+  "id": 63,
   "links": [],
-  "liveNow": false,
   "panels": [
     {
       "collapsed": false,
@@ -94,7 +44,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -119,7 +69,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 6,
         "w": 3,
         "x": 0,
         "y": 1
@@ -130,8 +80,11 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "dataset",
           "values": false
         },
@@ -139,12 +92,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -166,7 +119,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -192,7 +145,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 6,
         "w": 3,
         "x": 3,
         "y": 1
@@ -203,6 +156,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "idxdist",
@@ -212,12 +166,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -239,7 +193,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -265,7 +219,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 6,
         "w": 3,
         "x": 6,
         "y": 1
@@ -276,6 +230,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "poprecs",
@@ -285,12 +240,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -312,7 +267,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -338,7 +293,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 6,
         "w": 3,
         "x": 9,
         "y": 1
@@ -349,6 +304,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "dims",
@@ -358,12 +314,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -385,7 +341,81 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "light-blue",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 12,
+        "y": 1
+      },
+      "id": 675,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "/^idxreadystatus$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "edj97jcoudpfkd"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Index Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -428,9 +458,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
-        "w": 4,
-        "x": 12,
+        "h": 6,
+        "w": 3,
+        "x": 15,
         "y": 1
       },
       "id": 662,
@@ -439,6 +469,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "",
@@ -448,12 +479,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -475,7 +506,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -500,9 +531,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 6,
-        "x": 16,
+        "x": 18,
         "y": 1
       },
       "id": 658,
@@ -511,6 +542,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -522,12 +554,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -549,7 +581,81 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "light-blue",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 12,
+        "y": 4
+      },
+      "id": 674,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "/^idxmode$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "edj97jcoudpfkd"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Index Mode",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "edj97jcoudpfkd"
       },
       "description": "The name of the Aerospike Namespace ans Set where the vector values are stored",
       "fieldConfig": {
@@ -576,9 +682,9 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 7,
+        "w": 8,
         "x": 0,
-        "y": 6
+        "y": 7
       },
       "id": 663,
       "options": {
@@ -586,6 +692,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "/^fullname$/",
@@ -595,12 +702,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -622,7 +729,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "The location of where the vector index is stored within the Aerospike DB. ",
       "fieldConfig": {
@@ -649,9 +756,9 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 9,
-        "x": 7,
-        "y": 6
+        "w": 10,
+        "x": 8,
+        "y": 7
       },
       "id": 664,
       "options": {
@@ -659,6 +766,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "/^fullname$/",
@@ -668,12 +776,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -698,14 +806,14 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 10
       },
       "id": 660,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "description": "",
           "fieldConfig": {
@@ -787,7 +895,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "edj97jcoudpfkd"
               },
               "disableTextWrap": false,
               "editorMode": "code",
@@ -805,7 +913,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "edj97jcoudpfkd"
               },
               "disableTextWrap": false,
               "editorMode": "code",
@@ -833,7 +941,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 10
+        "y": 11
       },
       "id": 651,
       "panels": [],
@@ -843,7 +951,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -896,7 +1004,7 @@
         "h": 6,
         "w": 3,
         "x": 0,
-        "y": 11
+        "y": 12
       },
       "id": 649,
       "options": {
@@ -904,6 +1012,7 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "paused",
@@ -913,12 +1022,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -941,7 +1050,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "fieldConfig": {
         "defaults": {
@@ -973,7 +1082,7 @@
         "h": 6,
         "w": 3,
         "x": 3,
-        "y": 11
+        "y": 12
       },
       "id": 626,
       "options": {
@@ -989,12 +1098,12 @@
         "showThresholdMarkers": false,
         "sizing": "auto"
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1049,7 +1158,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "The current total of vectors upserted.",
       "fieldConfig": {
@@ -1078,7 +1187,7 @@
         "h": 6,
         "w": 3,
         "x": 6,
-        "y": 11
+        "y": 12
       },
       "id": 671,
       "options": {
@@ -1089,19 +1198,19 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^sum\\(aerospike_hdf_populate_total\\{instance=~\"172\\\\\\\\\\.28\\\\\\\\\\.86\\\\\\\\\\.158:9464\", ns=~\"test\", set=~\"glove\\-100\\-angular\"\\}\\)$/",
+          "fields": "/^sum\\(aerospike_hdf_populate_total\\{instance=~\"localhost:9464\", ns=~\"test\", set=~\"\\(glove\\-100\\-angular\\|random\\-xs\\-20\\-angular\\)\"\\}\\)$/",
           "values": false
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -1120,7 +1229,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -1269,6 +1378,22 @@
               {
                 "fieldName": "Value",
                 "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "idxmode",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "idxreadystatus",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "idxwaittimeout",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "popcommitted",
+                "handlerKey": "__ignore"
               }
             ]
           }
@@ -1279,7 +1404,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "Number on the left are the committed vectors and the number on the right are the uncommitted vectors to the DB.",
       "fieldConfig": {
@@ -1324,7 +1449,7 @@
         "h": 6,
         "w": 3,
         "x": 9,
-        "y": 11
+        "y": 12
       },
       "id": 669,
       "options": {
@@ -1332,6 +1457,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -1343,12 +1469,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1367,7 +1493,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1377,7 +1503,7 @@
           "hide": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "Populated",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -1404,9 +1530,19 @@
           "options": {
             "alias": "UnCommitted",
             "binary": {
-              "left": "sum(aerospike_hdf_populate_total{instance=~\"172\\\\.28\\\\.86\\\\.158:9464\", ns=~\"test\", set=~\"glove-100-angular\"})",
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Populated"
+                }
+              },
               "operator": "-",
-              "right": "Committed"
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Committed"
+                }
+              }
             },
             "mode": "binary",
             "reduce": {
@@ -1422,7 +1558,9 @@
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": false,
+              "Committed": false,
+              "Populated": false,
+              "Time": true,
               "Value 2": true,
               "__name__": true,
               "action": true,
@@ -1430,18 +1568,21 @@
               "dataset": true,
               "dims": true,
               "hnswparams": true,
-              "idx": false,
+              "idx": true,
               "idxbin": true,
               "idxdist": true,
-              "idxns": false,
+              "idxmode": true,
+              "idxns": true,
+              "idxreadystatus": true,
               "idxstate": true,
+              "idxwaittimeout": true,
               "instance": true,
               "job": true,
-              "ns": false,
+              "ns": true,
               "paused": true,
               "popcommitted": true,
               "popconcurrent": true,
-              "poprecs": false,
+              "poprecs": true,
               "popresrcevt": true,
               "popwait": true,
               "queries": true,
@@ -1452,13 +1593,18 @@
               "querymetricvalue": true,
               "querynbrlmt": true,
               "queryruns": true,
+              "remainingRecs": false,
               "remainingquerynbrs": true,
-              "set": false,
-              "sum(aerospike_hdf_populate_total{instance=~\"172\\\\.28\\\\.86\\\\.158:9464\", ns=~\"test\", set=~\"glove-100-angular\"})": true
+              "set": true,
+              "sum(aerospike_hdf_populate_total{instance=~\"172\\\\.28\\\\.86\\\\.158:9464\", ns=~\"test\", set=~\"glove-100-angular\"})": true,
+              "sum(aerospike_hdf_populate_total{instance=~\"localhost:9464\", ns=~\"test\", set=~\"(glove-100-angular|random-xs-20-angular)\"})": false
             },
             "includeByName": {},
             "indexByName": {},
-            "renameByName": {}
+            "renameByName": {
+              "Time": "",
+              "sum(aerospike_hdf_populate_total{instance=~\"localhost:9464\", ns=~\"test\", set=~\"(glove-100-angular|random-xs-20-angular)\"})": "UnCommitted"
+            }
           }
         }
       ],
@@ -1467,7 +1613,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -1482,6 +1628,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -1527,7 +1674,7 @@
         "h": 6,
         "w": 6,
         "x": 12,
-        "y": 11
+        "y": 12
       },
       "id": 672,
       "options": {
@@ -1544,12 +1691,12 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1572,7 +1719,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "If a resource exhausted error occurs, what action should be performed. ",
       "fieldConfig": {
@@ -1625,7 +1772,7 @@
         "h": 3,
         "w": 3,
         "x": 18,
-        "y": 11
+        "y": 12
       },
       "id": 668,
       "options": {
@@ -1633,6 +1780,7 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "/^popresrcevt$/",
@@ -1642,12 +1790,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1670,7 +1818,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "What population concurrency action is being applied.",
       "fieldConfig": {
@@ -1723,7 +1871,7 @@
         "h": 3,
         "w": 3,
         "x": 21,
-        "y": 11
+        "y": 12
       },
       "id": 665,
       "options": {
@@ -1731,6 +1879,7 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "/^popconcurrent$/",
@@ -1740,12 +1889,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1768,7 +1917,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "After the records are populated, what  index action is performed...",
       "fieldConfig": {
@@ -1821,7 +1970,7 @@
         "h": 3,
         "w": 3,
         "x": 18,
-        "y": 14
+        "y": 15
       },
       "id": 667,
       "options": {
@@ -1829,6 +1978,7 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "/^popwait$/",
@@ -1838,12 +1988,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1866,7 +2016,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -1919,7 +2069,7 @@
         "h": 3,
         "w": 3,
         "x": 21,
-        "y": 14
+        "y": 15
       },
       "id": 666,
       "options": {
@@ -1927,6 +2077,7 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "/^idxstate$/",
@@ -1936,12 +2087,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1964,7 +2115,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "fieldConfig": {
         "defaults": {
@@ -1978,6 +2129,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -2063,7 +2215,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 18
       },
       "id": 638,
       "options": {
@@ -2083,11 +2235,12 @@
           "sort": "none"
         }
       },
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2103,7 +2256,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2127,7 +2280,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 27
       },
       "id": 652,
       "panels": [],
@@ -2137,7 +2290,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -2166,7 +2319,7 @@
         "h": 5,
         "w": 3,
         "x": 0,
-        "y": 27
+        "y": 28
       },
       "id": 646,
       "options": {
@@ -2174,6 +2327,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "queryruns",
@@ -2183,12 +2337,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2210,7 +2364,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -2239,7 +2393,7 @@
         "h": 5,
         "w": 3,
         "x": 3,
-        "y": 27
+        "y": 28
       },
       "id": 650,
       "options": {
@@ -2247,6 +2401,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "queries",
@@ -2256,12 +2411,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2283,7 +2438,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -2312,7 +2467,7 @@
         "h": 5,
         "w": 3,
         "x": 6,
-        "y": 27
+        "y": 28
       },
       "id": 647,
       "options": {
@@ -2320,6 +2475,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "querynbrlmt",
@@ -2329,12 +2485,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2356,7 +2512,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -2384,7 +2540,7 @@
         "h": 5,
         "w": 2,
         "x": 9,
-        "y": 27
+        "y": 28
       },
       "id": 659,
       "options": {
@@ -2392,6 +2548,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "queryef",
@@ -2401,12 +2558,12 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2428,7 +2585,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "fieldConfig": {
         "defaults": {
@@ -2458,7 +2615,7 @@
         "h": 5,
         "w": 3,
         "x": 11,
-        "y": 27
+        "y": 28
       },
       "id": 648,
       "options": {
@@ -2474,12 +2631,12 @@
         "showThresholdMarkers": false,
         "sizing": "auto"
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2551,7 +2708,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -2578,7 +2735,7 @@
         "h": 5,
         "w": 2,
         "x": 14,
-        "y": 27
+        "y": 28
       },
       "id": 653,
       "options": {
@@ -2586,6 +2743,7 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "/^recalltype$/",
@@ -2596,12 +2754,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -2624,7 +2782,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "This recall is calculated based on the distance between neighbors based on the ANN formulas.",
       "fieldConfig": {
@@ -2667,7 +2825,7 @@
         "h": 5,
         "w": 2,
         "x": 16,
-        "y": 27
+        "y": 28
       },
       "id": 654,
       "options": {
@@ -2675,6 +2833,7 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "querymetricvalue",
@@ -2685,12 +2844,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2713,7 +2872,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "This recall is calculated based on the distance as returned by the Aerospike API using the ANN formulas.",
       "fieldConfig": {
@@ -2756,7 +2915,7 @@
         "h": 5,
         "w": 3,
         "x": 18,
-        "y": 27
+        "y": 28
       },
       "id": 661,
       "options": {
@@ -2764,6 +2923,7 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "querymetricaerospikevalue",
@@ -2774,12 +2934,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2802,7 +2962,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "This recall is calculated using the Big ANN's KNN neighbor formulas (distance is not used).",
       "fieldConfig": {
@@ -2845,7 +3005,7 @@
         "h": 5,
         "w": 3,
         "x": 21,
-        "y": 27
+        "y": 28
       },
       "id": 657,
       "options": {
@@ -2853,6 +3013,7 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "/^querymetricbigvalue$/",
@@ -2863,12 +3024,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2891,7 +3052,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "",
       "fieldConfig": {
@@ -2906,6 +3067,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -2951,7 +3113,7 @@
         "h": 13,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 33
       },
       "id": 610,
       "options": {
@@ -2971,12 +3133,12 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2997,7 +3159,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "edj97jcoudpfkd"
       },
       "description": "The number of queries that fall within a certain latency buckets in milliseconds",
       "fieldConfig": {
@@ -3011,8 +3173,7 @@
             "scaleDistribution": {
               "type": "linear"
             }
-          },
-          "fieldMinMax": false
+          }
         },
         "overrides": []
       },
@@ -3020,7 +3181,7 @@
         "h": 15,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 46
       },
       "id": 673,
       "options": {
@@ -3062,12 +3223,12 @@
           "unit": "ms"
         }
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "edj97jcoudpfkd"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -3088,8 +3249,9 @@
       "type": "heatmap"
     }
   ],
+  "preload": false,
   "refresh": "5s",
-  "schemaVersion": 39,
+  "schemaVersion": 40,
   "tags": [
     "Monitoring",
     "vectors",
@@ -3100,31 +3262,32 @@
     "list": [
       {
         "current": {
-          "selected": false,
           "text": "prometheus",
           "value": "edj97jcoudpfkd"
         },
-        "hide": 0,
         "includeAll": false,
         "label": "Datasource",
-        "multi": false,
         "name": "DS_AEROSPIKE_HDF",
         "options": [],
         "query": "prometheus",
-        "queryValue": "",
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
         "type": "datasource"
       },
       {
-        "current": {},
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "edj97jcoudpfkd"
         },
         "definition": "label_values(aerospike_hdf_heartbeat,instance)",
-        "hide": 0,
         "includeAll": true,
         "label": "Client",
         "multi": true,
@@ -3137,18 +3300,22 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
-        "current": {},
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "edj97jcoudpfkd"
         },
         "definition": "label_values(aerospike_hdf_heartbeat,ns)",
-        "hide": 0,
         "includeAll": true,
         "label": "Namespace",
         "multi": true,
@@ -3161,18 +3328,22 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
-        "current": {},
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "edj97jcoudpfkd"
         },
         "definition": "label_values(aerospike_hdf_heartbeat{ns=~\"$namespace\"},set)",
-        "hide": 0,
         "includeAll": true,
         "label": "Set",
         "multi": true,
@@ -3185,18 +3356,22 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
-        "current": {},
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "edj97jcoudpfkd"
         },
         "definition": "label_values(aerospike_hdf_heartbeat,idxns)",
-        "hide": 0,
         "includeAll": true,
         "label": "Idx Namespace",
         "multi": true,
@@ -3209,18 +3384,22 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
-        "current": {},
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "edj97jcoudpfkd"
         },
         "definition": "label_values(aerospike_hdf_heartbeat{idxns=~\"$idxns\"},idx)",
-        "hide": 0,
         "includeAll": true,
         "label": "Index name",
         "multi": true,
@@ -3233,18 +3412,18 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
-        "current": {},
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "edj97jcoudpfkd"
         },
         "definition": "label_values(aerospike_hdf_query_total{idx=~\"$idxname\", ns=~\"$idxns\"},run)",
-        "hide": 0,
         "includeAll": true,
         "label": "Query Run",
         "multi": true,
@@ -3257,44 +3436,19 @@
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 3,
         "type": "query"
       }
     ]
   },
   "time": {
-    "from": "now-5m",
-    "to": "now"
+    "from": "2025-02-24T16:52:54.017Z",
+    "to": "2025-02-24T17:02:39.809Z"
   },
-  "timepicker": {
-    "refresh_intervals": [
-      "5s",
-      "10s",
-      "30s",
-      "1m",
-      "5m",
-      "15m",
-      "30m",
-      "1h",
-      "2h",
-      "1d"
-    ],
-    "time_options": [
-      "5m",
-      "15m",
-      "1h",
-      "6h",
-      "12h",
-      "24h",
-      "2d",
-      "7d",
-      "30d"
-    ]
-  },
+  "timepicker": {},
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 13,
+  "version": 4,
   "weekStart": ""
 }
