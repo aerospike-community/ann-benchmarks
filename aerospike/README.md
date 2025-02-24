@@ -10,27 +10,26 @@ python hdf_import.py –help
 
 Below is a review of the argument:
 
-\-h, --help
+## -h, --help
 
 Show this help message and exit
 
-\-d DS, --dataset DS
+## -d DS, --dataset DS
 
 The ANN dataset (DS) to load training points from (default: glove-100-angular)
 
-\--hdf HDFFILE
+## --hdf HDFFILE
 
 A HDF file that can be an ANN HDF file, or one created by “[hdf_create_dataset.py](#hdf_create_datasetpy)”. You can provide a path to this HDF file. If a path is not provided, the “data” folder is assumed.
 
-\-c N, --concurrency N
+## -c N, --concurrency N
 
 The maximum number of concurrent tasks (N) used to population the index.
 
 “N’ Values are:
 
 -   \< 0 – All records are upserted, concurrently waiting for the upsert confirmation once all upserts are submitted
--   0 -- Disable Population
-    If the index doesn’t existence, it is created. The “wait for index completion” is still being performed.
+-   0 -- Disable Population If the index doesn’t existence, it is created. The “wait for index completion” is still being performed.
 -   1 -- One record is upserted and confirmed at a time (sync)
 -   \> 1 -- The number of records upserted and confirmed, concurrently (async)
 
@@ -38,51 +37,54 @@ The maximum number of concurrent tasks (N) used to population the index.
 
     (default: 500)
 
-\--idxdrop
+## --idxdrop
 
 If the Vector Index existence, it will be dropped. Otherwise, it is updated. (default: False)
 
-\--idxnowait
+## --idxnowait
 
 Waiting for index completion is disabled. The module will continue without waiting for the index records to be merged into the Aerospike DB (default: False)
 
-\-E EVT, --exhaustedevt EVT
+## --idxwaittimeout SECS
+
+The amount of time in seconds to wait for index completion. If the time is exceeded, the application will continue. If value less-than zero, wait Indefinitely.
+
+## -E EVT, --exhaustedevt EVT
 
 This determines how the Resource Exhausted event is handled. This event occurs with the Vector Server merge queue is filled and cannot process any additional population requests.
 
 “EVT” Values are:
 
--   -1 – All population events are stopped and will not resume until the index merger queue is cleared. This is done by “waiting for index completion” to occur. Once the queue is cleared, the population will be restarted.
--  -2 -- Ignore the in-memory queue full error. These records will be written to storage and later, the index healer will pick them for indexing.
+-   \-1 – All population events are stopped and will not resume until the index merger queue is cleared. This is done by “waiting for index completion” to occur. Once the queue is cleared, the population will be restarted.
+-   \-2 -- Ignore the in-memory queue full error. These records will be written to storage and later, the index healer will pick them for indexing.
 -   0 -- Disable event handling (just re-throws the exception)
 -   \>= 1 – All population events are stopped, and the module will wait for “EVT” seconds. Once the interval is reached, the population will be restarted.
 
     (default: -1)
 
-\-m RECS, --maxrecs RECS
+## -m RECS, --maxrecs RECS
 
 Determines the maximum number of records to populated. A value of -1 (default) all records in the HDF dataset are populated.
 
 (default: -1)
 
-\-p port, --vectorport port
+## -p port, --vectorport port
 
 The Vector Server Port (default: 5000)
 
-\-a HOST, --host HOST
+## -a HOST, --host HOST
 
 The Vector Server’s IP Address or Host Name (default: localhost)
 
-\-A HOST:PORT [HOST:PORT ...], --hosts HOST:PORT [HOST:PORT ...]
+## -A HOST:PORT [HOST:PORT ...], --hosts HOST:PORT [HOST:PORT ...]
 
-A list of host and optional port. Each pair is separated by a space.
-Example: 'hosta:5000' or 'hostb' (default: [localhost:5000])
+A list of host and optional port. Each pair is separated by a space. Example: 'hosta:5000' or 'hostb' (default: [localhost:5000])
 
 If provided, each population request is distributed over the list of hosts.
 
 Note: if this is provided, “—host” and “—port” arguments are ignored.
 
-\-l, --vectorloadbalancer
+## -l, --vectorloadbalancer
 
 Use Vector's Load Balancer.
 
@@ -90,73 +92,80 @@ Note: if “—hosts” argument is used, only the first host in the list is use
 
 (default: False)
 
-\-n NS, --namespace NS
+## -n NS, --namespace NS
 
-The Aerospike Namespace
-(default: test)
+The Aerospike Namespace (default: test)
 
-\-N NS, --idxnamespace NS
+## -N NS, --idxnamespace NS
 
-Aerospike Namespace where the vector index will be located.
-Defaults to the value of “—namespace”.
+Aerospike Namespace where the vector index will be located. Defaults to the value of “—namespace”.
 
-\-s SET, --setname SET
+## -s SET, --setname SET
 
-The Aerospike Set Name
-(default: HDF-data)
+The Aerospike Set Name (default: HDF-data)
 
-\-I IDX, --idxname IDX
+## -I IDX, --idxname IDX
 
-The Vector Index Name.
-Defaults to the Set Name (--setname) with the suffix of '_idx'
+The Vector Index Name. Defaults to the Set Name (--setname) with the suffix of '_idx'
 
-\-g, --generatedetailsetname
+## -g, --generatedetailsetname
 
-Generates a unique Set Name (--setname) based on distance type, dimensions, index params, etc.
-(default: False)
+Generates a unique Set Name (--setname) based on distance type, dimensions, index params, etc. (default: False)
 
-\-b BIN, --vectorbinname BIN
+## -b BIN, --vectorbinname BIN
 
-The Aerospike Bin Name where the vector is stored
-(default: “HDF_embedding”)
+The Aerospike Bin Name where the vector is stored (default: “HDF_embedding”)
 
-\-D DIST, --distancetype DIST
+## -D DIST, --distancetype DIST
 
-The Vector's Index Distance Type as defined by the Vector Phyton API.
-The default is to select the index type based on the ANN dataset
+The Vector's Index Distance Type is defined by the Vector Phyton API. The default is to select the index type based on the ANN dataset
 
-\-P PARM, --indexparams PARM
+## -P PARM, --indexparams PARM
 
-The Vector's Index Params (HnswParams) as defined by the Vector Phyton API.
-(default: {"m": 16, "ef_construction": 100, "ef": 100})
+The Vector's Index Params (HnswParams) as defined by the Vector Phyton API. (default: {"m": 16, "ef_construction": 100, "ef": 100})
 
-\--storagethreshold MULTIPLIER
-A storage multiplier used to determine how the “training” dataset is loaded. It is either loaded completely in memory or is memory mapped (paged into memory when needed). The multiplier is simply how many “training” datasets can fit into available physical memory. For example, a multiplier of 4 (default) means that if at least 4 times the size of the “training” dataset can fit in available memory, it will be loaded into memory. If it cannot, it will be memory mapped and paged when needed. A value of 0 means always try to load it into memory. A value of -1 means to always memory map this dataset.
-(default: 4)
+## -M MODE, --indexmode MODE
 
-\-L LOG, --logfile LOG
+The index mode as defined by IndexMode of the AVS python client. Values are:
+
+-   DISTRIBUTED: The index is maintained by any node in the cluster.
+-   STANDALONE: The index is maintained by a single node in the cluster. The node must have the standalone-indexer role.
+
+DISTRIBUTED is used when an index has streaming updates and needs to searchable.
+
+STANDALONE is used when an index needs to index offline data quickly and does not need to be searchable.
+
+STANDALONE indexes switch to DISTRIBUTED mode when they finish offline indexing.
+
+It defaults to DISTRIBUTED.
+
+## --storagethreshold MULTIPLIER
+
+A storage multiplier used to determine how the “training” dataset is loaded. It is either loaded completely in memory or is memory mapped (paged into memory when needed). The multiplier is simply how many “training” datasets can fit into available physical memory. For example, a multiplier of 4 (default) means that if at least 4 times the size of the “training” dataset can fit in available memory, it will be loaded into memory. If it cannot, it will be memory mapped and paged when needed. A value of 0 means always try to load it into memory. A value of -1 means to always memory map this dataset. (default: 4)
+
+## -L LOG, --logfile LOG
 
 The logging file path, if provided. The default is to stdout.
 
-\--loglevel LEVEL
+## --loglevel LEVEL
 
 The Logging level (default: INFO)
 
-\--driverloglevel DLEVEL
+## --driverloglevel DLEVEL
 
 The Vector Phyton Driver's Logging level (default: NOTSET)
 
-\--prometheus PORT
+## --prometheus PORT
 
 The Prometheus Port (default: 9464)
 
-\--prometheushb SECS
+## --prometheushb SECS
 
 Prometheus heartbeat in secs. The heartbeat updates common information to Prometheus (default: 5 seconds)
 
-\--exitdelay wait
+## --exitdelay wait
 
-Upon exist, the module will sleep ensuring all Prometheus events are captured (default: 20)
+Upon existence, the module will sleep ensuring all Prometheus events are captured (default: 20)
 
 # hdf_query.py
 
@@ -172,56 +181,51 @@ python hdf_import.py –help
 
 Below is a review of the argument:
 
-\-h, --help
+## -h, --help
 
 Show this help message and exit
 
-\-d DS, --dataset DS
+## -d DS, --dataset DS
 
 The ANN dataset (DS) to load training points from (default: glove-100-angular)
 
-\--hdf HDFFILE
+## --hdf HDFFILE
 
 A HDF file that can be an ANN HDF file, or one created by “[hdf_create_dataset.py](#hdf_create_datasetpy)”. You can provide a path to this HDF file. If a path is not provided, the “data” folder is assumed.
 
-\-r RUNS, --runs RUNS
+## -r RUNS, --runs RUNS
 
-The number of times the query requests will run based on the ANN dataset.
-For example: If the ANN dataset request 1,000 queries and if this value is 10; The total number of query requests will be 10,000 (1,000 \* 10).
-(default: 10)
+The number of times the query requests will run based on the ANN dataset. For example: If the ANN dataset request 1,000 queries and if this value is 10; The total number of query requests will be 10,000 (1,000 \* 10). (default: 10)
 
-\--limit NEEIGHBORS
+## --limit NEEIGHBORS
 
 The number of neighbors to return from each query request. If this value is less than or equal to 0, the dataset's neighbor result array length will be used. (default: -1)
 
-\--parallel
+## --parallel
 
-Each “run” is conducted concurrently
-(default: False)
+Each “run” is conducted concurrently (default: False)
 
-\--check
+## --check
 
-Each query result is checked to determine if the result is correct.
-{default False)
+Each query result is checked to determine if the result is correct. {default False)
 
-\-p port, --vectorport port
+## -p port, --vectorport port
 
 The Vector Server Port (default: 5000)
 
-\-a HOST, --host HOST
+## -a HOST, --host HOST
 
 The Vector Server’s IP Address or Host Name (default: localhost)
 
-\-A HOST:PORT [HOST:PORT ...], --hosts HOST:PORT [HOST:PORT ...]
+## -A HOST:PORT [HOST:PORT ...], --hosts HOST:PORT [HOST:PORT ...]
 
-A list of host and optional port. Each pair is separated by a space.
-Example: 'hosta:5000' or 'hostb' (default: [localhost:5000])
+A list of host and optional port. Each pair is separated by a space. Example: 'hosta:5000' or 'hostb' (default: [localhost:5000])
 
 If provided, each query request is distributed over the list of hosts.
 
 Note: if this is provided, “—host” and “—port” arguments are ignored.
 
-\-l, --vectorloadbalancer
+## -l, --vectorloadbalancer
 
 Use Vector's Load Balancer.
 
@@ -229,32 +233,27 @@ Note: if “—hosts” argument is used, only the first host in the list is use
 
 (default: False)
 
-\-N NS, --idxnamespace NS
+## -N NS, --idxnamespace NS
 
-Aerospike Namespace where the vector index will be located.
-Defaults to the value of “—namespace”.
+Aerospike Namespace where the vector index will be located. Defaults to the value of “—namespace”.
 
-\-s SET, --setname SET
+## -s SET, --setname SET
 
-The Aerospike Set Name
-(default: HDF-data)
+The Aerospike Set Name (default: HDF-data)
 
-\-I IDX, --idxname IDX
+## -I IDX, --idxname IDX
 
-The Vector Index Name.
-Defaults to the Set Name (--setname) with the suffix of '_idx'
+The Vector Index Name. Defaults to the Set Name (--setname) with the suffix of '_idx'
 
-\-g, --generatedetailsetname
+## -g, --generatedetailsetname
 
-Generates a unique Set Name (--setname) based on distance type, dimensions, index params, etc.
-(default: False)
+Generates a unique Set Name (--setname) based on distance type, dimensions, index params, etc. (default: False)
 
-\-S PARM, --searchparams PARM
+## -S PARM, --searchparams PARM
 
-The Vector's Search Params (HnswParams) as defined by the Vector Phyton API.
-Defaults to --indexparams
+The Vector's Search Params (HnswParams) as defined by the Vector Phyton API. Defaults to --indexparams
 
-\--metric TYPE
+## --metric TYPE
 
 Determines how recall is calculated. Defaults to “KNN”. Possible values are:
 
@@ -263,7 +262,7 @@ Determines how recall is calculated. Defaults to “KNN”. Possible values are:
 -   largeepsilon -- Epsilon 0.1 Recall
 -   rel -- Relative Error
 
-\--distancecalc TYPE
+## --distancecalc TYPE
 
 If provided, this will override the ANN distance type as defined in the dataset. The default is the ANN defined distance type. Values can be:
 
@@ -273,30 +272,31 @@ If provided, this will override the ANN distance type as defined in the dataset.
 -   squared_euclidean
 -   angular
 
-\--dontadustdistance
+## --dontadustdistance
+
 If provided, the ANN default distance formula is always used regardless of the ANN or “distancecalc” values.
 
-\-L LOG, --logfile LOG
+## -L LOG, --logfile LOG
 
 The logging file path, if provided. The default is to stdout.
 
-\--loglevel LEVEL
+## --loglevel LEVEL
 
 The Logging level (default: INFO)
 
-\--driverloglevel DLEVEL
+## --driverloglevel DLEVEL
 
 The Vector Phyton Driver's Logging level (default: NOTSET)
 
-\--prometheus PORT
+## --prometheus PORT
 
 The Prometheus Port (default: 9464)
 
-\--prometheushb SECS
+## --prometheushb SECS
 
 Prometheus heartbeat in secs. The heartbeat updates common information to Prometheus (default: 5 seconds)
 
-\--exitdelay wait
+## --exitdelay wait
 
 Upon exist, the module will sleep ensuring all Prometheus events are captured (default: 20)
 
@@ -304,65 +304,65 @@ Upon exist, the module will sleep ensuring all Prometheus events are captured (d
 
 This module creates an HDF file from an existing vector dataset. This dataset can be an ANN or a user defined dataset.
 
-\-h, --help
+## -h, --help
 
 show this help message and exit
 
-\-idx INDEXNAME, --indexname INDEXNAME
+## -idx INDEXNAME, --indexname INDEXNAME
 
 Vector's Index Name. Required
 
-\--hdf HDFFILE
+## --hdf HDFFILE
 
 A HDF file that will be created in the 'data' folder by default. You can provide a path, if for a different folder. Required
 
-\-a HOST:PORT [HOST:PORT ...], --hosts HOST:PORT [HOST:PORT ...]
+## -a HOST:PORT [HOST:PORT ...], --hosts HOST:PORT [HOST:PORT ...]
 
 A list of Aerospike host and optional ports (defaults to 3000). Example:
 
 'hosta:3000' or 'hostb' (default: ['localhost:3000'])
 
-\--policies POLICIES
+## --policies POLICIES
 
 Aerospike connection policies
 
 (default: {"read": {"total_timeout": 1000}})
 
-\-A HOST:PORT [HOST:PORT ...], --vectorhosts HOST:PORT [HOST:PORT ...]
+## -A HOST:PORT [HOST:PORT ...], --vectorhosts HOST:PORT [HOST:PORT ...]
 
 A list of Aerospike Vector host and optional ports (defaults to 5000).
 
 Example: 'hosta:5000' or 'hostb' (default: ['localhost:5000'])
 
-\-l, --vectorloadbalancer
+## -l, --vectorloadbalancer
 
 Use Vector's DB Load Balancer (default: False)
 
-\-idxns INDEXNAME, --indexnamespace INDEXNAME
+## -idxns INDEXNAME, --indexnamespace INDEXNAME
 
 Vector's Index Namespace.
 
 (default test)
 
-\-S PARM, --searchparams PARM
+## -S PARM, --searchparams PARM
 
 The Vector's Search Params (HnswParams) as a Json value used to obtain the neighbors
 
-\-pk BINNAME, --pkbinname BINNAME
+## -pk BINNAME, --pkbinname BINNAME
 
 The Bin Name that represents the Primary Key for a record. If not provided the Aerospike PK will try to be used, if the PK value is returned.
 
 If the Aerospike PK is not a value (digest), PK array will not be part of the HDF dataset. (default: \_avs_uk_)
 
-\--records LIMIT
+## --records LIMIT
 
 The number of records (PKs) returned from the application Aerospike Set. If -1, all records are returned from the set. (default: -1)
 
-\-n NEIGHBORS, --neighbors NEIGHBORS
+## -n NEIGHBORS, --neighbors NEIGHBORS
 
 The number of neighbors to return from the query. (default: 100)
 
-\--testsize VALUE
+## --testsize VALUE
 
 If float, should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
 
@@ -372,7 +372,7 @@ If None, the value is set to the complement of the train size. If \`\`trainsize\
 
 (default: 0.1)
 
-\--trainsize VALUE
+## --trainsize VALUE
 
 If float, should be between 0.0 and 1.0 and represent the proportion on the dataset to include in the train split.
 
@@ -380,7 +380,7 @@ If int, represents absolute number of train samples. If None, the value is autom
 
 (default: None)
 
-\--randomstate VALUE
+## --randomstate VALUE
 
 Controls the shuffling applied to the data before applying the split. Pass an int for reproducible output across multiple function calls.
 
@@ -390,31 +390,31 @@ Using a default of 1 as defined in the ANN benchmark. See this [link](https://sc
 
 (default: 1)
 
-\--usetrainingds
+## --usetrainingds
 
 Creates the training dataset based on the actual vectors from the DB. This will use the Bruteforce/k-nn method to calculate the neighbors. The default is to use all vector records in the DB and a sampling is taken to conduct the searches using the Aerospike implementation.
 
 (default: False)
 
-\--metric TYPE
+## --metric TYPE
 
 Which metric to use to calculate Recall.
 
 (default: k-nn)
 
-\-L LOG, --logfile LOG
+## -L LOG, --logfile LOG
 
 The logging file path. The default is no logging to a file.
 
 (default: None)
 
-\--loglevel LEVEL
+## --loglevel LEVEL
 
 The Logging level
 
 (default: INFO)
 
-### HDF File Attributes
+# HDF File Attributes
 
 -   type – A constant value which is always "dense"
 -   distance – An ANN distance type. The is a string value. Values are:
@@ -451,8 +451,7 @@ This will download the Big ANN dataset files and place the files into the defaul
 
 Below are the arguments:
 
--   \--dataset name
-    You can find more information about the Big ANN datasets [here](https://big-ann-benchmarks.com/neurips23.html). Name is:
+-   \--dataset name You can find more information about the Big ANN datasets [here](https://big-ann-benchmarks.com/neurips23.html). Name is:
     -   'bigann-1B'
     -   'bigann-100M'
     -   'bigann-10M'
