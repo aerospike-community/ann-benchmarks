@@ -464,7 +464,7 @@ class AerospikeDS():
             for pk in pkarray:
                 record = await client.get(namespace=self._as_namespace,
                                             key=pk,
-                                            field_names=[self._as_vectorbinname],
+                                            include_fields=[self._as_vectorbinname],
                                             set_name=self._as_set)
                 vectors.append(np.array(record.fields[self._as_vectorbinname]))
                 i += 1
