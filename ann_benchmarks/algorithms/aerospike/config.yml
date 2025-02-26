@@ -13,8 +13,12 @@ float:
           [{m: 8, ef_construction: 64, ef: 8}], #HnswParams for each run
           [True], #Unique Set/Index Name (optional, default True). The created Set/Index Name is based on Idx Type, Dims, M, EF_const, and EF. If false, only Idx Type
           [True] #True to Drop Idx and Re-Populate, optional default true
-          #[AllOps] #Default Performs all operations (populate idx and query). Values are IdxPopulateOnly, QueryOnly, AllOps (default)
-          #[False] #If True, the exhausted resource event is handled by the Handler. Default is false.
+          #This can be wither an operation or a IndexMode
+          #Default Performs all operations (populate idx and query). Values are IdxPopulateOnly, QueryOnly, AllOps (default)
+          #If not a operation, can be an index mode of DISTRIBUTED or STANDALONE
+          #[AllOps|STANDALONE],
+          #[False], #If True, the exhausted resource event is handled by the Handler. Default is false.
+          #[STANDALONE] #default index mode (IndexMode). Can be DISTRIBUTED or STANDALONE
         ]
         query_args: [ #Query HnswSearchParams, e.g., [{ef: 3}], optional
           []

@@ -15,6 +15,7 @@ float:
           [True] #True to Drop Idx and Re-Populate, optional default true
           #[AllOps] #Default Performs all operations (populate idx and query). Values are IdxPopulateOnly, QueryOnly, AllOps (default)
           #[False] #If True, the exhausted resource event is handled by the Handler. Default is false.
+          #[STANDALONE] #default index mode (IndexMode). Can be DISTRIBUTED or STANDALONE
           ]
         query_args: [ #Query HnswSearchParams, e.g., [{ef: 3}], optional
           []

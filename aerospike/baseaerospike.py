@@ -20,7 +20,7 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.util.types import Attributes
 
-from aerospike_vector_search import types as vectorTypes, Client as vectorClient
+from aerospike_vector_search import types as vectorTypes, Client as vectorSyncClient
 
 from metrics import all_metrics as METRICS
 from helpers import set_hnsw_params_attrs, hnswstr
@@ -178,12 +178,14 @@ class BaseAerospike(object):
         self._idx_binName : str = None
 
         self._idx_distance = None
+        self._idx_mode = None
         self._ann_distance : str = None
         self._idx_hnswparams : vectorTypes.HnswParams = None
         self._query_hnswparams : vectorTypes.HnswSearchParams = None
 
         self._concurrency : int = None
         self._idx_nowait : bool = None
+        self._idx_wait_timeout : int = None
         self._idx_resource_event : int = None
         self._idx_resource_cnt : int = None
         self._idx_state : str = ''
@@ -194,7 +196,9 @@ class BaseAerospike(object):
         self._datasetname : str = None
         self._dimensions = None
         self._trainarray : Union[DSIterator, None] = None
+        self._trainingarraylen : Union[int,None] = None
         self._queryarray : Union[DSIterator, None] = None
+        self._queryarraylen : Union[int, None] = None
         self._neighbors : Union[DSIterator, None] = None
         self._pausedPuts : bool = False
         self._heartbeat_thread : Thread = None
@@ -211,8 +215,6 @@ class BaseAerospike(object):
 
         self._vector_queue_qry_time : int = runtimeArgs.vectorqueqry
         self._vector_queue_qry_thread : Thread = None
-        self._vector_Committed : Union[int, None] = None
-        self._vector_uncommited_records : Union[int, None] = None
         self._vector_idx_status : Union[vectorTypes.IndexStatusResponse, None] = None
 
         self._logging_init(runtimeArgs, logger)
@@ -260,15 +262,9 @@ class BaseAerospike(object):
 
         self._prometheus_heartbeat_gauge = self._meter.create_gauge("aerospike.hdf.heartbeat")
 
-        self._vector_queue_gauge = self._meter.create_gauge("aerospike.hdf.vectorqueuedepth",
-                                                                description="The number of unmerged index records"
-                                                            )
-        self._vector_indexed_records_gauge = self._meter.create_gauge("aerospike.hdf.vectoridxrecords",
-                                                                description="The number of vector records indexed"
-                                                            )
-        self._vector_vertices_gauge = self._meter.create_gauge("aerospike.hdf.vectoridxvertices",
-                                                                description="The number of valid vertices in the main index"
-                                                            )
+        self._vector_uncommitted_gauge = self._meter.create_gauge("aerospike.hdf.vector_uncommitted",
+                                                                    description="The number of records not committed (unmerged)"
+                                                                )
 
         self._prometheus_hb : int = runtimeArgs.prometheushb
 
@@ -379,19 +375,12 @@ class BaseAerospike(object):
                 waitevt = "No Wait"
             else:
                 waitevt = "Wait for Completion"
-
-        poprecs = None if self._trainarray is None else len(self._trainarray)
-        remainingRecs = self._remainingrecs
-        if (self._vector_uncommited_records is not None
-                and poprecs is not None
-                and self._actions is not None
-                and OperationActions.POPULATION in self._actions):
-            if remainingRecs is None:
-                self._vector_Committed = 0
+        waittimeout = ''
+        if not self._idx_nowait and self._idx_wait_timeout is not None:
+            if self._idx_wait_timeout <= 0:
+                waittimeout = "Indefinitely"
             else:
-                vectorcommit = (poprecs - remainingRecs) - self._vector_uncommited_records
-                #if self._vector_Committed is None or vectorcommit > self._vector_Committed:
-                self._vector_Committed = vectorcommit
+                waittimeout = self._idx_wait_timeout
 
         self._prometheus_heartbeat_gauge.set(self.__cnthb__,
                                              {"ns": '' if self._namespace is None else self._namespace,
@@ -402,7 +391,7 @@ class BaseAerospike(object):
                                                 "idxdist": None if self._idx_distance is None else self._idx_distance.name,
                                                 "anndist": self._ann_distance,
                                                 "dims": self._dimensions,
-                                                "poprecs": poprecs,
+                                                "poprecs": self._trainingarraylen,
                                                 "queries": None if self._queryarray is None else len(self._queryarray),
                                                 "querynbrlmt": self._query_nbrlimit,
                                                 "queryruns": self._query_runs,
@@ -410,7 +399,7 @@ class BaseAerospike(object):
                                                 "dataset":self._datasetname,
                                                 "paused": pausestate,
                                                 "action": None if self._actions is None else self._actions.name,
-                                                "remainingRecs" : remainingRecs,
+                                                "remainingRecs" : self._remainingrecs,
                                                 "remainingquerynbrs" : self._remainingquerynbrs,
                                                 "querymetric": '' if self._query_metric is None else self._query_metric["type"],
                                                 "querymetricvalue": self._query_metric_value,
@@ -423,7 +412,9 @@ class BaseAerospike(object):
                                                 "popwait" : waitevt,
                                                 "idxstate": self._idx_state,
                                                 "querydistance": self._ann_distance if self._query_distancecalc is None else self._query_distancecalc,
-                                                "popcommitted": self._vector_Committed
+                                                "idxmode": 'N/A' if self._idx_mode is None else self._idx_mode.name.title(),
+                                                "idxwaittimeout": waittimeout,
+                                                "idxreadystatus" : 'N/A' if self._vector_idx_status is None else self._vector_idx_status.index_readiness.name.title()
                                                 })
 
     def _prometheus_heartbeat(self) -> None:
@@ -448,63 +439,43 @@ class BaseAerospike(object):
     def vector_queue_status_Record(self, indexstatus : Union[vectorTypes.IndexStatusResponse,None]) -> None:
         from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
 
-        if self._idx_name is None or self._idx_namespace is None:
+        if (self._idx_name is None
+                or self._idx_namespace is None
+                or indexstatus is None):
             return
 
-        if indexstatus is None:
-            self._vector_queue_gauge.set(0,
-                                            {"ns": '' if self._namespace is None else self._namespace,
-                                                "set": '' if self._setName is None else self._setName,
-                                                "idxns": self._idx_namespace,
-                                                "idx": self._idx_name
-                                                })
-        else:
-            self._vector_queue_gauge.set(indexstatus.unmerged_record_count,
-                                            {"ns": '' if self._namespace is None else self._namespace,
-                                                "set": '' if self._setName is None else self._setName,
-                                                "idxns": self._idx_namespace,
-                                                "idx": self._idx_name
-                                                })
-            self._vector_indexed_records_gauge.set(indexstatus.index_healer_vector_records_indexed,
-                                                {"ns": '' if self._namespace is None else self._namespace,
-                                                    "set": '' if self._setName is None else self._setName,
-                                                    "idxns": self._idx_namespace,
-                                                    "idx": self._idx_name
-                                                    })
-            self._vector_vertices_gauge.set(indexstatus.index_healer_vertices_valid,
+        self._vector_uncommitted_gauge.set(indexstatus.unmerged_record_count,
                                             {"ns": '' if self._namespace is None else self._namespace,
                                                 "set": '' if self._setName is None else self._setName,
                                                 "idxns": self._idx_namespace,
                                                 "idx": self._idx_name
                                                 })
 
-    def vector_queue_status(self, adminclient : vectorClient, queryapi:bool = True, done:bool = False) -> None:
+    def vector_queue_status(self, vectorClient : vectorSyncClient, queryapi:bool = True, done:bool = False) -> None:
         from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
 
         if self._idx_name is None or self._idx_namespace is None:
             return
 
         if done:
-            self._vector_uncommited_records = 0
             self._vector_idx_status = None
         elif queryapi:
             try:
-                idxStatus = adminclient.index_get_status(namespace=self._namespace,
-                                                            name=self._idx_name,
-                                                            timeout=2)
-                self._vector_uncommited_records = idxStatus.index_healer_vector_records_indexed
-                self._vector_idx_status = idxStatus
-
+                self._vector_idx_status = vectorClient.index_get_status(namespace=self._namespace,
+                                                                        name=self._idx_name,
+                                                                        timeout=2)
             except vectorTypes.AVSServerError as avse:
-                    self._vector_uncommited_records = None
                     self._vector_idx_status = None
+                    if (self._idx_mode == vectorTypes.IndexMode.STANDALONE
+                            and avse.rpc_error.code() == vectorResultCodes.StatusCode.NOT_FOUND):
+                        self._vector_queue_qry_time = 0
+
                     if (avse.rpc_error.code() != vectorResultCodes.StatusCode.NOT_FOUND
                             and avse.rpc_error.code() != vectorResultCodes.StatusCode.ABORTED):
                         self._logger.exception(f"index_get_status failed ns={self._idx_namespace}, name={self._idx_name}")
                         self._vector_queue_qry_time = 0
             except Exception as e:
                 self._logger.exception(f"index_get_status failed ns={self._idx_namespace}, name={self._idx_name}")
-                self._vector_uncommited_records = None
                 self._vector_idx_status = None
                 self._vector_queue_qry_time = 0
 
@@ -514,27 +485,25 @@ class BaseAerospike(object):
         from time import sleep
 
         try:
-            with vectorClient(seeds=self._host,
-                                listener_name=self._listern,
-                                is_loadbalancer=self._useloadbalancer
-                ) as adminClient:
+            with vectorSyncClient(seeds=self._host,
+                                    listener_name=self._listern,
+                                    is_loadbalancer=self._useloadbalancer
+                ) as vectorClient:
                 self._logger.debug(f"Vector Heartbeating Start")
                 i : int = 0
                 queryapicnt = round(self._vector_queue_qry_time / self._prometheus_hb)
                 queryapi:bool = True
-                self._vector_uncommited_records = 0
-                self._vector_queue_total = None
                 while self._vector_queue_qry_time > 0:
                     i += 1
                     if i >= queryapicnt:
                         queryapi = True
                         i = 0
-                    self.vector_queue_status(adminClient,
+                    self.vector_queue_status(vectorClient,
                                             queryapi=queryapi)
                     if self._vector_queue_qry_time > 0:
                         sleep(self._prometheus_hb)
                     queryapi = False
-                self.vector_queue_status(adminClient, done=True)
+                self.vector_queue_status(vectorClient, done=True)
             self._logger.debug(f"Vector Heartbeating Ended")
         except Exception as e:
             self._logger.exception("Exception occurred tring to obtain Index Status")
@@ -605,6 +574,30 @@ class BaseAerospike(object):
     def query(self, query: np.array, limit: int) -> List[vectorTypes.Neighbor]:
         pass
 
+    def AddPopulateCounter(self, amount:int,
+                                    actiontype:str="upsert") -> None:
+        self._populate_counter.add(amount,
+                                   {"type": actiontype,
+                                    "ns":self._namespace,
+                                    "set":self._setName,
+                                    "poprecs": self._trainingarraylen,
+                                    "idxmode": None if self._idx_mode is None else self._idx_mode.name
+                                    })
+
+    def QueryHistogramRecord(self, latency:int,
+                                    runNbr:int,
+                                    amount:int = 1,
+                                    actiontype:str="Vector Search") -> None:
+
+        attrs:Attributes = {"type":
+                            "Vector Search",
+                            "ns":self._idx_namespace,
+                            "idx":self._idx_name,
+                            "run": runNbr}
+
+        self._query_counter.add(amount, attrs)
+        self._query_histogram.record(latency, attrs)
+
     def basestring(self) -> str:
         hnswparams = hnswstr(self._idx_hnswparams)
 
@@ -625,7 +618,7 @@ class BaseAerospike(object):
         else:
             hosts = ','.join(str(hp.host) + ':' + str(hp.port) for hp in self._host)
 
-        return f"BaseAerospike([[{hosts}], {self._useloadbalancer}, {fullName}, {self._idx_distance}, {{{hnswparams}}}{searchhnswparams}])"
+        return f"BaseAerospike([[{hosts}], {self._useloadbalancer}, {fullName}, {self._idx_distance}, {self._idx_mode}, {{{hnswparams}}}{searchhnswparams}])"
 
     def __str__(self):
         if self._idx_namespace == self._namespace:
