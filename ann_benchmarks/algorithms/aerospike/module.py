@@ -183,45 +183,45 @@ class Aerospike(BaseANN):
                 setattr(
                     __obj,
                     key,
-                    Aerospike.SetHnswParamsAttrs(
+                    SetHnswParamsAttrs(
                             vectorTypes.HnswBatchingParams(),
-                            __dict[key],
+                            __dict[key].__dict__,
                     )
                 )
             elif key == 'index_caching_params' or key == 'caching_params':
                 setattr(
                     __obj,
                     key,
-                    Aerospike.SetHnswParamsAttrs(
+                    SetHnswParamsAttrs(
                             vectorTypes.HnswCachingParams(),
-                            __dict[key],
+                            __dict[key].__dict__,
                     )
                 )
             elif key == 'healer_params':
                 setattr(
                     __obj,
                     key,
-                    Aerospike.SetHnswParamsAttrs(
+                    SetHnswParamsAttrs(
                             vectorTypes.HnswHealerParams(),
-                            __dict[key],
+                            __dict[key].__dict__,
                     )
                 )
             elif key == 'merge_params':
                 setattr(
                     __obj,
                     key,
-                    Aerospike.SetHnswParamsAttrs(
+                    SetHnswParamsAttrs(
                             vectorTypes.HnswIndexMergeParams(),
-                            __dict[key],
+                            __dict[key].__dict__,
                     )
                 )
             elif key == 'record_caching_params':
                 setattr(
                     __obj,
                     key,
-                    Aerospike.SetHnswParamsAttrs(
+                    SetHnswParamsAttrs(
                             vectorTypes.HnswCachingParams(),
-                            __dict[key],
+                            __dict[key].__dict__,
                     )
                 )
             elif (type(__dict[key]) is str
@@ -507,7 +507,7 @@ class Aerospike(BaseANN):
         elif hnswParams is not None and len(hnswParams) > 0:
             self._query_hnswsearchparams = Aerospike.SetHnswParamsAttrs(
                                                     vectorTypes.HnswSearchParams(),
-                                                    hnswParams
+                                                    hnswParams["hnsw_params"].__dict__
                                                 )
             if hnswParams is None:
                 Aerospike.PrintLog(f'Set Query {self}')
