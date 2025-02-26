@@ -38,7 +38,8 @@ class Aerospike(BaseANN):
                     uniqueSetIdxName: bool = True,
                     dropIdx: bool = True,
                     actions: str = "ALLOPS",
-                    ignoreExhaustedEvent: bool = False):
+                    ignoreExhaustedEvent: bool = False,
+                    indexMode: str = "DISTRIBUTED"):
 
         global logFileHandler
         global loggingEnabled
@@ -80,7 +81,14 @@ class Aerospike(BaseANN):
         self._dims = dimension
         self._idx_type = idx_type.upper()
         self._idx_value = vectorTypes.VectorDistanceMetric[self._idx_type]
-        self._actions = OperationActions[actions.upper()]
+
+        if actions.upper() in [v.name for v in vectorTypes.IndexMode]:
+            self._actions = OperationActions.ALLOPS
+            self._idx_mode : vectorTypes.IndexMode = vectorTypes.IndexMode[actions.upper()]
+        else:
+            self._actions = OperationActions[actions.upper()]
+            self._idx_mode : vectorTypes.IndexMode = vectorTypes.IndexMode[indexMode.upper()]
+
         if hnswParams is None or len(hnswParams) == 0:
             self._idx_hnswparams = None
         else:
@@ -91,6 +99,7 @@ class Aerospike(BaseANN):
 
         self._idx_drop = dropIdx
         self._idx_ignoreExhEvt = ignoreExhaustedEvent
+
         dropIdxOverride = os.environ.get("APP_DROP_IDX")
         if dropIdxOverride is not None:
             self._idx_drop = dropIdxOverride.lower() in ['true', '1', 't']
@@ -117,7 +126,7 @@ class Aerospike(BaseANN):
         if not uniqueSetIdxName or self._idx_hnswparams is None:
             self._setName = f'{self._setName}_{setNameType}'
         else:
-            self._setName = f'{self._setName}_{setNameType}_{self._dims}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}'
+            self._setName = f'{self._setName}_{setNameType}_{self._dims}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}_{self._idx_mode.name}'
         self._idx_name = f'{self._setName}_Idx'
 
         self._idx_sleep = int(os.environ.get("APP_INDEX_SLEEP") or 0)
@@ -176,7 +185,7 @@ class Aerospike(BaseANN):
                     key,
                     Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswBatchingParams(),
-                            __dict[key],
+                            __dict[key].__dict__,
                     )
                 )
             elif key == 'index_caching_params' or key == 'caching_params':
@@ -185,7 +194,7 @@ class Aerospike(BaseANN):
                     key,
                     Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswCachingParams(),
-                            __dict[key],
+                            __dict[key].__dict__,
                     )
                 )
             elif key == 'healer_params':
@@ -194,7 +203,7 @@ class Aerospike(BaseANN):
                     key,
                     Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswHealerParams(),
-                            __dict[key],
+                            __dict[key].__dict__,
                     )
                 )
             elif key == 'merge_params':
@@ -203,7 +212,7 @@ class Aerospike(BaseANN):
                     key,
                     Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswIndexMergeParams(),
-                            __dict[key],
+                            __dict[key].__dict__,
                     )
                 )
             elif key == 'record_caching_params':
@@ -212,7 +221,7 @@ class Aerospike(BaseANN):
                     key,
                     Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswCachingParams(),
-                            __dict[key],
+                            __dict[key].__dict__,
                     )
                 )
             elif (type(__dict[key]) is str
@@ -286,6 +295,7 @@ class Aerospike(BaseANN):
                                                 dimensions=self._dims,
                                                 index_params= self._idx_hnswparams,
                                                 vector_distance_metric=self._idx_value,
+                                                mode=self._idx_mode,
                                                 index_labels={"Benchmark":"ANN",
                                                               "ANN_Train_Shape":self._train_shape.__str__()}
                                                 )
@@ -297,35 +307,35 @@ class Aerospike(BaseANN):
         Aerospike.PrintLog("waiting for indexing to complete")
         idxParams = await client.index_get(namespace=self._namespace,
                                             name=self._idx_name)
-        s = time.time()
         index = await client.index(namespace=self._namespace,
                                     name=self._idx_name)
-        vertices = 0
-        unmerged_recs = 0
         i = 1
+        idxParamsChanged:bool = False
+        print('\n')
         await asyncio.sleep(1)
         try:
             # Wait for the index to have Vertices and no unmerged records
-            while vertices == 0 or unmerged_recs > 0:
+            while True:
                 status = await index.status()
-                vertices = status.index_healer_vertices_valid
-                unmerged_recs = status.unmerged_record_count
+                if self._idx_mode == vectorTypes.IndexMode.STANDALONE:
+                    if status.index_readiness == vectorTypes.IndexReadiness.READY:
+                        break
+                elif status.unmerged_record_count == 0:
+                        if not idxParamsChanged and status.unmerged_record_count == 0:
+                            await client.index_update(namespace=self._namespace,
+                                                        name=self._idx_name,
+                                                        hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=vectorTypes.HnswHealerParams(schedule="* * * * * ?")))
+                            idxParamsChanged = True
+                        else:
+                            break
                 if not self._indocker:
-                    print('Aerospike: Secs %d -- Unmerged Idx recs: %d Vertices Idx Valid (healer): %d            \r'%(i,unmerged_recs,vertices), end="")
-                if vertices > 0 and unmerged_recs == 0:
-                    break
-                if unmerged_recs == 0 and vertices == 0:
-                    await client.index_update(namespace=self._namespace,
-                                                name=self._idx_name,
-                                                hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=vectorTypes.HnswHealerParams(schedule="* * * * * ?")))
+                    print('Waiting Index Completion [%d]\r'%i, end="")
                 await asyncio.sleep(1)
                 i += 1
-            t = time.time()
-            print('\n')
-            self._idx_completion_time_sec = t - s
-            Aerospike.PrintLog(f"Index Completion Time (sec) = {self._idx_completion_time_sec} Vertices Idx Valid (healer) = {vertices}")
         finally:
-            await client.index_update(namespace=self._namespace,
+            print('\n')
+            if idxParamsChanged:
+                await client.index_update(namespace=self._namespace,
                                             name=self._idx_name,
                                             hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=idxParams.hnsw_params.healer_params))
             await asyncio.sleep(0.1)
@@ -387,6 +397,7 @@ class Aerospike(BaseANN):
         self._train_shape = X.shape
 
         populateIdx = True
+        createIdxDelayed = False #this is stupid
 
         async with vectorASyncClient(seeds=vectorTypes.HostPort(host=self._host, port=self._port),
                                             listener_name=self._listern,
@@ -410,11 +421,17 @@ class Aerospike(BaseANN):
                     populateIdx = False
                 elif self._idx_drop:
                     if await self.DropIndex(client):
-                        await self.CreateIndex(client)
+                        if self._idx_mode == vectorTypes.IndexMode.DISTRIBUTED:
+                            await self.CreateIndex(client)
+                        else:
+                            createIdxDelayed = True
                     else:
                         populateIdx = False
             else:
-                await self.CreateIndex(client)
+                if self._idx_mode == vectorTypes.IndexMode.DISTRIBUTED:
+                    await self.CreateIndex(client)
+                else:
+                    createIdxDelayed = True
 
             if populateIdx:
                 self._puasePuts = False
@@ -459,6 +476,8 @@ class Aerospike(BaseANN):
                 self._upserted_time_sec = t - s
                 self._upserted_vectors = i
                 Aerospike.PrintLog(f"Index Put {i:,} Recs in {self._upserted_time_sec} (secs)")
+                if createIdxDelayed:
+                    await self.CreateIndex(client)
                 await self.WaitForIndexing(client)
                 t = time.time()
                 self._population_tot_time_sec = t - s
@@ -488,7 +507,7 @@ class Aerospike(BaseANN):
         elif hnswParams is not None and len(hnswParams) > 0:
             self._query_hnswsearchparams = Aerospike.SetHnswParamsAttrs(
                                                     vectorTypes.HnswSearchParams(),
-                                                    hnswParams
+                                                    hnswParams["hnsw_params"].__dict__
                                                 )
             if hnswParams is None:
                 Aerospike.PrintLog(f'Set Query {self}')
@@ -578,4 +597,4 @@ class Aerospike(BaseANN):
         batchingparams = f"maxidxrecs:{self._idx_hnswparams.batching_params.max_index_records}, interval:{self._idx_hnswparams.batching_params.index_interval}"
         healingparams = f"schedule:{self._idx_hnswparams.healer_params.schedule}, parallelism:{self._idx_hnswparams.healer_params.parallelism}"
         hnswparams = f"m:{self._idx_hnswparams.m}, efconst:{self._idx_hnswparams.ef_construction}, ef:{self._idx_hnswparams.ef}, batching:{{{batchingparams}}}, healer:{{{healingparams}}}"
-        return f"Aerospike([{self._metric}, {self._host}:{self._port}, {self._isloadbalancer}, {self._namespace}.{self._setName}.{self._idx_name}, {self._idx_type}, {self._idx_value}, {self._dims}, {self._actions}, {self._idx_sleep}, {self._idx_ignoreExhEvt}, {self._populateTasks}, {{{hnswparams}}}, {{{self._query_hnswsearchparams}}}])"
+        return f"Aerospike([{self._metric}, {self._host}:{self._port}, {self._isloadbalancer}, {self._namespace}.{self._setName}.{self._idx_name}, {self._idx_type}, {self._idx_value}, {self._dims}, {self._idx_mode.name}, {self._actions}, {self._idx_sleep}, {self._idx_ignoreExhEvt}, {self._populateTasks}, {{{hnswparams}}}, {{{self._query_hnswsearchparams}}}])"
