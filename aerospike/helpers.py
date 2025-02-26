@@ -7,45 +7,45 @@ def set_hnsw_params_attrs(__obj :object, __dict: dict) -> object:
             setattr(
                 __obj,
                 key,
-                SetHnswParamsAttrs(
+                set_hnsw_params_attrs(
                         vectorTypes.HnswBatchingParams(),
-                        __dict[key],
+                        __dict[key].__dict__,
                 )
             )
         elif key == 'index_caching_params' or key == 'caching_params':
             setattr(
                 __obj,
                 key,
-                SetHnswParamsAttrs(
+                set_hnsw_params_attrs(
                         vectorTypes.HnswCachingParams(),
-                        __dict[key],
+                        __dict[key].__dict__,
                 )
             )
         elif key == 'healer_params':
             setattr(
                 __obj,
                 key,
-                SetHnswParamsAttrs(
+                set_hnsw_params_attrs(
                         vectorTypes.HnswHealerParams(),
-                        __dict[key],
+                        __dict[key].__dict__,
                 )
             )
         elif key == 'merge_params':
             setattr(
                 __obj,
                 key,
-                SetHnswParamsAttrs(
+                set_hnsw_params_attrs(
                         vectorTypes.HnswIndexMergeParams(),
-                        __dict[key],
+                        __dict[key].__dict__,
                 )
             )
         elif key == 'record_caching_params':
             setattr(
                 __obj,
                 key,
-                SetHnswParamsAttrs(
+                set_hnsw_params_attrs(
                         vectorTypes.HnswCachingParams(),
-                        __dict[key],
+                        __dict[key].__dict__,
                 )
             )
         elif (type(__dict[key]) is str
