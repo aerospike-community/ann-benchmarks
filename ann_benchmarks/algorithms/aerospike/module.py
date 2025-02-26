@@ -183,7 +183,7 @@ class Aerospike(BaseANN):
                 setattr(
                     __obj,
                     key,
-                    SetHnswParamsAttrs(
+                    Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswBatchingParams(),
                             __dict[key].__dict__,
                     )
@@ -192,7 +192,7 @@ class Aerospike(BaseANN):
                 setattr(
                     __obj,
                     key,
-                    SetHnswParamsAttrs(
+                    Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswCachingParams(),
                             __dict[key].__dict__,
                     )
@@ -201,7 +201,7 @@ class Aerospike(BaseANN):
                 setattr(
                     __obj,
                     key,
-                    SetHnswParamsAttrs(
+                    Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswHealerParams(),
                             __dict[key].__dict__,
                     )
@@ -210,7 +210,7 @@ class Aerospike(BaseANN):
                 setattr(
                     __obj,
                     key,
-                    SetHnswParamsAttrs(
+                    Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswIndexMergeParams(),
                             __dict[key].__dict__,
                     )
@@ -219,7 +219,7 @@ class Aerospike(BaseANN):
                 setattr(
                     __obj,
                     key,
-                    SetHnswParamsAttrs(
+                    Aerospike.SetHnswParamsAttrs(
                             vectorTypes.HnswCachingParams(),
                             __dict[key].__dict__,
                     )
