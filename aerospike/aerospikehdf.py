@@ -479,7 +479,7 @@ class Aerospike(BaseAerospike):
                 self._vector_uncommited_records = status.index_healer_vector_records_indexed
                 self.vector_queue_status_Record(status)
                 if self._idx_mode == vectorTypes.IndexMode.STANDALONE:
-                    if status.index_readiness == vectorTypes.IndexReadiness.READY:
+                    if status.readiness == vectorTypes.IndexReadiness.READY:
                         break
                 elif status.unmerged_record_count == 0:
                         if not idxParamsChanged and status.unmerged_record_count == 0:
