@@ -1,4 +1,53 @@
 {
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "panel",
+      "id": "gauge",
+      "name": "Gauge",
+      "version": ""
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.3.0"
+    },
+    {
+      "type": "panel",
+      "id": "heatmap",
+      "name": "Heatmap",
+      "version": ""
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
   "annotations": {
     "list": [
       {
@@ -25,7 +74,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 63,
+  "id": null,
   "links": [],
   "panels": [
     {
@@ -44,7 +93,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -97,7 +146,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -106,9 +155,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "A",
           "useBackend": false
         }
@@ -119,7 +168,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -158,7 +207,9 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "idxdist",
           "values": false
         },
@@ -171,7 +222,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -180,9 +231,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "A",
           "useBackend": false
         }
@@ -193,7 +244,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -232,7 +283,9 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "poprecs",
           "values": false
         },
@@ -245,7 +298,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -254,9 +307,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "A",
           "useBackend": false
         }
@@ -267,7 +320,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -306,7 +359,9 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "dims",
           "values": false
         },
@@ -319,7 +374,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -328,9 +383,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "A",
           "useBackend": false
         }
@@ -341,9 +396,9 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "",
+      "description": "The Index Status. If 'N/A' can indicate the index dosn't exists.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -362,7 +417,7 @@
               }
             ]
           },
-          "unit": "none"
+          "unit": "string"
         },
         "overrides": []
       },
@@ -393,7 +448,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -415,7 +470,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -484,7 +539,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -506,7 +561,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -559,7 +614,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -568,9 +623,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "A",
           "useBackend": false
         }
@@ -581,9 +636,9 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "",
+      "description": "The Index's Mode.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -602,7 +657,7 @@
               }
             ]
           },
-          "unit": "none"
+          "unit": "string"
         },
         "overrides": []
       },
@@ -633,7 +688,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -655,7 +710,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "The name of the Aerospike Namespace ans Set where the vector values are stored",
       "fieldConfig": {
@@ -694,7 +749,9 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "/^fullname$/",
           "values": false
         },
@@ -707,7 +764,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -716,9 +773,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "A",
           "useBackend": false
         }
@@ -729,7 +786,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "The location of where the vector index is stored within the Aerospike DB. ",
       "fieldConfig": {
@@ -768,7 +825,9 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "/^fullname$/",
           "values": false
         },
@@ -781,7 +840,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -790,9 +849,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "A",
           "useBackend": false
         }
@@ -813,7 +872,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "",
           "fieldConfig": {
@@ -828,6 +887,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": -1,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 16,
                 "gradientMode": "none",
@@ -860,7 +920,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -872,7 +933,7 @@
             "h": 13,
             "w": 24,
             "x": 0,
-            "y": 10
+            "y": 11
           },
           "id": 640,
           "options": {
@@ -890,12 +951,12 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "10.4.2",
+          "pluginVersion": "11.3.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "edj97jcoudpfkd"
+                "uid": "${DS_PROMETHEUS}"
               },
               "disableTextWrap": false,
               "editorMode": "code",
@@ -913,7 +974,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "edj97jcoudpfkd"
+                "uid": "${DS_PROMETHEUS}"
               },
               "disableTextWrap": false,
               "editorMode": "code",
@@ -951,7 +1012,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -1014,7 +1075,9 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "paused",
           "values": false
         },
@@ -1027,7 +1090,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1050,7 +1113,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1090,7 +1153,9 @@
         "minVizWidth": 75,
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -1103,7 +1168,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1126,9 +1191,19 @@
           "id": "calculateField",
           "options": {
             "binary": {
-              "left": "poprecs",
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "poprecs"
+                }
+              },
               "operator": "-",
-              "right": "remainingRecs"
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "remainingRecs"
+                }
+              }
             },
             "mode": "binary",
             "reduce": {
@@ -1141,9 +1216,19 @@
           "id": "calculateField",
           "options": {
             "binary": {
-              "left": "poprecs - remainingRecs",
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "poprecs - remainingRecs"
+                }
+              },
               "operator": "/",
-              "right": "poprecs"
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "poprecs"
+                }
+              }
             },
             "mode": "binary",
             "reduce": {
@@ -1158,7 +1243,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "The current total of vectors upserted.",
       "fieldConfig": {
@@ -1195,10 +1280,8 @@
         "minVizWidth": 75,
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "/^sum\\(aerospike_hdf_populate_total\\{instance=~\"localhost:9464\", ns=~\"test\", set=~\"\\(glove\\-100\\-angular\\|random\\-xs\\-20\\-angular\\)\"\\}\\)$/",
+          "calcs": [],
+          "fields": "/^Value \\#A$/",
           "values": false
         },
         "showThresholdLabels": false,
@@ -1210,7 +1293,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -1220,27 +1303,29 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
+          "range": false,
+          "refId": "B",
           "useBackend": false
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
-          "editorMode": "code",
-          "expr": "sum(aerospike_hdf_populate_total{instance=~\"$client\", ns=~\"$namespace\", set=~\"$set\"})",
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_populate_total{instance=~\"$client\", ns=~\"$namespace\", set=~\"$set\"}",
+          "format": "table",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
-          "refId": "B",
+          "range": false,
+          "refId": "A",
           "useBackend": false
         }
       ],
@@ -1249,11 +1334,12 @@
         {
           "id": "configFromData",
           "options": {
-            "configRefId": "A",
+            "configRefId": "B",
             "mappings": [
               {
                 "fieldName": "poprecs",
-                "handlerKey": "max"
+                "handlerKey": "max",
+                "reducerId": "lastNotNull"
               },
               {
                 "fieldName": "Time",
@@ -1296,11 +1382,23 @@
                 "handlerKey": "__ignore"
               },
               {
+                "fieldName": "idxmode",
+                "handlerKey": "__ignore"
+              },
+              {
                 "fieldName": "idxns",
                 "handlerKey": "__ignore"
               },
               {
+                "fieldName": "idxreadystatus",
+                "handlerKey": "__ignore"
+              },
+              {
                 "fieldName": "idxstate",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "idxwaittimeout",
                 "handlerKey": "__ignore"
               },
               {
@@ -1317,6 +1415,10 @@
               },
               {
                 "fieldName": "paused",
+                "handlerKey": "__ignore"
+              },
+              {
+                "fieldName": "popcommitted",
                 "handlerKey": "__ignore"
               },
               {
@@ -1376,23 +1478,7 @@
                 "handlerKey": "__ignore"
               },
               {
-                "fieldName": "Value",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "idxmode",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "idxreadystatus",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "idxwaittimeout",
-                "handlerKey": "__ignore"
-              },
-              {
-                "fieldName": "popcommitted",
+                "fieldName": "Value #B",
                 "handlerKey": "__ignore"
               }
             ]
@@ -1404,216 +1490,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
-      },
-      "description": "Number on the left are the committed vectors and the number on the right are the uncommitted vectors to the DB.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "fieldMinMax": false,
-          "mappings": [],
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "semi-dark-green",
-                "value": 0
-              },
-              {
-                "color": "green",
-                "value": 1000
-              },
-              {
-                "color": "light-green",
-                "value": 50000.0001
-              },
-              {
-                "color": "yellow",
-                "value": 100000
-              }
-            ]
-          },
-          "unit": "locale"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 3,
-        "x": 9,
-        "y": 12
-      },
-      "id": 669,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
-          "format": "table",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "sum(aerospike_hdf_populate_total{instance=~\"$client\", ns=~\"$namespace\", set=~\"$set\"})",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "Populated",
-          "range": true,
-          "refId": "B",
-          "useBackend": false
-        }
-      ],
-      "title": "Records Committed to DB",
-      "transformations": [
-        {
-          "id": "calculateField",
-          "options": {
-            "alias": "Committed",
-            "mode": "reduceRow",
-            "reduce": {
-              "include": [
-                "popcommitted"
-              ],
-              "reducer": "max"
-            },
-            "replaceFields": false
-          }
-        },
-        {
-          "id": "calculateField",
-          "options": {
-            "alias": "UnCommitted",
-            "binary": {
-              "left": {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Populated"
-                }
-              },
-              "operator": "-",
-              "right": {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Committed"
-                }
-              }
-            },
-            "mode": "binary",
-            "reduce": {
-              "include": [
-                "sum(aerospike_hdf_populate_total{instance=~\"172\\\\.28\\\\.86\\\\.158:9464\", ns=~\"test\", set=~\"glove-100-angular\"})"
-              ],
-              "reducer": "sum"
-            },
-            "replaceFields": false
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Committed": false,
-              "Populated": false,
-              "Time": true,
-              "Value 2": true,
-              "__name__": true,
-              "action": true,
-              "anndist": true,
-              "dataset": true,
-              "dims": true,
-              "hnswparams": true,
-              "idx": true,
-              "idxbin": true,
-              "idxdist": true,
-              "idxmode": true,
-              "idxns": true,
-              "idxreadystatus": true,
-              "idxstate": true,
-              "idxwaittimeout": true,
-              "instance": true,
-              "job": true,
-              "ns": true,
-              "paused": true,
-              "popcommitted": true,
-              "popconcurrent": true,
-              "poprecs": true,
-              "popresrcevt": true,
-              "popwait": true,
-              "queries": true,
-              "querydistance": true,
-              "queryef": true,
-              "querymetricaerospikevalue": true,
-              "querymetricbigvalue": true,
-              "querymetricvalue": true,
-              "querynbrlmt": true,
-              "queryruns": true,
-              "remainingRecs": false,
-              "remainingquerynbrs": true,
-              "set": true,
-              "sum(aerospike_hdf_populate_total{instance=~\"172\\\\.28\\\\.86\\\\.158:9464\", ns=~\"test\", set=~\"glove-100-angular\"})": true,
-              "sum(aerospike_hdf_populate_total{instance=~\"localhost:9464\", ns=~\"test\", set=~\"(glove-100-angular|random-xs-20-angular)\"})": false
-            },
-            "includeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "Time": "",
-              "sum(aerospike_hdf_populate_total{instance=~\"localhost:9464\", ns=~\"test\", set=~\"(glove-100-angular|random-xs-20-angular)\"})": "UnCommitted"
-            }
-          }
-        }
-      ],
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_AEROSPIKE_HDF}"
       },
       "description": "",
       "fieldConfig": {
@@ -1622,11 +1499,12 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
+            "axisBorderShow": true,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMin": 0,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -1638,13 +1516,13 @@
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "auto",
+            "showPoints": "never",
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1655,7 +1533,7 @@
             }
           },
           "decimals": 0,
-          "fieldMinMax": true,
+          "fieldMinMax": false,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -1672,17 +1550,20 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 6,
-        "x": 12,
+        "w": 7,
+        "x": 9,
         "y": 12
       },
       "id": 672,
       "options": {
         "legend": {
           "calcs": [
-            "last"
+            "last",
+            "max",
+            "min",
+            "delta"
           ],
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
@@ -1696,12 +1577,12 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "aerospike_hdf_vectorqueuedepth{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
+          "expr": "aerospike_hdf_vector_uncommitted{instance=~\"$client\", idxns=~\"$idxns\", idx=~\"$idxname\"}",
           "format": "time_series",
           "fullMetaSearch": false,
           "hide": false,
@@ -1719,9 +1600,108 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "If a resource exhausted error occurs, what action should be performed. ",
+      "description": "Actions (drop, create, etc.) performed against the Index",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "fieldMinMax": false,
+          "mappings": [
+            {
+              "options": {
+                "Done": {
+                  "color": "purple",
+                  "index": 0,
+                  "text": "Done"
+                },
+                "Paused": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "Paused"
+                },
+                "Running": {
+                  "color": "green",
+                  "index": 3,
+                  "text": "Running"
+                },
+                "Waiting": {
+                  "color": "yellow",
+                  "index": 2,
+                  "text": "Waiting"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "string"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 2,
+        "x": 16,
+        "y": 12
+      },
+      "id": 666,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "/^idxstate$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "aerospike_hdf_heartbeat{instance=~\"$client\", ns=~\"$namespace\", set=~\"$set\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "B",
+          "useBackend": false
+        }
+      ],
+      "title": "Index Action",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "After the records are populated, what  index action is performed...",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1774,7 +1754,7 @@
         "x": 18,
         "y": 12
       },
-      "id": 668,
+      "id": 667,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -1782,8 +1762,10 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
-          "fields": "/^popresrcevt$/",
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^popwait$/",
           "values": false
         },
         "showPercentChange": false,
@@ -1795,7 +1777,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1805,20 +1787,20 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "B",
           "useBackend": false
         }
       ],
-      "title": "Exhausted Resource Handling",
+      "title": "After Population Index Action",
       "type": "stat"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "What population concurrency action is being applied.",
       "fieldConfig": {
@@ -1881,7 +1863,9 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "/^popconcurrent$/",
           "values": false
         },
@@ -1894,7 +1878,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1904,9 +1888,9 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "B",
           "useBackend": false
         }
@@ -1917,9 +1901,9 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "After the records are populated, what  index action is performed...",
+      "description": "The number of seconds to wait before continue when Index Completion is Running",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1962,7 +1946,7 @@
               }
             ]
           },
-          "unit": "string"
+          "unit": "s"
         },
         "overrides": []
       },
@@ -1972,7 +1956,7 @@
         "x": 18,
         "y": 15
       },
-      "id": 667,
+      "id": 676,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -1980,8 +1964,10 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
-          "fields": "/^popwait$/",
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^idxwaittimeout$/",
           "values": false
         },
         "showPercentChange": false,
@@ -1993,7 +1979,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2003,22 +1989,22 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "B",
           "useBackend": false
         }
       ],
-      "title": "After Population Index Action",
+      "title": "Wait for Index Completion Timeout",
       "type": "stat"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
-      "description": "",
+      "description": "If a resource exhausted error occurs, what action should be performed. ",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2071,7 +2057,7 @@
         "x": 21,
         "y": 15
       },
-      "id": 666,
+      "id": 668,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -2079,8 +2065,10 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
-          "fields": "/^idxstate$/",
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^popresrcevt$/",
           "values": false
         },
         "showPercentChange": false,
@@ -2092,7 +2080,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2102,20 +2090,20 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "B",
           "useBackend": false
         }
       ],
-      "title": "Index Status",
+      "title": "Exhausted Resource Handling",
       "type": "stat"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2240,7 +2228,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2256,7 +2244,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2290,7 +2278,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -2329,7 +2317,9 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "queryruns",
           "values": false
         },
@@ -2342,7 +2332,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2351,9 +2341,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "A",
           "useBackend": false
         }
@@ -2364,7 +2354,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -2403,7 +2393,9 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "queries",
           "values": false
         },
@@ -2416,7 +2408,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2425,9 +2417,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "A",
           "useBackend": false
         }
@@ -2438,7 +2430,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -2490,7 +2482,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2512,7 +2504,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -2550,7 +2542,9 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "queryef",
           "values": false
         },
@@ -2563,7 +2557,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2572,9 +2566,9 @@
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "A",
           "useBackend": false
         }
@@ -2585,7 +2579,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2636,7 +2630,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2708,7 +2702,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -2745,7 +2739,9 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "/^recalltype$/",
           "values": false
         },
@@ -2759,7 +2755,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -2769,9 +2765,9 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "instant": true,
+          "instant": false,
           "legendFormat": "__auto",
-          "range": false,
+          "range": true,
           "refId": "B",
           "useBackend": false
         }
@@ -2782,7 +2778,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "This recall is calculated based on the distance between neighbors based on the ANN formulas.",
       "fieldConfig": {
@@ -2791,7 +2787,18 @@
             "mode": "thresholds"
           },
           "fieldMinMax": false,
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "null": {
+                  "color": "blue",
+                  "index": 0,
+                  "text": "No Data"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -2849,7 +2856,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2872,7 +2879,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "This recall is calculated based on the distance as returned by the Aerospike API using the ANN formulas.",
       "fieldConfig": {
@@ -2881,7 +2888,18 @@
             "mode": "thresholds"
           },
           "fieldMinMax": false,
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "null": {
+                  "color": "blue",
+                  "index": 0,
+                  "text": "No Data"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -2939,7 +2957,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2962,7 +2980,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "This recall is calculated using the Big ANN's KNN neighbor formulas (distance is not used).",
       "fieldConfig": {
@@ -2971,7 +2989,18 @@
             "mode": "thresholds"
           },
           "fieldMinMax": false,
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "null": {
+                  "color": "blue",
+                  "index": 0,
+                  "text": "No Data"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -3029,7 +3058,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -3052,7 +3081,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "",
       "fieldConfig": {
@@ -3138,7 +3167,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -3159,7 +3188,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "edj97jcoudpfkd"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "The number of queries that fall within a certain latency buckets in milliseconds",
       "fieldConfig": {
@@ -3228,12 +3257,12 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "edj97jcoudpfkd"
+            "uid": "${DS_AEROSPIKE_HDF}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "sum by(le) (aerospike_hdf_queryhist_ms_bucket{ns=~\"$idxns\", idx=~\"$idxname\", instance=~\"$client\", run=~\"$QueryRun\"})",
+          "expr": "sum by(le) (aerospike_hdf_queryhist_milliseconds_bucket{ns=~\"$idxns\", idx=~\"$idxname\", instance=~\"$client\", run=~\"$QueryRun\"})",
           "format": "heatmap",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -3249,7 +3278,6 @@
       "type": "heatmap"
     }
   ],
-  "preload": false,
   "refresh": "5s",
   "schemaVersion": 40,
   "tags": [
@@ -3261,10 +3289,7 @@
   "templating": {
     "list": [
       {
-        "current": {
-          "text": "prometheus",
-          "value": "edj97jcoudpfkd"
-        },
+        "current": {},
         "includeAll": false,
         "label": "Datasource",
         "name": "DS_AEROSPIKE_HDF",
@@ -3275,17 +3300,10 @@
         "type": "datasource"
       },
       {
-        "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "edj97jcoudpfkd"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(aerospike_hdf_heartbeat,instance)",
         "includeAll": true,
@@ -3303,17 +3321,10 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "edj97jcoudpfkd"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(aerospike_hdf_heartbeat,ns)",
         "includeAll": true,
@@ -3331,17 +3342,10 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "edj97jcoudpfkd"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(aerospike_hdf_heartbeat{ns=~\"$namespace\"},set)",
         "includeAll": true,
@@ -3359,17 +3363,10 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "edj97jcoudpfkd"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(aerospike_hdf_heartbeat,idxns)",
         "includeAll": true,
@@ -3387,17 +3384,10 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "edj97jcoudpfkd"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(aerospike_hdf_heartbeat{idxns=~\"$idxns\"},idx)",
         "includeAll": true,
@@ -3415,13 +3405,10 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "edj97jcoudpfkd"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(aerospike_hdf_query_total{idx=~\"$idxname\", ns=~\"$idxns\"},run)",
         "includeAll": true,
@@ -3442,13 +3429,13 @@
     ]
   },
   "time": {
-    "from": "2025-02-24T16:52:54.017Z",
-    "to": "2025-02-24T17:02:39.809Z"
+    "from": "now-5m",
+    "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 4,
+  "version": 11,
   "weekStart": ""
 }
