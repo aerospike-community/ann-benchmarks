@@ -150,16 +150,16 @@ class BaseAerospike(object):
 
         self._prometheus_init(runtimeArgs)
 
-        self._port = runtimeArgs.vectorport
+        defaultPort:int = runtimeArgs.vectorport
 
         if runtimeArgs.hosts is None or len(runtimeArgs.hosts) == 0:
-            self._host = [vectorTypes.HostPort(host=runtimeArgs.host,port=self._port)]
+            self._host = [vectorTypes.HostPort(host=runtimeArgs.host,port=defaultPort)]
         else:
             self._host = []
             for pos, host in enumerate(runtimeArgs.hosts):
                 parts = host.split(':')
                 if len(parts) == 1:
-                    self._host.append(vectorTypes.HostPort(host=host,port=self._port))
+                    self._host.append(vectorTypes.HostPort(host=host,port=defaultPort))
                 elif len(parts) == 2:
                     self._host.append(vectorTypes.HostPort(host=parts[0],port=parts[1]))
 
@@ -298,6 +298,7 @@ class BaseAerospike(object):
             self._logger.info(f"Prometheus HTTP Server: {self._prometheus_http_server[0].server_address}")
             self._logger.info(f"  Metrics Name: {self._meter.name}")
             self._logger.info(f"Arguments: {runtimeArgs}")
+            self._logger.info(f"AVS Server: {[ host.host + ':' + str(host.port) for host in self._host]}")
         elif self._asLogLevel is not None:
             if self._asLogLevel == "NOTSET":
                 loggerASClient.setLevel(logging.CRITICAL)

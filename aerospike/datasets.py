@@ -77,9 +77,9 @@ def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int
         try:
             dataset_url = f"https://ann-benchmarks.com/{dataset_name}.hdf5"
             download(dataset_url, hdf5_filename)
-        except:
-            traceback.print_exc()
-            print(f"Cannot download {dataset_url}")
+        except Exception as e:
+            #traceback.print_exc()
+            print(f"Cannot download '{dataset_url}' due to error: {e}")
             if dataset_name in DATASETS:
                 print("Creating dataset locally")
                 DATASETS[dataset_name](hdf5_filename)

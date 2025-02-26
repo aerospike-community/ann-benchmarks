@@ -886,12 +886,15 @@ class Aerospike(BaseAerospike):
         self._heartbeat_stage = 2
         self.prometheus_status()
 
+        totalquerytime : float = 0.0
+        queries = []
+
         async with vectorASyncClient(seeds=self._host,
                                         listener_name=self._listern,
                                         is_loadbalancer=self._useloadbalancer
-            ) as vectorClient:
+            ) as client:
 
-            idxinfo = await self.index_exist(vectorClient)
+            idxinfo = await self.index_exist(client)
             if idxinfo is None:
                 self.print_log(f'Query: Vector Index: {self._idx_namespace}.{self._idx_name}, not found')
                 self._exception_counter.add(1, {"exception_type":"Index not found", "handled_by_user":False,"ns":self._idx_namespace,"set":self._idx_name})
@@ -912,25 +915,18 @@ class Aerospike(BaseAerospike):
                     self.print_log(f"Index {self._idx_name} was found in namespace {idxinfo['storage']['namespace']} but {self._idx_namespace} was given. Using found namespace.", logging.WARN)
                 self._idx_namespace = idxinfo['storage']['namespace']
 
-        self.print_log(f'Starting Query Runs ({self._query_runs}) on {self._idx_namespace}.{self._idx_name}')
-        metricfunc = None
-        distancemetric : DistanceMetric= None
-        if not self._neighbors.isempty():
-            metricfunc = None if self._query_metric is None else self._query_metric["function"]
-            distancemetric = DISTANCES[self._query_distancecalc]
-
-        async with vectorASyncClient(seeds=self._host,
-                                        listener_name=self._listern,
-                                        is_loadbalancer=self._useloadbalancer
-                            ) as client:
+            self.print_log(f'Starting Query Runs ({self._query_runs}) on {self._idx_namespace}.{self._idx_name}')
+            metricfunc = None
+            distancemetric : DistanceMetric= None
+            if not self._neighbors.isempty():
+                metricfunc = None if self._query_metric is None else self._query_metric["function"]
+                distancemetric = DISTANCES[self._query_distancecalc]
 
             self._heartbeat_stage = 3
             self.prometheus_status()
 
             s = time.time()
-            totalquerytime : float = 0.0
             taskPuts = []
-            queries = []
             metricValues = []
             metricValuesAS = []
             metricValuesBig = []
@@ -963,7 +959,10 @@ class Aerospike(BaseAerospike):
                         metricValuesBig.append(self._query_metric_big_value)
 
                     self._logger.info(f"Run: {i}, Neighbors: {len(self._query_neighbors)}, {'No distance' if distancemetric is None else distancemetric.type} {self._query_metric['type']}: {self._query_metric_value}, aerospike recall: {self._aerospike_metric_value}, Big: {self._query_metric_big_value}")
-
+                    queries.append([self._query_distance,
+                                        self._query_distance_aerospike,
+                                        self._query_neighbors,
+                                        self._query_latencies])
                 i += 1
 
             if len(taskPuts) > 0:
@@ -992,7 +991,8 @@ class Aerospike(BaseAerospike):
             print('\n')
             totqueries = sum([len(x[1]) for x in queries])
 
-            self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {totqueries} in {totalquerytime} secs (overall {{t-s}} secs), {totqueries/totalquerytime} TPS, {None if self._query_metric is None else self._query_metric["type"]}: {self._query_metric_value}, Aerospike recall: {self._aerospike_metric_value}, Big Recall: {self._query_metric_big_value}')
+            totalquerytime *= 0.001
+            self.print_log(f'Finished Query Runs on {self._idx_namespace}.{self._idx_name}; Total queries {totqueries} in {totalquerytime} secs (overall {t-s} secs), {totqueries/totalquerytime} TPS, {None if self._query_metric is None else self._query_metric["type"]}: {self._query_metric_value}, Aerospike recall: {self._aerospike_metric_value}, Big Recall: {self._query_metric_big_value}')
 
             if self._query_produce_resultfile and self._query_neighbors is not None:
                 await self.create_query_hdf()
@@ -1019,7 +1019,7 @@ class Aerospike(BaseAerospike):
 
         return False
 
-    async def _check_query_distances(self, distances:List[float], distances_aerospike:List[float], idx:int, runNbr:int) -> bool:    
+    async def _check_query_distances(self, distances:List[float], distances_aerospike:List[float], idx:int, runNbr:int) -> bool:
         import operator
 
         subresult = np.array(list(map(operator.sub, distances, distances_aerospike)))
