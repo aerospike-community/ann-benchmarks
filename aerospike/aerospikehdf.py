@@ -423,7 +423,7 @@ class Aerospike(BaseAerospike):
         self._dropidx_histogram.record(t-s, {"ns":self._idx_namespace,"idx": self._idx_name})
         print('\n')
         self._idx_state = 'Dropped'
-        self.print_log(f'Drop Index Time (sec) = {t - s}')
+        self.print_log(f'Dropped Index Time (sec) = {t - s}')
 
     async def create_index(self, vectorClient: vectorASyncClient) -> None:
 
@@ -444,14 +444,13 @@ class Aerospike(BaseAerospike):
         self.print_log(f'Index Creation Time (sec) = {t - s}')
         self._idx_state = 'Created'
 
-        #Fire and forget....
-        self.IndexStatus(vectorClient, None, recordStatus=True)
+        await self.IndexStatus(vectorClient, None, recordStatus=True)
 
     async def IndexStatus(self, client: vectorASyncClient,
                                 index: Union[Any,None],
                                 recordStatus: bool = False) -> vectorTypes.IndexStatusResponse:
         if index is None:
-            index = await client.index(namespace=self._namespace,
+            index = await client.index(namespace=self._idx_namespace,
                                         name=self._idx_name)
 
         if recordStatus:
@@ -479,7 +478,7 @@ class Aerospike(BaseAerospike):
                 self._vector_uncommited_records = status.index_healer_vector_records_indexed
                 self.vector_queue_status_Record(status)
                 if self._idx_mode == vectorTypes.IndexMode.STANDALONE:
-                    if status.index_readiness == vectorTypes.IndexReadiness.READY:
+                    if status.readiness == vectorTypes.IndexReadiness.READY:
                         break
                 elif status.unmerged_record_count == 0:
                         if not idxParamsChanged and status.unmerged_record_count == 0:
@@ -654,7 +653,7 @@ class Aerospike(BaseAerospike):
         existingIndexes = await vectorClient.index_list()
         if len(existingIndexes) == 0:
             return None
-        indexInfo = [(index if (index["id"]["namespace"] == self._idx_namespace
+        indexInfo = [(index if (index["id"]["namespace"] == self._namespace
                                     or index["storage"]["namespace"] == self._idx_namespace)
                             and index["id"]["name"] == self._idx_name else None)
                         for index in existingIndexes]
@@ -906,14 +905,11 @@ class Aerospike(BaseAerospike):
             self._idx_hnswparams = idxinfo['hnsw_params']
             self._idx_binName = idxinfo["field"]
             self._idx_mode = idxinfo["mode"]
-            self._setName = idxinfo["sets"]
-            self._namespace = idxinfo["id"]["namespace"]
+            self._idx_namespace = idxinfo["storage"]["namespace"]
+            self._namespace = idxinfo['id']['namespace']
+            self._setName = idxinfo['sets']
             if self._query_hnswparams is None and self._idx_hnswparams is not None:
                 self._query_hnswparams = vectorTypes.HnswSearchParams(ef=self._idx_hnswparams.ef)
-            if idxinfo['storage']['namespace'] != self._idx_namespace:
-                if self._idx_namespace is not None:
-                    self.print_log(f"Index {self._idx_name} was found in namespace {idxinfo['storage']['namespace']} but {self._idx_namespace} was given. Using found namespace.", logging.WARN)
-                self._idx_namespace = idxinfo['storage']['namespace']
 
             self.print_log(f'Starting Query Runs ({self._query_runs}) on {self._idx_namespace}.{self._idx_name}')
             metricfunc = None

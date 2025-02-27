@@ -127,7 +127,7 @@ class BaseAerospike(object):
             "--vectorqueqry",
             metavar="SECS",
             help="Vector Queue Depth Monitor Query every secs",
-            default=15,
+            default=5,
             type=int
         )
         parser.add_argument(
@@ -415,7 +415,7 @@ class BaseAerospike(object):
                                                 "querydistance": self._ann_distance if self._query_distancecalc is None else self._query_distancecalc,
                                                 "idxmode": 'N/A' if self._idx_mode is None else self._idx_mode.name.title(),
                                                 "idxwaittimeout": waittimeout,
-                                                "idxreadystatus" : 'N/A' if self._vector_idx_status is None else self._vector_idx_status.index_readiness.name.title()
+                                                "idxreadystatus" : 'N/A' if self._vector_idx_status is None else self._vector_idx_status.readiness.name.title()
                                                 })
 
     def _prometheus_heartbeat(self) -> None:
@@ -455,7 +455,7 @@ class BaseAerospike(object):
     def vector_queue_status(self, vectorClient : vectorSyncClient, queryapi:bool = True, done:bool = False) -> None:
         from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
 
-        if self._idx_name is None or self._idx_namespace is None:
+        if self._idx_name is None or self._namespace is None:
             return
 
         if done:
