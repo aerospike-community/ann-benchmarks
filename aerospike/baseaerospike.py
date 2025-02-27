@@ -127,7 +127,7 @@ class BaseAerospike(object):
             "--vectorqueqry",
             metavar="SECS",
             help="Vector Queue Depth Monitor Query every secs",
-            default=15,
+            default=5,
             type=int
         )
         parser.add_argument(
@@ -455,7 +455,7 @@ class BaseAerospike(object):
     def vector_queue_status(self, vectorClient : vectorSyncClient, queryapi:bool = True, done:bool = False) -> None:
         from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
 
-        if self._idx_name is None or self._idx_namespace is None:
+        if self._idx_name is None or self._namespace is None:
             return
 
         if done:
