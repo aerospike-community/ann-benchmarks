@@ -73,16 +73,16 @@ def get_dataset(dataset_name: str, hdfpath : str = None) -> Tuple[h5py.File, int
     else:
         hdf5_filename = hdfpath
 
-    if dataset_name in DATASETS.keys():
+    if dataset_name in DATASETS:
         try:
             dataset_url = f"https://ann-benchmarks.com/{dataset_name}.hdf5"
+            print(f"Trying HDF5 download first for '{dataset_url}'...")
             download(dataset_url, hdf5_filename)
         except Exception as e:
             #traceback.print_exc()
             print(f"Cannot download '{dataset_url}' due to error: {e}")
-            if dataset_name in DATASETS:
-                print("Creating dataset locally")
-                DATASETS[dataset_name](hdf5_filename)
+            print("Trying to Creating dataset...")
+            DATASETS[dataset_name](hdf5_filename)
     elif os.path.isfile(hdf5_filename):
         DATASETS.update({dataset_name:hdf5_filename})
     else:
@@ -296,6 +296,9 @@ def train_test_split(X: numpy.ndarray, test_size: int = 10000, dimension: int = 
     """
     from sklearn.model_selection import train_test_split as sklearn_train_test_split
 
+    if isinstance(X, list):
+        X = numpy.array(X)
+
     dimension = dimension if dimension is not None else X.shape[1]
     print(f"Splitting {X.shape[0]}*{dimension} into train/test")
     return sklearn_train_test_split(X, test_size=test_size, random_state=1)
@@ -307,6 +310,7 @@ def glove(out_fn: str, d: int) -> None:
     url = "http://nlp.stanford.edu/data/glove.twitter.27B.zip"
     fn = os.path.join("data", "glove.twitter.27B.zip")
     download(url, fn)
+    print(f"Unzipping '{url}'...")
     with zipfile.ZipFile(fn) as z:
         print("preparing %s" % out_fn)
         z_fn = "glove.twitter.27B.%dd.txt" % d
@@ -612,6 +616,7 @@ def movielens(fn: str, ratings_file: str, out_fn: str, separator: str = "::", ig
     url = "http://files.grouplens.org/datasets/movielens/%s" % fn
 
     download(url, fn)
+    print(f"Unzipping '{url}'...")
     with zipfile.ZipFile(fn) as z:
         file = z.open(ratings_file)
         if ignore_header:
