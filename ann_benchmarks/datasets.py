@@ -203,6 +203,9 @@ def train_test_split(X: numpy.ndarray, test_size: int = 10000, dimension: int = 
     """
     from sklearn.model_selection import train_test_split as sklearn_train_test_split
 
+    if isinstance(X, list):
+        X = numpy.array(X)
+
     dimension = dimension if not None else X.shape[1]
     print(f"Splitting {X.shape[0]}*{dimension} into train/test")
     return sklearn_train_test_split(X, test_size=test_size, random_state=1)
