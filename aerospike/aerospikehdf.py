@@ -450,7 +450,7 @@ class Aerospike(BaseAerospike):
                                 index: Union[Any,None],
                                 recordStatus: bool = False) -> vectorTypes.IndexStatusResponse:
         if index is None:
-            index = await client.index(namespace=self._idx_namespace,
+            index = await client.index(namespace=self._namespace,
                                         name=self._idx_name)
 
         if recordStatus:
