@@ -14,6 +14,10 @@ Below is a review of the argument:
 
 Show this help message and exit
 
+**--version**
+
+Displays the application version and the AVS driver version
+
 ## -d DS, --dataset DS
 
 The ANN dataset (DS) to load training points from (default: glove-100-angular)
@@ -139,6 +143,18 @@ STANDALONE indexes switch to DISTRIBUTED mode when they finish offline indexing.
 
 It defaults to DISTRIBUTED.
 
+**--healerinterval INTERVAL**
+
+Time interval or keyword used to change the Vector Healer's scheduler. **This only applies to the running of the application (restored after the run)**.
+
+Values can be:
+
+-   A positive time interval (e.g., 10s, 1m, 2h) If given without a unit (e.g., 10), seconds is used. - zero will disable the healer (same as Disable)
+-   "Disable" to disable the healer
+-   "Default" to keep the current healer's schedule Currently defined schedule is used as the default. (default: Default)
+
+**Warning**: If the application is “killed” (ctrl-c) during population or query activity your index’s healer schedule might not be restored. The application will try to restore your setting if an exception occurs. Use with caution!
+
 ## --storagethreshold MULTIPLIER
 
 A storage multiplier used to determine how the “training” dataset is loaded. It is either loaded completely in memory or is memory mapped (paged into memory when needed). The multiplier is simply how many “training” datasets can fit into available physical memory. For example, a multiplier of 4 (default) means that if at least 4 times the size of the “training” dataset can fit in available memory, it will be loaded into memory. If it cannot, it will be memory mapped and paged when needed. A value of 0 means always try to load it into memory. A value of -1 means to always memory map this dataset. (default: 4)
@@ -184,6 +200,10 @@ Below is a review of the argument:
 ## -h, --help
 
 Show this help message and exit
+
+**--version**
+
+Displays the application version and the AVS driver version
 
 ## -d DS, --dataset DS
 
@@ -275,6 +295,18 @@ If provided, this will override the ANN distance type as defined in the dataset.
 ## --dontadustdistance
 
 If provided, the ANN default distance formula is always used regardless of the ANN or “distancecalc” values.
+
+**--healerinterval INTERVAL**
+
+Time interval or keyword used to change the Vector Healer's scheduler. **This only applies to the running of the application (restored after the run)**.
+
+Values can be:
+
+-   A positive time interval (e.g., 10s, 1m, 2h) If given without a unit (e.g., 10), seconds is used. - zero will disable the healer (same as Disable)
+-   "Disable" to disable the healer
+-   "Default" to keep the current healer's schedule Currently defined schedule is used as the default. (default: Default)
+
+**Warning**: If the application is “killed” (ctrl-c) during population or query activity your index’s healer schedule might not be restored. The application will try to restore your setting if an exception occurs. Use with caution!
 
 ## -L LOG, --logfile LOG
 
