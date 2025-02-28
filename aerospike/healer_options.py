@@ -41,7 +41,8 @@ class HealerOptions(object):
     def __init__(self, schedulerSecs:Optional[int],
                         hdfInstance: BaseAerospike,
                         asyncclient: vectorASyncClient,
-                        logger:logging.Logger):
+                        logger:logging.Logger,
+                        delaytimesec:int = 1):
         '''
         schedulerSecs -- 0  - disable healer,
                             -1 - Now
@@ -55,6 +56,7 @@ class HealerOptions(object):
         self._logger:logging.Logger = logger
         self._schedulerSecs:Optional[int] = schedulerSecs
         self._vector_idxhealerScheduler:Optional[str] = HealerOptions._determineschedulerstr(schedulerSecs)
+        self._delaytimesecs = delaytimesec
         self._logger.info(f"HealerOptions {self}")
 
     async def __aenter__(self):
@@ -79,17 +81,28 @@ class HealerOptions(object):
     def IsSetRT(self) -> bool:
         return self._schedulerSecs == -2
 
-    async def SaveIdxParams(self) -> Optional[vectorTypes.IndexDefinition]:
+    def IsNoOperation(self) -> bool:
+        return self._schedulerSecs is None
 
-        self._logger.info(f"HealerOptions.SaveIdxParams {self}")
+    async def SaveIdxParams(self) -> Optional[vectorTypes.IndexDefinition]:
+        from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
+
+        if self._logger.level == logging.DEBUG:
+                self._logger.debug(f"HealerOptions.SaveIdxParams {self}")
 
         try:
             self._vector_idxParams = await self._vector_asyncClient.index_get(namespace=self._hdfInstance._namespace,
                                                                                 name=self._hdfInstance._idx_name,
                                                                                 timeout=4)
-            if self._logger.level == logging.DEBUG:
-                self._logger.debug(f"HealerOptions.SaveIdxParams {self}")
 
+            self._logger.info(f"HealerOptions.SaveIdxParams {self}")
+
+        except vectorTypes.AVSServerError as avse:
+            self._vector_idxParams = None
+            if (avse.rpc_error.code() == vectorResultCodes.StatusCode.NOT_FOUND):
+                self._logger.warning(f"HealerOptions.SaveIdxParams Index not found, ignoring for {self}")
+            else:
+                raise
         except Exception as e:
             self._vector_idxParams = None
             self._logger.exception(f"HealerOptions.SaveIdxParams failed ns={self._hdfInstance._namespace}, name={self._hdfInstance._idx_name}")
@@ -97,6 +110,7 @@ class HealerOptions(object):
 
     async def RestoreIdxParams(self) -> Optional[vectorTypes.IndexDefinition]:
         if self._vector_idxParams is None:
+            self._logger.info(f"HealerOptions.RestoreIdxParams Nothing to Restore {self}")
             return None
 
         self._logger.info(f"HealerOptions.RestoreIdxParams {self}")
@@ -105,13 +119,13 @@ class HealerOptions(object):
             await self._vector_asyncClient.index_update(namespace=self._hdfInstance._namespace,
                                                         name=self._hdfInstance._idx_name,
                                                         hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=self._vector_idxParams.hnsw_params.healer_params))
-            await asyncio.sleep(0.1) #need to wait to take effect
+            await asyncio.sleep(self._delaytimesecs) #need to wait to take effect
 
             if self._logger.level == logging.DEBUG:
                 params = await self._vector_asyncClient.index_get(namespace=self._hdfInstance._namespace,
                                                                     name=self._hdfInstance._idx_name,
                                                                     timeout=4)
-                self._logger.debug(f"HealerOptions.RestoreIdxParams Restored to {'None' if params is None else params.hnsw_params.healer_params.schedule}")
+                self._logger.debug(f"HealerOptions.RestoreIdxParams Restored to '{'None' if params is None else params.hnsw_params.healer_params.schedule}'")
 
         except Exception as e:
             self._logger.exception(f"HealerOptions.RestoreIdxParams failed ns={self._hdfInstance._namespace}, name={self._hdfInstance._idx_name}")
@@ -130,13 +144,13 @@ class HealerOptions(object):
                                                         name=self._hdfInstance._idx_name,
                                                         hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=vectorTypes.HnswHealerParams(schedule=self._vector_idxhealerScheduler)),
                                                         timeout=4)
-            await asyncio.sleep(0.1) #need to wait to take effect
+            await asyncio.sleep(self._delaytimesecs) #need to wait to take effect
 
             if self._logger.level == logging.DEBUG:
                 params = await self._vector_asyncClient.index_get(namespace=self._hdfInstance._namespace,
                                                                     name=self._hdfInstance._idx_name,
                                                                     timeout=4)
-                self._logger.debug(f"HealerOptions.SetIdxParams Changed to {'None' if params is None else params.hnsw_params.healer_params.schedule}")
+                self._logger.debug(f"HealerOptions.SetIdxParams Changed to '{'None' if params is None else params.hnsw_params.healer_params.schedule}'")
 
         except Exception as e:
             self._logger.exception(f"SetIdxParams.SetIdxParams failed ns={self._hdfInstance._namespace}, name={self._hdfInstance._idx_name}")
@@ -165,13 +179,13 @@ class HealerOptions(object):
                                                         name=self._hdfInstance._idx_name,
                                                         hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=vectorTypes.HnswHealerParams(schedule=self._vector_idxhealerScheduler)),
                                                         timeout=4)
-            await asyncio.sleep(0.1) #need to wait to take effect
+            await asyncio.sleep(self._delaytimesecs) #need to wait to take effect
 
             if self._logger.level == logging.DEBUG:
                 params = await self._vector_asyncClient.index_get(namespace=self._hdfInstance._namespace,
                                                                     name=self._hdfInstance._idx_name,
                                                                     timeout=4)
-                self._logger.debug(f"HealerOptions.ChangeIdxHealerSchedule Changed to {'None' if params is None else params.hnsw_params.healer_params.schedule}")
+                self._logger.debug(f"HealerOptions.ChangeIdxHealerSchedule Changed to '{'None' if params is None else params.hnsw_params.healer_params.schedule}'")
 
         except Exception as e:
             self._logger.exception(f"SetIdxParams.ChangeIdxHealerSchedule failed ns={self._hdfInstance._namespace}, name={self._hdfInstance._idx_name}")

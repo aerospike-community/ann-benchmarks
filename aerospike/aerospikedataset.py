@@ -16,6 +16,9 @@ from metrics import all_metrics as METRICS, DummyMetric
 from distance import metrics as DISTANCES, Metric as DistanceMetric
 from helpers import set_hnsw_params_attrs
 
+__version__ = '4.1.1'
+__version_info__ = ('2025','02','27')
+
 logger = logging.getLogger(__name__)
 logFileHandler = None
 
@@ -231,6 +234,7 @@ class AerospikeDS():
             self._logFileHandler = logFileHandler
             self._loggingEnabled = True
             self._logger.info(f'Start Aerospike: Metric: {self}')
+            self._logger.info(f"  {__version__}")
             self._logger.info(f"  aerospike: {version('aerospike')}")
             self._logger.info(f"  aerospike-vector-search: {version('aerospike_vector_search')}")
             #self._logger.info(f"Prometheus HTTP Server: {self._prometheus_http_server[0].server_address}")
@@ -302,6 +306,7 @@ class AerospikeDS():
             self._vector_hnsw : dict = idxAttribs['hnsw_params']
             self._vector_dimensions : int = idxAttribs['dimensions']
             self._vector_ann_distance : str = next((anndisttype for anndisttype, disttype in DISTANCETYPES.items() if disttype == self._vector_distance))
+            self._idx_mode : vectorTypes.IndexMode = idxAttribs['mode']
 
     async def Generate_hdf_dataset(self) -> str:
         import h5py
@@ -320,6 +325,8 @@ class AerospikeDS():
             train = sampletrain
 
         with h5py.File(self._hdf_path, "w") as f:
+            f.attrs["driver_version"] = version('aerospike_vector_search')
+            f.attrs["app_version"] = __version__
             f.attrs["type"] = "dense"
             f.attrs["sourceisxnamespace"] = self._vector_namespace
             f.attrs["sourceidxname"] = self._vector_name
@@ -330,6 +337,7 @@ class AerospikeDS():
             f.attrs["point_type"] = train[0].dtype.name.rstrip(digits)
             if self._vector_hnsw is not None:
                 f.attrs["hnsw"] = str(self._vector_hnsw)
+            f.attrs["idx_mode"] = self._idx_mode.name
             print(f"train size: {train.shape[0]} * {train.shape[1]}")
             print(f"test size:  {test.shape[0]} * {test.shape[1]}")
             f.create_dataset("train", data=train)

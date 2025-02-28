@@ -151,7 +151,12 @@ class Aerospike(BaseAerospike):
             '-m', "--maxrecs",
             metavar="RECS",
             type=int,
-            help="Determines the maximum number of records to populated. a value of -1 (default) all records in the HDF dataset are populated.",
+            help='''
+    Determines the maximum number of records to populated.
+    Values are:
+        -1 (default) all records in the HDF dataset are populated.
+        zero will cause no records populated but the index will be created.
+    ''',
             default=-1,
         )
         parser.add_argument(
@@ -397,7 +402,7 @@ class Aerospike(BaseAerospike):
                 setNameType = self._idx_distance
             else:
                 setNameType = f'{distance}_{self._idx_distance}'
-            self._setName = f'{self._setName}_{setNameType}_{self._dimensions}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}'
+            self._setName = f'{self._setName}_{setNameType}_{self._dimensions}_{self._idx_hnswparams.m}_{self._idx_hnswparams.ef_construction}_{self._idx_hnswparams.ef}_{self._idx_mode.name.title()}'
             self._idx_name = f'{self._setName}_Idx'
 
         if not self._neighbors.isempty() and (self._query_nbrlimit is None or self._query_nbrlimit <= 0 or self._query_nbrlimit > len(self._neighbors[0])):
@@ -474,8 +479,10 @@ class Aerospike(BaseAerospike):
             index = await client.index(namespace=self._namespace,
                                         name=self._idx_name)
             i = 1
+            waitStatus:str = "Ready Index" if self._idx_mode == vectorTypes.IndexMode.STANDALONE else "Unmerged records"
             changedScheduler:bool = False
 
+            self._logger.info(f"waiting for {waitStatus}")
             print('\n')
             await asyncio.sleep(1)
             try:
@@ -483,7 +490,6 @@ class Aerospike(BaseAerospike):
                 while self._idx_wait_timeout <= 0 or i >= self._idx_wait_timeout:
                     status = await self.IndexStatus(client,index)
                     self._vector_idx_status = status
-                    self._vector_uncommited_records = status.index_healer_vector_records_indexed
                     self.vector_queue_status_Record(status)
                     if self._idx_mode == vectorTypes.IndexMode.STANDALONE:
                         if status.readiness == vectorTypes.IndexReadiness.READY:
@@ -491,17 +497,19 @@ class Aerospike(BaseAerospike):
                     elif status.unmerged_record_count == 0:
                             if healersnapshot.IsDisabled():
                                 break
-                            if not changedScheduler and status.unmerged_record_count == 0:
-                                await healersnapshot.ChangeIdxHealerSchedule(-1) #run healer now
-                                changedScheduler = True
+                            if status.index_healer_vertices_valid == 0:
+                                if not changedScheduler:
+                                    waitStatus = "vertices valid"
+                                    self._logger.info("waiting for vertice validation")
+                                    await healersnapshot.ChangeIdxHealerSchedule(-1) #run healer now
+                                    changedScheduler = True
                             else:
                                 break
 
-                    print('Waiting Index Completion [%d]\r'%i, end="")
+                    print(f'Waiting Index Completion ({waitStatus}) [{i}]       \r', end="")
                     await asyncio.sleep(1)
                     i += 1
             except vectorTypes.AVSServerError as avse:
-                    self._vector_uncommited_records = None
                     self._vector_idx_status = None
                     if (avse.rpc_error.code() != vectorResultCodes.StatusCode.NOT_FOUND
                             and avse.rpc_error.code() != vectorResultCodes.StatusCode.ABORTED):
@@ -510,7 +518,7 @@ class Aerospike(BaseAerospike):
     async def _wait_for_idx_completion(self, client: vectorASyncClient):
 
         self._waitidx = True
-        self._waitidx_counter.add(1, {"ns":self._idx_namespace,"idx": self._idx_name, "type":"Wait"})
+        self.WaitingCounter(1)
 
         try:
             await self.WaitForIndexing(client)
@@ -521,7 +529,7 @@ class Aerospike(BaseAerospike):
             self._exception_counter.add(1, {"exception_type":e, "handled_by_user":False,"ns":self._idx_namespace,"idx":self._idx_name})
             raise
         finally:
-            self._waitidx_counter.add(-1, {"ns":self._idx_namespace,"idx": self._idx_name, "type":"Wait"})
+            self.WaitingCounter(-1)
             self._waitidx = False
 
     async def _put_wait_completion_handler(self, key: int, embedding, i: int, client: vectorASyncClient, logLevel: int) -> None:
@@ -569,7 +577,7 @@ class Aerospike(BaseAerospike):
     async def _put_wait_sleep_handler(self, key: int, embedding, i: int, client: vectorASyncClient, logLevel: int) -> None:
 
         if self._idx_resource_cnt == 0:
-            self._waitidx_counter.add(1, {"ns":self._idx_namespace,"idx": self._idx_name, "type":"Sleep"})
+            self.WaitingCounter(1,"Sleep")
 
         self._idx_resource_cnt += 1
         if logLevel == logging.WARNING:
@@ -594,7 +602,7 @@ class Aerospike(BaseAerospike):
                 self._pausePuts = False
                 self._idx_resource_cnt = 0
 
-                self._waitidx_counter.add(-1, {"ns":self._idx_namespace,"idx": self._idx_name, "type":"Sleep"})
+                self.WaitingCounter(-1,"Sleep")
 
                 if logLevel == logging.WARNING:
                     self.print_log(msg=f"Resuming population for Idx: {self._idx_namespace}.{self._idx_name}",
@@ -699,9 +707,7 @@ class Aerospike(BaseAerospike):
                             self.print_log(f"Index {self._idx_name} was found in namespace {idxinfo['storage']['namespace']} but {self._idx_namespace} was given. Using found namespace.", logging.WARN)
                         self._idx_namespace = idxinfo['storage']['namespace']
 
-                    if idxinfo['mode'] != self._idx_mode:
-                        if self._idx_mode is not None:
-                            self.print_log(f"Index {self._idx_name} is defined with Mode '{idxinfo['mode']}' but mode '{self._idx_mode}' was provided. Using defined mode.", logging.WARN)
+                    if self._idx_mode is None:
                         self._idx_mode = idxinfo['mode']
 
                     self._idx_hnswparams = set_hnsw_params_attrs(vectorTypes.HnswParams(),
@@ -722,16 +728,35 @@ class Aerospike(BaseAerospike):
             self.prometheus_status()
 
             self._remainingrecs = self._trainingarraylen if self._idx_maxrecs < 0 else self._idx_maxrecs >= 0
-            if self._concurrency == 0 or self._idx_maxrecs == 0:
+            if self._idx_maxrecs == 0:
+                self.prometheus_status(force=True)
+                if createIdx:
+                    createIdx = False
+                    await self.create_index(client)
+                    self._idx_state = 'Post-Created'
+                    self.prometheus_status()
+                self.print_log(f"Index Population Skipped...")
+                return
+
+            if self._concurrency == 0:
                 s = time.time()
             else:
                 self._pausePuts = False
                 self.print_log(f'Populating Index {self._idx_namespace}.{self._idx_name}')
 
-                with HealerOptions(self._vector_idx_healer_rt_scheduler,
-                                   self,
-                                   client,
-                                   self._logger) as healerscheduler:
+                #Standalone indexes pattern causes so many issues
+                #If the index needs to be created after population (createIdx is true)
+                #we need to NoOp the runtime healer scheduler save/restore
+                #since this will cause an error since the index does not exists...
+                healerRTScheduler:Union[int,None] = self._vector_idx_healer_rt_scheduler
+                if createIdx:
+                    healerRTScheduler = None #No Operation
+
+                async with HealerOptions(healerRTScheduler,
+                                            self,
+                                            client,
+                                            self._logger,
+                                            delaytimesec=2) as healerscheduler:
 
                     s = time.time()
                     taskPuts = []
@@ -812,11 +837,14 @@ class Aerospike(BaseAerospike):
         import os
         from string import digits
         from datasets import get_dataset_fn
+        from baseaerospike import __version__ as appversion
 
         hdfpath, _ = get_dataset_fn(self._datasetname, "results")
         self.print_log(f'Creating Query HDF dataset {hdfpath}')
 
         with h5py.File(hdfpath, "w") as f:
+            f.attrs["driver_version"] = version('aerospike_vector_search')
+            f.attrs["app_version"] = appversion
             f.attrs["algo"] = "aerospike-standalone-ann"
             f.attrs["batch_mode"] = self._query_parallel
             f.attrs["best_search_time"] = round(min(self._query_latencies) * 0.001, 3)
@@ -830,6 +858,7 @@ class Aerospike(BaseAerospike):
             f.attrs["distance_ann"] = self._ann_distance
             f.attrs["distance_aerospike"] = self._idx_distance.name
             f.attrs["hnsw"] = hnswstr(self._idx_hnswparams)
+            f.attrs["idx_mode"] = self._idx_mode.name
 
             if self._query_hnswparams is None:
                 queryef = '' if self._idx_hnswparams is None else str(self._idx_hnswparams.ef)
@@ -928,10 +957,11 @@ class Aerospike(BaseAerospike):
             self._heartbeat_stage = 3
             self.prometheus_status()
 
-            with HealerOptions(self._vector_idx_healer_rt_scheduler,
-                                self,
-                                client,
-                                self._logger) as healerscheduler:
+            async with HealerOptions(self._vector_idx_healer_rt_scheduler,
+                                        self,
+                                        client,
+                                        self._logger,
+                                        delaytimesec=2) as healerscheduler:
                 s = time.time()
                 taskPuts = []
                 metricValues = []

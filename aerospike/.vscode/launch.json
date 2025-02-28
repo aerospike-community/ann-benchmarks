@@ -24,8 +24,40 @@
                     "--dataset", "${input:enterDataset}",
                     "--concurrency", "5000",
                     "--idxdrop",
-                    "--logfile", "./results/hdfimport.log",
-                    "--healerinterval", "12m"
+                    "--logfile", "./results/hdfimport.log"
+                    ],
+            "justMyCode": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_import Disable Healer (prompt DS)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/hdf_import.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                    "--dataset", "${input:enterDataset}",
+                    "--concurrency", "5000",
+                    "--idxdrop",
+                    //"--loglevel", "DEBUG",
+                    "--healerinterval", "disable",
+                    "--logfile", "./results/hdfimport.log"
+                    ],
+            "justMyCode": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_import Disable Healer No Wait (prompt DS)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/hdf_import.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                    "--dataset", "${input:enterDataset}",
+                    "--concurrency", "5000",
+                    "--idxdrop", "--idxnowait",
+                    "--healerinterval", "disable",
+                    "--logfile", "./results/hdfimport.log"
                     ],
             "justMyCode": false,
             "console": "integratedTerminal"
@@ -47,6 +79,21 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Python Debugger: hdf_import standalone NoDrop Idx (prompt DS)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/hdf_import.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                    "--dataset", "${input:enterDataset}",
+                    "--concurrency", "5000",
+                    "--indexmode", "STANDALONE",
+                    "--logfile", "./results/hdfimport.log"
+                    ],
+            "justMyCode": false,
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Python Debugger: hdf_import diff namespaces (prompt DS)",
             "type": "debugpy",
             "request": "launch",
@@ -57,6 +104,23 @@
                     "--concurrency", "5000",
                     "--idxnamespace", "testidx",
                     "--idxdrop",
+                    "--logfile", "./results/hdfimport.log"
+                    ],
+            "justMyCode": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_import diff namespaces Standalone (prompt DS)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/hdf_import.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                    "--dataset", "${input:enterDataset}",
+                    "--concurrency", "5000",
+                    "--idxnamespace", "testidx",
+                    "--idxdrop",
+                    "--indexmode", "STANDALONE",
                     "--logfile", "./results/hdfimport.log"
                     ],
             "justMyCode": false,
@@ -205,6 +269,20 @@
             "args": [
                     "--dataset", "${input:enterDataset}",
                     "--logfile", "./results/hdfquery.log",
+                    "-r", "5"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: hdf_query Healer Disabled (prompt DS)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/hdf_query.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                    "--dataset", "${input:enterDataset}",
+                    "--logfile", "./results/hdfquery.log",
+                    "--healerinterval", "disable",
                     "-r", "5"
                     ],
             "console": "integratedTerminal"

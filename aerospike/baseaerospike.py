@@ -142,12 +142,16 @@ class BaseAerospike(object):
             metavar='INTERVAL',
             type=BaseAerospike.parse_interval,
             help='''
-            Time interval used to schedule the Vector Healer only during running of the application.
-            Values can be an time interval (e.g., 10s, 1m, 2h), "Disable" to disable the healer, or "Default" to keep the current healer schedule.
-            If a numeric value is given without a unit (e.g., 10), seconds is used.
-            A value of 0, will also disable the healer.
-            Default is to use the current schedule.
-            ''',
+    Time interval or keyword used to change the Vector Healer's scheduler.
+    This only applies running of the application (restored after the run).
+    Values can be:
+        - a postive time interval (e.g., 10s, 1m, 2h)
+            If given without a unit (e.g., 10), seconds is used.
+        - zero will disable the healer (same as Disable)
+        - "Disable" to disable the healer
+        - "Default" to keep the current healer's schedule
+    Currently defined schedule is used as the default.
+    ''',
             default='Default'
         )
         parser.add_argument(
@@ -668,6 +672,13 @@ class BaseAerospike(object):
 
         self._query_counter.add(amount, attrs)
         self._query_histogram.record(latency, attrs)
+
+    def WaitingCounter(self, amount:int,
+                                    actiontype:str="Wait") -> None:
+        self._waitidx_counter.add(amount,
+                                    {"ns":self._idx_namespace,
+                                        "idx": self._idx_name,
+                                        "type":actiontype})
 
     def basestring(self) -> str:
         hnswparams = hnswstr(self._idx_hnswparams)
