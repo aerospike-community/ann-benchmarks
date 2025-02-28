@@ -26,12 +26,16 @@ from metrics import all_metrics as METRICS
 from helpers import set_hnsw_params_attrs, hnswstr
 from dsiterator import DSIterator
 
+__version__ = '4.1.1'
+__version_info__ = ('2025','02','27')
+
 _distanceNameToAerospikeType: Dict[str, vectorTypes.VectorDistanceMetric] = {
     'angular': vectorTypes.VectorDistanceMetric.COSINE,
     'euclidean': vectorTypes.VectorDistanceMetric.SQUARED_EUCLIDEAN,
     'hamming': vectorTypes.VectorDistanceMetric.HAMMING,
     'jaccard': None,
     'dot': vectorTypes.VectorDistanceMetric.DOT_PRODUCT,
+    #'' : vectorTypes.VectorDistanceMetric.MANHATTAN
 }
 
 _distanceAerospikeTypeToAnn: Dict[str, str] = {
@@ -39,7 +43,8 @@ _distanceAerospikeTypeToAnn: Dict[str, str] = {
     'SQUARED_EUCLIDEAN' : 'euclidean',
     'HAMMING' : 'hamming',
     'DOT_PRODUCT' : 'dot',
-    'jaccard' : 'jaccard'
+    'jaccard' : 'jaccard',
+    #'MANHATTAN' : ''
 }
 
 loggerASClient = logging.getLogger("aerospike_vector_search")
@@ -51,6 +56,49 @@ class OperationActions(Flag):
     POPQUERY = POPULATION | QUERY
 
 class BaseAerospike(object):
+
+    @staticmethod
+    def parse_interval(interval_str: Union[str,None]) -> Union[int, None]:
+        """Parses a time interval string (e.g., 10s, 1m, 2h) into seconds."""
+        import re
+
+        if (interval_str is None
+                or interval_str.upper() == "DEFAULT"
+                or interval_str.upper() == "CURRENT"):
+            return None
+
+        if (interval_str.upper() == "DISABLE"
+                or interval_str.upper() == "DISABLED"
+                or interval_str.upper() == "OFF"
+                or interval_str == "0"):
+            return 0
+
+        if (interval_str.upper() == "NOW"
+                or interval_str.upper() == "IMMEDIATE"
+                or interval_str.upper() == "IMMEDIATELY"):
+            return -1
+
+        match = re.match(r'(\d+)\s*([smh])?', interval_str)
+        if not match:
+            raise argparse.ArgumentTypeError(f"Invalid interval or keyword '{interval_str}' provided. Can be an time interval (1s, 1m, 1h) or keywords 'Disable', 'Default', or 'Now'. Value of 0 can also disable.")
+
+        value = int(match.group(1))
+        unit:str = match.group(2)
+
+        if unit is None:
+            return value
+
+        if value < 0:
+            raise argparse.ArgumentTypeError(f"Invalid interval '{interval_str}' cannot be less than zero.")
+
+        if unit == 's':
+            return value
+        elif unit == 'm':
+            return value * 60
+        elif unit == 'h':
+            return value * 3600
+        else:
+            raise argparse.ArgumentTypeError(f"Invalid unit '{unit}' for '{interval_str}'. Should be s for seconds, m for minutes, or h for hours")
 
     @staticmethod
     def parse_arguments(parser: argparse.ArgumentParser) -> None:
@@ -88,6 +136,23 @@ class BaseAerospike(object):
             help="A storage multiplier used to determine is the training dataset can be loaded into memory. 0 indicates try to load it into memory and -1 to only use paging (memory mapped).",
             default=4,
             type=int
+        )
+        parser.add_argument(
+            '--healerinterval',
+            metavar='INTERVAL',
+            type=BaseAerospike.parse_interval,
+            help='''
+    Time interval or keyword used to change the Vector Healer's scheduler.
+    This only applies running of the application (restored after the run).
+    Values can be:
+        - a postive time interval (e.g., 10s, 1m, 2h)
+            If given without a unit (e.g., 10), seconds is used.
+        - zero will disable the healer (same as Disable)
+        - "Disable" to disable the healer
+        - "Default" to keep the current healer's schedule
+    Currently defined schedule is used as the default.
+    ''',
+            default='Default'
         )
         parser.add_argument(
             '-L', "--logfile",
@@ -136,6 +201,13 @@ class BaseAerospike(object):
             help="upon exist application will sleep",
             default=20,
             type=int
+        )
+        parser.add_argument('--version',
+                            action='version',
+                            version="{prog}s {version}/{avsversion}"
+                                        .format(prog="%(prog)",
+                                                    version=__version__,
+                                                    avsversion=version('aerospike_vector_search'))
         )
 
     def __init__(self, runtimeArgs: argparse.Namespace, logger: logging.Logger):
@@ -216,6 +288,7 @@ class BaseAerospike(object):
         self._vector_queue_qry_time : int = runtimeArgs.vectorqueqry
         self._vector_queue_qry_thread : Thread = None
         self._vector_idx_status : Union[vectorTypes.IndexStatusResponse, None] = None
+        self._vector_idx_healer_rt_scheduler : Union[int,None] = runtimeArgs.healerinterval
 
         self._logging_init(runtimeArgs, logger)
 
@@ -294,9 +367,10 @@ class BaseAerospike(object):
             self._logFileHandler = logFileHandler
             self._loggingEnabled = True
             self._logger.info(f'Start Aerospike: Metric: {self.basestring()}')
+            self._logger.info(f"  {__version__}")
             self._logger.info(f"  aerospike-vector-search: {version('aerospike_vector_search')}")
             self._logger.info(f"Prometheus HTTP Server: {self._prometheus_http_server[0].server_address}")
-            self._logger.info(f"  Metrics Name: {self._meter.name}")
+            self._logger.info(f"  Metrics Name: '{self._meter.name}'")
             self._logger.info(f"Arguments: {runtimeArgs}")
             self._logger.info(f"AVS Server: {[ host.host + ':' + str(host.port) for host in self._host]}")
         elif self._asLogLevel is not None:
@@ -415,7 +489,7 @@ class BaseAerospike(object):
                                                 "querydistance": self._ann_distance if self._query_distancecalc is None else self._query_distancecalc,
                                                 "idxmode": 'N/A' if self._idx_mode is None else self._idx_mode.name.title(),
                                                 "idxwaittimeout": waittimeout,
-                                                "idxreadystatus" : 'N/A' if self._vector_idx_status is None else self._vector_idx_status.readiness.name.title()
+                                                "idxreadystatus" : 'N/A' if self._vector_idx_status is None else self._vector_idx_status.readiness.name.title(),
                                                 })
 
     def _prometheus_heartbeat(self) -> None:
@@ -598,6 +672,13 @@ class BaseAerospike(object):
 
         self._query_counter.add(amount, attrs)
         self._query_histogram.record(latency, attrs)
+
+    def WaitingCounter(self, amount:int,
+                                    actiontype:str="Wait") -> None:
+        self._waitidx_counter.add(amount,
+                                    {"ns":self._idx_namespace,
+                                        "idx": self._idx_name,
+                                        "type":actiontype})
 
     def basestring(self) -> str:
         hnswparams = hnswstr(self._idx_hnswparams)
