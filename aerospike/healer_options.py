@@ -11,32 +11,49 @@ from aerospike_vector_search.aio import Client as vectorASyncClient
 
 class HealerOptions(object):
 
+    DISABLE:int = 0
+    NOW:int = -1
+    SETRT:int = -2
+    NOOPT = None
+
     @staticmethod
     def seconds_to_cron(seconds:int) -> str:
         if seconds >= 3600:
-            minute_interval = seconds // 60
-            if seconds % 60 != 0:
-                return f"0/{minute_interval} * * * *"
-            else:
-                return f"*/{minute_interval} * * * *"
+            return "0 0/{interval} * * * ?".format(interval = seconds // 60)
         elif seconds >= 60:
-            return f"*/{seconds // 60} * * * *"
+            return "0/{interval} * * * * ?".format(interval=seconds // 60)
         else:
-            return f"*/{seconds} * * * * *"
+            return "0/{seconds} * * * * ?".format(seconds=seconds)
 
     @staticmethod
     def _determineschedulerstr(schedulerSecs:Optional[int]) -> Optional[str]:
 
         if schedulerSecs is None:
             return None
-        elif schedulerSecs == 0:
+        elif schedulerSecs == HealerOptions.DISABLE:
             return "0 0 0 1 1 ? 2099"
-        elif schedulerSecs == -1:
+        elif schedulerSecs == HealerOptions.NOW:
             return "* * * * * ?"
         elif schedulerSecs < 0:
             return None
         else:
             return HealerOptions.seconds_to_cron(schedulerSecs)
+
+    @staticmethod
+    def Determine_State(schedulerSecs:Optional[int]) -> str:
+        scheduleParams:str = 'N/A'
+        if schedulerSecs is None:
+            scheduleParams:str = 'NoOp'
+        elif schedulerSecs == HealerOptions.DISABLE:
+            scheduleParams:str = 'Disable'
+        elif schedulerSecs == HealerOptions.NOW:
+            scheduleParams:str = 'Now'
+        elif schedulerSecs == HealerOptions.SETRT:
+            scheduleParams:str = 'SetRT'
+        elif schedulerSecs > 0:
+            scheduleParams:str = f'{schedulerSecs} secs'
+
+        return scheduleParams
 
     def __init__(self, schedulerSecs:Optional[int],
                         hdfInstance: BaseAerospike,
@@ -73,13 +90,13 @@ class HealerOptions(object):
         await self.RestoreIdxParams()
 
     def IsDisabled(self) -> bool:
-        return self._schedulerSecs == 0
+        return self._schedulerSecs == HealerOptions.DISABLE
 
     def IsRunNow(self) -> bool:
-        return self._schedulerSecs == -1
+        return self._schedulerSecs == HealerOptions.NOW
 
     def IsSetRT(self) -> bool:
-        return self._schedulerSecs == -2
+        return self._schedulerSecs == HealerOptions.SETRT
 
     def IsNoOperation(self) -> bool:
         return self._schedulerSecs is None
@@ -195,17 +212,7 @@ class HealerOptions(object):
     def __str__(self):
         if self._hdfInstance is None:
             return 'HealerOptions()'
-        scheduleParams:str = 'N/A'
-        if self._schedulerSecs is None:
-            scheduleParams:str = 'NoOp'
-        elif self._schedulerSecs == 0:
-            scheduleParams:str = 'Disable'
-        elif self._schedulerSecs == -1:
-            scheduleParams:str = 'Now'
-        elif self._schedulerSecs == -2:
-            scheduleParams:str = 'SetRT'
-        elif self._schedulerSecs > 0:
-            scheduleParams:str = f'{self._schedulerSecs} secs'
+        scheduleParams:str = HealerOptions.Determine_State(self._schedulerSecs)
 
         idxParams:str = 'None'
         if self._vector_idxParams is not None:

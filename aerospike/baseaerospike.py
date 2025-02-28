@@ -344,6 +344,7 @@ class BaseAerospike(object):
         self._heartbeat_current_stage : int = -1
 
     def _logging_init(self, runtimeArgs: argparse.Namespace, logger: logging.Logger) -> None:
+        from healer_options import HealerOptions
 
         global logFileHandler
 
@@ -373,6 +374,9 @@ class BaseAerospike(object):
             self._logger.info(f"  Metrics Name: '{self._meter.name}'")
             self._logger.info(f"Arguments: {runtimeArgs}")
             self._logger.info(f"AVS Server: {[ host.host + ':' + str(host.port) for host in self._host]}")
+            self._logger.info(f"Run Time Healer Schedule: {HealerOptions.Determine_State(self._vector_idx_healer_rt_scheduler)}")
+            if self._vector_idx_healer_rt_scheduler == HealerOptions.DISABLE:
+                self._logger.warning("Disabling Healer during run time...")
         elif self._asLogLevel is not None:
             if self._asLogLevel == "NOTSET":
                 loggerASClient.setLevel(logging.CRITICAL)
