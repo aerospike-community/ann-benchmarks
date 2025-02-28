@@ -63,6 +63,7 @@ class BaseAerospike(object):
         import re
 
         if (interval_str is None
+                or interval_str.upper() == "DEFAULT"
                 or interval_str.upper() == "CURRENT"):
             return None
 
@@ -72,12 +73,20 @@ class BaseAerospike(object):
                 or interval_str == "0"):
             return 0
 
-        match = re.match(r'(\d+)\s*([smh])', interval_str)
+        if (interval_str.upper() == "NOW"
+                or interval_str.upper() == "IMMEDIATE"
+                or interval_str.upper() == "IMMEDIATELY"):
+            return -1
+
+        match = re.match(r'(\d+)\s*([smh])?', interval_str)
         if not match:
-            raise argparse.ArgumentTypeError(f"Invalid interval or keyword '{interval_str}' provided. Can be an time interval (1s, 1m, 1h) or keywords Disable or Current. Value of 0 can also disable.")
+            raise argparse.ArgumentTypeError(f"Invalid interval or keyword '{interval_str}' provided. Can be an time interval (1s, 1m, 1h) or keywords 'Disable', 'Default', or 'Now'. Value of 0 can also disable.")
 
         value = int(match.group(1))
-        unit = match.group(2)
+        unit:str = match.group(2)
+
+        if unit is None:
+            return value
 
         if value < 0:
             raise argparse.ArgumentTypeError(f"Invalid interval '{interval_str}' cannot be less than zero.")
@@ -133,12 +142,13 @@ class BaseAerospike(object):
             metavar='INTERVAL',
             type=BaseAerospike.parse_interval,
             help='''
-            Time interval used to schedule the Vector Healer.
-            Values can be an time interval (e.g., 10s, 1m, 2h), "Disable" to disable the healer, or "Current" to keep the current healer schedule.
+            Time interval used to schedule the Vector Healer only during running of the application.
+            Values can be an time interval (e.g., 10s, 1m, 2h), "Disable" to disable the healer, or "Default" to keep the current healer schedule.
+            If a numeric value is given without a unit (e.g., 10), seconds is used.
             A value of 0, will also disable the healer.
             Default is to use the current schedule.
             ''',
-            default='Current'
+            default='Default'
         )
         parser.add_argument(
             '-L', "--logfile",
@@ -274,6 +284,7 @@ class BaseAerospike(object):
         self._vector_queue_qry_time : int = runtimeArgs.vectorqueqry
         self._vector_queue_qry_thread : Thread = None
         self._vector_idx_status : Union[vectorTypes.IndexStatusResponse, None] = None
+        self._vector_idx_healer_rt_scheduler : Union[int,None] = runtimeArgs.healerinterval
 
         self._logging_init(runtimeArgs, logger)
 
@@ -474,7 +485,7 @@ class BaseAerospike(object):
                                                 "querydistance": self._ann_distance if self._query_distancecalc is None else self._query_distancecalc,
                                                 "idxmode": 'N/A' if self._idx_mode is None else self._idx_mode.name.title(),
                                                 "idxwaittimeout": waittimeout,
-                                                "idxreadystatus" : 'N/A' if self._vector_idx_status is None else self._vector_idx_status.readiness.name.title()
+                                                "idxreadystatus" : 'N/A' if self._vector_idx_status is None else self._vector_idx_status.readiness.name.title(),
                                                 })
 
     def _prometheus_heartbeat(self) -> None:

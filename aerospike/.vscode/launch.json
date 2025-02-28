@@ -24,7 +24,8 @@
                     "--dataset", "${input:enterDataset}",
                     "--concurrency", "5000",
                     "--idxdrop",
-                    "--logfile", "./results/hdfimport.log"
+                    "--logfile", "./results/hdfimport.log",
+                    "--healerinterval", "12m"
                     ],
             "justMyCode": false,
             "console": "integratedTerminal"

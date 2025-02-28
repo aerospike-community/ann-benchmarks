@@ -16,6 +16,7 @@ from aerospike_vector_search.aio import Client as vectorASyncClient
 from aerospike_vector_search.shared.proto_generated.types_pb2_grpc import grpc  as vectorResultCodes
 
 from baseaerospike import BaseAerospike, _distanceNameToAerospikeType as DistanceMaps, _distanceAerospikeTypeToAnn as DistanceMapsAnn, OperationActions
+from healer_options import HealerOptions
 from datasets import DATASETS, load_and_transform_dataset, get_dataset_fn
 from metrics import all_metrics as METRICS, DummyMetric
 from distance import metrics as DISTANCES, Metric as DistanceMetric
@@ -450,61 +451,61 @@ class Aerospike(BaseAerospike):
                                 index: Union[Any,None],
                                 recordStatus: bool = False) -> vectorTypes.IndexStatusResponse:
         if index is None:
-            index = await client.index(namespace=self._idx_namespace,
+            index = await client.index(namespace=self._namespace,
                                         name=self._idx_name)
 
-        if recordStatus:
-            status:vectorTypes.IndexStatusResponse = await index.status()
-            self.vector_queue_status_Record(status)
-            return status
+        status:vectorTypes.IndexStatusResponse = await index.status()
 
-        return await index.status()
+        if self._logger.level == logging.DEBUG:
+            self._logger.debug(f"IndexStatus ns={self._namespace},idxns={self._idx_namespace},idxname={self._idx_name} {status}")
+
+        if recordStatus:
+            self.vector_queue_status_Record(status)
+
+        return status
 
     async def WaitForIndexing(self, client: vectorASyncClient):
-        idxParams = await client.index_get(namespace=self._namespace,
-                                            name=self._idx_name)
-        index = await client.index(namespace=self._namespace,
-                                    name=self._idx_name)
-        i = 1
-        idxParamsChanged:bool = False
 
-        print('\n')
-        await asyncio.sleep(1)
-        try:
-            # Wait for the index to have Vertices and no unmerged records
-            while self._idx_wait_timeout <= 0 or i >= self._idx_wait_timeout:
-                status = await self.IndexStatus(client,index)
-                self._vector_idx_status = status
-                self._vector_uncommited_records = status.index_healer_vector_records_indexed
-                self.vector_queue_status_Record(status)
-                if self._idx_mode == vectorTypes.IndexMode.STANDALONE:
-                    if status.readiness == vectorTypes.IndexReadiness.READY:
-                        break
-                elif status.unmerged_record_count == 0:
-                        if not idxParamsChanged and status.unmerged_record_count == 0:
-                            await client.index_update(namespace=self._namespace,
-                                                        name=self._idx_name,
-                                                        hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=vectorTypes.HnswHealerParams(schedule="* * * * * ?")))
-                            idxParamsChanged = True
-                        else:
-                            break
+        async with HealerOptions(0 if self._vector_idx_healer_rt_scheduler == 0 else -2, #allow save and restore only if not disabled
+                                self,
+                                client,
+                                self._logger) as healersnapshot:
 
-                print('Waiting Index Completion [%d]\r'%i, end="")
-                await asyncio.sleep(1)
-                i += 1
-        except vectorTypes.AVSServerError as avse:
-                self._vector_uncommited_records = None
-                self._vector_idx_status = None
-                if (avse.rpc_error.code() != vectorResultCodes.StatusCode.NOT_FOUND
-                        and avse.rpc_error.code() != vectorResultCodes.StatusCode.ABORTED):
-                    self._logger.exception(f"index_get_status failed ns={self._idx_namespace}, name={self._idx_name}")
-        finally:
+            index = await client.index(namespace=self._namespace,
+                                        name=self._idx_name)
+            i = 1
+            changedScheduler:bool = False
+
             print('\n')
-            if idxParamsChanged:
-                await client.index_update(namespace=self._namespace,
-                                            name=self._idx_name,
-                                            hnsw_update_params=vectorTypes.HnswIndexUpdate(healer_params=idxParams.hnsw_params.healer_params))
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(1)
+            try:
+                # Wait for the index to have Vertices and no unmerged records
+                while self._idx_wait_timeout <= 0 or i >= self._idx_wait_timeout:
+                    status = await self.IndexStatus(client,index)
+                    self._vector_idx_status = status
+                    self._vector_uncommited_records = status.index_healer_vector_records_indexed
+                    self.vector_queue_status_Record(status)
+                    if self._idx_mode == vectorTypes.IndexMode.STANDALONE:
+                        if status.readiness == vectorTypes.IndexReadiness.READY:
+                            break
+                    elif status.unmerged_record_count == 0:
+                            if healersnapshot.IsDisabled():
+                                break
+                            if not changedScheduler and status.unmerged_record_count == 0:
+                                await healersnapshot.ChangeIdxHealerSchedule(-1) #run healer now
+                                changedScheduler = True
+                            else:
+                                break
+
+                    print('Waiting Index Completion [%d]\r'%i, end="")
+                    await asyncio.sleep(1)
+                    i += 1
+            except vectorTypes.AVSServerError as avse:
+                    self._vector_uncommited_records = None
+                    self._vector_idx_status = None
+                    if (avse.rpc_error.code() != vectorResultCodes.StatusCode.NOT_FOUND
+                            and avse.rpc_error.code() != vectorResultCodes.StatusCode.ABORTED):
+                        self._logger.exception(f"index_get_status failed ns={self._namespace}, name={self._idx_name}")
 
     async def _wait_for_idx_completion(self, client: vectorASyncClient):
 
@@ -726,61 +727,67 @@ class Aerospike(BaseAerospike):
             else:
                 self._pausePuts = False
                 self.print_log(f'Populating Index {self._idx_namespace}.{self._idx_name}')
-                s = time.time()
-                taskPuts = []
-                i = 1
-                self.AddPopulateCounter(0)
-                usePKValues : bool = not self._pks.isempty()
 
-                for key, embedding in enumerate(self._trainarray):
-                    if usePKValues:
-                        key = self._pks[key]
-                    if self._pausePuts:
-                        loopTimes = 0
-                        await asyncio.gather(*taskPuts)
-                        self.AddPopulateCounter(len(taskPuts))
-                        logger.debug(f"Put Tasks Completed for Paused Population")
-                        self._remainingrecs -= len(taskPuts)
-                        taskPuts.clear()
-                        print('\n')
-                        while (self._pausePuts):
-                            if loopTimes % 30 == 0:
-                                self.print_log(f"Paused Population still waiting at {loopTimes} mins!", logging.WARNING)
-                            loopTimes += 1
-                            logger.debug(f"Putting Paused {loopTimes}")
-                            await asyncio.sleep(60)
-                        self.print_log(f"Resuming Population at {loopTimes} mins", logging.WARNING)
+                with HealerOptions(self._vector_idx_healer_rt_scheduler,
+                                   self,
+                                   client,
+                                   self._logger) as healerscheduler:
 
-                    if self._concurrency < 0:
-                        taskPuts.append(self.put_vector(key, embedding, i, client))
-                    elif self._concurrency <= 1:
-                        await self.put_vector(key, embedding, i, client)
-                        self.AddPopulateCounter(1)
-                        self._remainingrecs -= 1
-                    else:
-                        taskPuts.append(self.put_vector(key, embedding, i, client))
-                        if len(taskPuts) >= self._concurrency:
-                            logger.debug(f"Waiting for Put Tasks ({len(taskPuts)}) to Complete at {i}")
+                    s = time.time()
+                    taskPuts = []
+                    i = 1
+                    self.AddPopulateCounter(0)
+                    usePKValues : bool = not self._pks.isempty()
+
+                    for key, embedding in enumerate(self._trainarray):
+                        if usePKValues:
+                            key = self._pks[key]
+                        if self._pausePuts:
+                            loopTimes = 0
                             await asyncio.gather(*taskPuts)
                             self.AddPopulateCounter(len(taskPuts))
-                            logger.debug(f"Put Tasks Completed")
+                            logger.debug(f"Put Tasks Completed for Paused Population")
                             self._remainingrecs -= len(taskPuts)
                             taskPuts.clear()
+                            print('\n')
+                            while (self._pausePuts):
+                                if loopTimes % 30 == 0:
+                                    self.print_log(f"Paused Population still waiting at {loopTimes} mins!", logging.WARNING)
+                                loopTimes += 1
+                                logger.debug(f"Putting Paused {loopTimes}")
+                                await asyncio.sleep(60)
+                            self.print_log(f"Resuming Population at {loopTimes} mins", logging.WARNING)
 
-                    print('Index Put Counter [%d]\r'%i, end="")
-                    i += 1
-                    if self._idx_maxrecs >= 0 and i > self._idx_maxrecs:
-                        break
+                        if self._concurrency < 0:
+                            taskPuts.append(self.put_vector(key, embedding, i, client))
+                        elif self._concurrency <= 1:
+                            await self.put_vector(key, embedding, i, client)
+                            self.AddPopulateCounter(1)
+                            self._remainingrecs -= 1
+                        else:
+                            taskPuts.append(self.put_vector(key, embedding, i, client))
+                            if len(taskPuts) >= self._concurrency:
+                                logger.debug(f"Waiting for Put Tasks ({len(taskPuts)}) to Complete at {i}")
+                                await asyncio.gather(*taskPuts)
+                                self.AddPopulateCounter(len(taskPuts))
+                                logger.debug(f"Put Tasks Completed")
+                                self._remainingrecs -= len(taskPuts)
+                                taskPuts.clear()
 
-                i -= 1
-                logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")
-                await asyncio.gather(*taskPuts)
-                self.AddPopulateCounter(len(taskPuts))
-                t = time.time()
-                self._remainingrecs -= len(taskPuts)
-                logger.info(f"All Put Tasks ({i}) Completed")
-                print('\n')
-                self.print_log(f"Index Put {i:,} Recs in {t - s} (secs), TPS: {i/(t - s):,}")
+                        print('Index Put Counter [%d]\r'%i, end="")
+                        i += 1
+                        if self._idx_maxrecs >= 0 and i > self._idx_maxrecs:
+                            break
+
+                    i -= 1
+                    logger.debug(f"Waiting for Put Tasks (finial {len(taskPuts)}) to Complete at {i}")
+                    await asyncio.gather(*taskPuts)
+                    self.AddPopulateCounter(len(taskPuts))
+                    t = time.time()
+                    self._remainingrecs -= len(taskPuts)
+                    logger.info(f"All Put Tasks ({i}) Completed")
+                    print('\n')
+                    self.print_log(f"Index Put {i:,} Recs in {t - s} (secs), TPS: {i/(t - s):,}")
 
             self.prometheus_status(force=True)
             if self._idx_nowait:
@@ -921,68 +928,72 @@ class Aerospike(BaseAerospike):
             self._heartbeat_stage = 3
             self.prometheus_status()
 
-            s = time.time()
-            taskPuts = []
-            metricValues = []
-            metricValuesAS = []
-            metricValuesBig = []
-            i = 1
-            self._remainingquerynbrs = len(self._queryarray) * self._query_runs
-            while i <= self._query_runs:
-                if self._query_parallel:
-                    taskPuts.append(self.query_run(client, i, distancemetric))
-                else:
-                    (self._query_distance,
-                        self._query_distance_aerospike,
-                        self._query_neighbors,
-                        self._query_latencies) = await self.query_run(client, i, distancemetric)
-
-                    totalquerytime += sum(self._query_latencies)
-
-                    if metricfunc is not None:
-                        if len(self._query_distance) == 0:
-                            self._query_metric_value = None
-                        else:
-                            self._query_metric_value = metricfunc(self._distances, self._query_distance, self._query_metric_result, i-1, len(self._query_distance[0]))
-                            metricValues.append(self._query_metric_value)
-                        self._aerospike_metric_value = metricfunc(self._distances, self._query_distance_aerospike, self._query_metric_aerospike_result, i-1, len(self._query_distance_aerospike[0]))
-                        metricValuesAS.append(self._aerospike_metric_value)
-
-                    if len(self._query_neighbors) == 0 or self._neighbors.isempty():
-                        self._query_metric_big_value = None
+            with HealerOptions(self._vector_idx_healer_rt_scheduler,
+                                self,
+                                client,
+                                self._logger) as healerscheduler:
+                s = time.time()
+                taskPuts = []
+                metricValues = []
+                metricValuesAS = []
+                metricValuesBig = []
+                i = 1
+                self._remainingquerynbrs = len(self._queryarray) * self._query_runs
+                while i <= self._query_runs:
+                    if self._query_parallel:
+                        taskPuts.append(self.query_run(client, i, distancemetric))
                     else:
-                        self._query_metric_big_value = bigknn((self._neighbors,self._distances), self._query_neighbors, len(self._query_neighbors[0]), self._query_metric_bigann_result).attrs["mean"]
-                        metricValuesBig.append(self._query_metric_big_value)
+                        (self._query_distance,
+                            self._query_distance_aerospike,
+                            self._query_neighbors,
+                            self._query_latencies) = await self.query_run(client, i, distancemetric)
 
-                    self._logger.info(f"Run: {i}, Neighbors: {len(self._query_neighbors)}, {'No distance' if distancemetric is None else distancemetric.type} {self._query_metric['type']}: {self._query_metric_value}, aerospike recall: {self._aerospike_metric_value}, Big: {self._query_metric_big_value}")
-                    queries.append([self._query_distance,
-                                        self._query_distance_aerospike,
-                                        self._query_neighbors,
-                                        self._query_latencies])
-                i += 1
+                        totalquerytime += sum(self._query_latencies)
 
-            if len(taskPuts) > 0:
-                queries = await asyncio.gather(*taskPuts)
-                i = 0
-                totalquerytime = 0.0
-                for rundist, runasdist, runnns, times in queries:
-                    if metricfunc is not None:
-                        if len(rundist) > 0:
-                            metricValues.append(metricfunc(self._distances, rundist, self._query_metric_result, i, len(rundist[0])))
-                        metricValuesAS.append(metricfunc(self._distances, runasdist, self._query_metric_aerospike_result, i, len(runasdist[0])))
-                    if len(runnns) > 0 and not self._neighbors.isempty():
-                            metricValuesBig.append(bigknn((self._neighbors,self._distances), runnns, len(runnns[0]), self._query_metric_bigann_result).attrs["mean"])                        
-                    self._query_distance = rundist
-                    self._query_distance_aerospike = runasdist
-                    self._query_neighbors = runnns
-                    self._query_latencies = times
-                    totalquerytime += sum(times)
+                        if metricfunc is not None:
+                            if len(self._query_distance) == 0:
+                                self._query_metric_value = None
+                            else:
+                                self._query_metric_value = metricfunc(self._distances, self._query_distance, self._query_metric_result, i-1, len(self._query_distance[0]))
+                                metricValues.append(self._query_metric_value)
+                            self._aerospike_metric_value = metricfunc(self._distances, self._query_distance_aerospike, self._query_metric_aerospike_result, i-1, len(self._query_distance_aerospike[0]))
+                            metricValuesAS.append(self._aerospike_metric_value)
+
+                        if len(self._query_neighbors) == 0 or self._neighbors.isempty():
+                            self._query_metric_big_value = None
+                        else:
+                            self._query_metric_big_value = bigknn((self._neighbors,self._distances), self._query_neighbors, len(self._query_neighbors[0]), self._query_metric_bigann_result).attrs["mean"]
+                            metricValuesBig.append(self._query_metric_big_value)
+
+                        self._logger.info(f"Run: {i}, Neighbors: {len(self._query_neighbors)}, {'No distance' if distancemetric is None else distancemetric.type} {self._query_metric['type']}: {self._query_metric_value}, aerospike recall: {self._aerospike_metric_value}, Big: {self._query_metric_big_value}")
+                        queries.append([self._query_distance,
+                                            self._query_distance_aerospike,
+                                            self._query_neighbors,
+                                            self._query_latencies])
                     i += 1
 
-            t = time.time()
-            self._query_metric_value = statistics.mean(metricValues)
-            self._aerospike_metric_value = statistics.mean(metricValuesAS)
-            self._query_metric_big_value = statistics.mean(metricValuesBig)
+                if len(taskPuts) > 0:
+                    queries = await asyncio.gather(*taskPuts)
+                    i = 0
+                    totalquerytime = 0.0
+                    for rundist, runasdist, runnns, times in queries:
+                        if metricfunc is not None:
+                            if len(rundist) > 0:
+                                metricValues.append(metricfunc(self._distances, rundist, self._query_metric_result, i, len(rundist[0])))
+                            metricValuesAS.append(metricfunc(self._distances, runasdist, self._query_metric_aerospike_result, i, len(runasdist[0])))
+                        if len(runnns) > 0 and not self._neighbors.isempty():
+                                metricValuesBig.append(bigknn((self._neighbors,self._distances), runnns, len(runnns[0]), self._query_metric_bigann_result).attrs["mean"])                        
+                        self._query_distance = rundist
+                        self._query_distance_aerospike = runasdist
+                        self._query_neighbors = runnns
+                        self._query_latencies = times
+                        totalquerytime += sum(times)
+                        i += 1
+
+                t = time.time()
+                self._query_metric_value = statistics.mean(metricValues)
+                self._aerospike_metric_value = statistics.mean(metricValuesAS)
+                self._query_metric_big_value = statistics.mean(metricValuesBig)
 
             print('\n')
             totqueries = sum([len(x[1]) for x in queries])
