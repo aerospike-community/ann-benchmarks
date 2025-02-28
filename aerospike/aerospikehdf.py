@@ -758,6 +758,8 @@ class Aerospike(BaseAerospike):
                                             self._logger,
                                             delaytimesec=2) as healerscheduler:
 
+                    print(f"Run Time Healer Schedule: {HealerOptions.Determine_State(healerRTScheduler)}")
+
                     s = time.time()
                     taskPuts = []
                     i = 1
@@ -962,6 +964,8 @@ class Aerospike(BaseAerospike):
                                         client,
                                         self._logger,
                                         delaytimesec=2) as healerscheduler:
+                print(f"Run Time Healer Schedule: {HealerOptions.Determine_State(self._vector_idx_healer_rt_scheduler)}")
+
                 s = time.time()
                 taskPuts = []
                 metricValues = []
