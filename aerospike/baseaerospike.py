@@ -145,7 +145,7 @@ class BaseAerospike(object):
     Time interval or keyword used to change the Vector Healer's scheduler.
     This only applies running of the application (restored after the run).
     Values can be:
-        - a postive time interval (e.g., 10s, 1m, 2h)
+        - a positive time interval (e.g., 10s, 1m, 2h)
             If given without a unit (e.g., 10), seconds is used.
         - zero will disable the healer (same as Disable)
         - "Disable" to disable the healer
