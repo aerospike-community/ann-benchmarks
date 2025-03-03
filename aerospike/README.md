@@ -149,7 +149,7 @@ Time interval or keyword used to change the Vector Healer's scheduler. **This on
 
 Values can be:
 
--   A positive time interval (e.g., 10s, 1m, 2h) If given without a unit (e.g., 10), seconds is used. - zero will disable the healer (same as Disable)
+-   A positive time interval (e.g., 10s, 1m, 2h) If given without a unit (e.g., 10), seconds are used. - zero will disable the healer (same as Disable)
 -   "Disable" to disable the healer
 -   "Default" to keep the current healer's schedule Currently defined schedule is used as the default. (default: Default)
 
@@ -296,7 +296,7 @@ If provided, this will override the ANN distance type as defined in the dataset.
 
 If provided, the ANN default distance formula is always used regardless of the ANN or “distancecalc” values.
 
-**--healerinterval INTERVAL**
+## --healerinterval INTERVAL
 
 Time interval or keyword used to change the Vector Healer's scheduler. **This only applies to the running of the application (restored after the run)**.
 
@@ -326,7 +326,7 @@ The Prometheus Port (default: 9464)
 
 ## --prometheushb SECS
 
-Prometheus heartbeat in secs. The heartbeat updates common information to Prometheus. If zero Prometheus is disabled. (default: 5 seconds)
+Prometheus heartbeat in secs. The heartbeat updates common information to Prometheus. If zero, Prometheus is disabled. (default: 5 seconds)
 
 ## --exitdelay wait
 
@@ -358,7 +358,7 @@ A list of Aerospike host and optional ports (defaults to 3000). Example:
 
 Aerospike connection policies
 
-(default: {"read": {"total_timeout": 1000}})
+(default: "read": {"total_timeout": 1000}})
 
 ## -A HOST:PORT [HOST:PORT ...], --vectorhosts HOST:PORT [HOST:PORT ...]
 

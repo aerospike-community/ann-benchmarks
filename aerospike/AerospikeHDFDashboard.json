@@ -544,7 +544,7 @@
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(aerospike_hdf_exception_total{instance=~\"$client\"})",
+          "expr": "sum(aerospike_hdf_exception{instance=~\"$client\"})",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -961,7 +961,7 @@
               "disableTextWrap": false,
               "editorMode": "code",
               "exemplar": false,
-              "expr": "aerospike_hdf_exception_total{ns=~\"$idxns\", instance=~\"$client\", idx=~\"$idxname\", run=~\"$QueryRun\"}",
+              "expr": "aerospike_hdf_exception{ns=~\"$idxns\", instance=~\"$client\", idx=~\"$idxname\", run=~\"$QueryRun\"}",
               "format": "time_series",
               "fullMetaSearch": false,
               "includeNullMetadata": true,
@@ -978,7 +978,7 @@
               },
               "disableTextWrap": false,
               "editorMode": "code",
-              "expr": "aerospike_hdf_exception_total{ns=~\"$namespace\", instance=~\"$client\", set=~\"$set\"}",
+              "expr": "aerospike_hdf_exception{ns=~\"$namespace\", instance=~\"$client\", set=~\"$set\"}",
               "fullMetaSearch": false,
               "hide": false,
               "includeNullMetadata": true,
@@ -3429,13 +3429,13 @@
     ]
   },
   "time": {
-    "from": "now-5m",
-    "to": "now"
+    "from": "2025-03-03T19:09:30.498Z",
+    "to": "2025-03-03T20:02:37.110Z"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 11,
+  "version": 12,
   "weekStart": ""
 }
