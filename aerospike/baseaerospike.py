@@ -351,6 +351,7 @@ Upon exist application will sleep. This is used to ensure Prometheus is updated.
         self._prometheus_hb : int = runtimeArgs.prometheushb
 
         self._heartbeat_current_stage : int = -1
+        self.__cnthb__ : int = 0
 
     def _logging_init(self, runtimeArgs: argparse.Namespace, logger: logging.Logger) -> None:
         from healer_options import HealerOptions
