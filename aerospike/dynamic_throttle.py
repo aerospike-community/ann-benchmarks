@@ -23,6 +23,8 @@ class DynamicThrottle:
         self.avg_fn_delay: float = 0.0
         self.n_records: int = 0
         self.last_record_timestamp: float = 0.0
+        self.target_tps : float = tps
+        self.tps_state : str = None
 
     @staticmethod
     def ramp(value: float) -> float:
@@ -78,5 +80,9 @@ class DynamicThrottle:
 
         pause_duration: float = self.pause_for_duration()
 
-        # Sleep for the calculated duration in seconds
-        await asyncio.sleep(pause_duration)
+        try:
+            self.tps_state = 'Throttled'
+            # Sleep for the calculated duration in seconds
+            await asyncio.sleep(pause_duration)
+        finally:
+            self.tps_state = None

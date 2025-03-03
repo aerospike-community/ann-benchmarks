@@ -275,6 +275,20 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Python Debugger: hdf_query TPS (prompt DS)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/hdf_query.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                    "--dataset", "${input:enterDataset}",
+                    "--logfile", "./results/hdfquery.log",
+                    "-r", "5",
+                    "--target-tps", "1000"
+                    ],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Python Debugger: hdf_query Healer Disabled (prompt DS)",
             "type": "debugpy",
             "request": "launch",

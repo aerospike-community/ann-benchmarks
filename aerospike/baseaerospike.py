@@ -26,6 +26,8 @@ from metrics import all_metrics as METRICS
 from helpers import set_hnsw_params_attrs, hnswstr
 from dsiterator import DSIterator
 
+from dynamic_throttle import DynamicThrottle
+
 __version__ = '4.1.1'
 __version_info__ = ('2025','02','27')
 
@@ -293,6 +295,7 @@ Upon exist application will sleep. This is used to ensure Prometheus is updated.
         self._aerospike_metric_value : float = None
         self._query_metric : dict[str,any] = None
         self._query_distancecalc : str = None
+        self._query_throttle : Union[DynamicThrottle,None] = None
 
         self._vector_queue_qry_time : int = runtimeArgs.vectorqueqry
         self._vector_queue_qry_thread : Thread = None
@@ -504,6 +507,8 @@ Upon exist application will sleep. This is used to ensure Prometheus is updated.
                                                 "idxmode": 'N/A' if self._idx_mode is None else self._idx_mode.name.title(),
                                                 "idxwaittimeout": waittimeout,
                                                 "idxreadystatus" : 'N/A' if self._vector_idx_status is None else self._vector_idx_status.readiness.name.title(),
+                                                "querytps" :  None if self._query_throttle is None else self._query_throttle.target_tps,
+                                                "querytrottle" : None if self._query_throttle is None else self._query_throttle.tps_state,
                                                 })
 
     def _prometheus_heartbeat(self) -> None:
