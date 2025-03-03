@@ -177,7 +177,7 @@ The Prometheus Port (default: 9464)
 
 ## --prometheushb SECS
 
-Prometheus heartbeat in secs. The heartbeat updates common information to Prometheus (default: 5 seconds)
+Prometheus heartbeat in secs. The heartbeat updates common information to Prometheus. If zero, Prometheus is disabled. (default: 5 seconds)
 
 ## --exitdelay wait
 
@@ -326,7 +326,7 @@ The Prometheus Port (default: 9464)
 
 ## --prometheushb SECS
 
-Prometheus heartbeat in secs. The heartbeat updates common information to Prometheus (default: 5 seconds)
+Prometheus heartbeat in secs. The heartbeat updates common information to Prometheus. If zero Prometheus is disabled. (default: 5 seconds)
 
 ## --exitdelay wait
 

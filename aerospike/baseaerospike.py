@@ -184,21 +184,30 @@ class BaseAerospike(object):
         parser.add_argument(
             "--prometheushb",
             metavar="SECS",
-            help="Prometheus Heart Beat in secs",
+            help='''
+Prometheus Heart Beat in secs.
+If zero, Prometheus is disabled.
+''',
             default=5,
             type=int
         )
         parser.add_argument(
             "--vectorqueqry",
             metavar="SECS",
-            help="Vector Queue Depth Monitor Query every secs",
+            help='''
+Vector Queue Depth Monitor Query every secs.
+If zero, this feature is disabled.
+Note that if "--prometheushb" is zero, this feature is also disabled.
+''',
             default=5,
             type=int
         )
         parser.add_argument(
             "--exitdelay",
             metavar="wait",
-            help="upon exist application will sleep",
+            help='''
+Upon exist application will sleep. This is used to ensure Prometheus is updated.
+''',
             default=20,
             type=int
         )
