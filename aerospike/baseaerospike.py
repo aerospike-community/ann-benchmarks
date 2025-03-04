@@ -28,8 +28,8 @@ from dsiterator import DSIterator
 
 from dynamic_throttle import DynamicThrottle
 
-__version__ = '4.1.1'
-__version_info__ = ('2025','02','27')
+__version__ = '4.1.3'
+__version_info__ = ('2025','03','03')
 
 _distanceNameToAerospikeType: Dict[str, vectorTypes.VectorDistanceMetric] = {
     'angular': vectorTypes.VectorDistanceMetric.COSINE,
