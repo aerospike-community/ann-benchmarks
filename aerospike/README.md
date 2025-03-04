@@ -296,6 +296,10 @@ If provided, this will override the ANN distance type as defined in the dataset.
 
 If provided, the ANN default distance formula is always used regardless of the ANN or “distancecalc” values.
 
+## --targetqps
+
+The targeted queries per second. If zero, there is no target (unlimited). (default: 0)
+
 ## --healerinterval INTERVAL
 
 Time interval or keyword used to change the Vector Healer's scheduler. **This only applies to the running of the application (restored after the run)**.
@@ -304,7 +308,7 @@ Values can be:
 
 -   A positive time interval (e.g., 10s, 1m, 2h) If given without a unit (e.g., 10), seconds is used. - zero will disable the healer (same as Disable)
 -   "Disable" to disable the healer
--   "Default" to keep the current healer's schedule Currently defined schedule is used as the default. (default: Default)
+-   "Default" to keep the current healer's schedule Currently defined schedule is used as the default. (default: 'Default')
 
 **Warning**: If the application is “killed” (ctrl-c) during population or query activity your index’s healer schedule might not be restored. The application will try to restore your setting if an exception occurs. Use with caution!
 

@@ -23,6 +23,8 @@ from distance import metrics as DISTANCES, Metric as DistanceMetric
 from helpers import set_hnsw_params_attrs, hnswstr
 from dsiterator import DSIterator
 
+from dynamic_throttle import DynamicThrottle
+
 logger = logging.getLogger(__name__)
 
 class Aerospike(BaseAerospike):
@@ -263,6 +265,12 @@ class Aerospike(BaseAerospike):
                 help="Don't adjust the distance returned by Aerospike based on the distance type (e.g., Square-Euclidean)",
                 action='store_true'
             )
+        parser.add_argument(
+                "--targetqps",
+                help="Target query per second. If zero (default), QPS disabled.",
+                default=0,
+                type=int
+            )
 
         BaseAerospike.parse_arguments(parser)
 
@@ -353,6 +361,13 @@ class Aerospike(BaseAerospike):
                                             vectorTypes.HnswSearchParams(),
                                             runtimeArgs.searchparams
                                         )
+            self._target_qps:int = runtimeArgs.targetqps
+
+            self._throttler: list[DynamicThrottle] = []
+
+            num_threads = self._query_runs if self._query_parallel else 1
+            for thread in range(self._query_runs):
+                self._throttler.append(DynamicThrottle(self._target_qps, num_threads))
 
     async def __aenter__(self):
         return self
@@ -1004,6 +1019,7 @@ class Aerospike(BaseAerospike):
                                             self._query_distance_aerospike,
                                             self._query_neighbors,
                                             self._query_latencies])
+                        self._throttler[i-1].reset()
                     i += 1
 
                 if len(taskPuts) > 0:
@@ -1022,12 +1038,14 @@ class Aerospike(BaseAerospike):
                         self._query_neighbors = runnns
                         self._query_latencies = times
                         totalquerytime += sum(times)
+                        self._throttler[i-1].reset()
                         i += 1
 
                 t = time.time()
                 self._query_metric_value = statistics.mean(metricValues)
                 self._aerospike_metric_value = statistics.mean(metricValuesAS)
                 self._query_metric_big_value = statistics.mean(metricValuesBig)
+                self._query_throttle = None
 
             print('\n')
             totqueries = sum([len(x[1]) for x in queries])
@@ -1158,6 +1176,7 @@ class Aerospike(BaseAerospike):
 
     async def vector_search(self, client:vectorASyncClient, query:List[float], runNbr:int) -> tuple[List[vectorTypes.Neighbor], float]:
         import math
+        self._query_throttle = self._throttler[runNbr-1]
         try:
             latency : int
             s = time.time_ns()
@@ -1169,6 +1188,7 @@ class Aerospike(BaseAerospike):
             t = time.time_ns()
             latency = (t-s)*math.pow(10,-6)
             self.QueryHistogramRecord(latency, runNbr)
+            await self._throttler[runNbr-1].throttle()
         except vectorTypes.AVSServerError as e:
             if "unknown vector" in e.rpc_error.details():
                 self._exception_counter.add(1, {"exception_type":f"vector_search: {e.rpc_error.details()}", "handled_by_user":True,"ns":self._idx_namespace,"set":self._idx_name,"run":runNbr})
