@@ -84,6 +84,6 @@ class DynamicThrottle:
         pause_duration: float = self.pause_for_duration()
 
         if pause_duration > 0:
-            self.tps_state = f'Throttled ({pause_duration} secs)'
+            self.tps_state = f'Throttled ({round(pause_duration,6)} secs)'
             # Sleep for the calculated duration in seconds
             await asyncio.sleep(pause_duration)
