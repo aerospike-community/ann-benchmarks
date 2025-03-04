@@ -2714,7 +2714,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Query Records per Seconds (TPS)",
+      "description": "Query per Seconds (QPS)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2746,7 +2746,7 @@
               }
             ]
           },
-          "unit": "recps"
+          "unit": "eps"
         },
         "overrides": []
       },
@@ -3263,7 +3263,7 @@
           "useBackend": false
         }
       ],
-      "title": "TPS Status",
+      "title": "QPS Status",
       "type": "stat"
     },
     {
@@ -3624,6 +3624,6 @@
   "timezone": "",
   "title": "Aerospike HDF",
   "uid": "fzUPYeJIkhdf",
-  "version": 16,
+  "version": 17,
   "weekStart": ""
 }
