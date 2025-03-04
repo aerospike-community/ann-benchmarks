@@ -296,9 +296,9 @@ If provided, this will override the ANN distance type as defined in the dataset.
 
 If provided, the ANN default distance formula is always used regardless of the ANN or “distancecalc” values.
 
-## --target-tps
+## --targetqps
 
-The queries targeted TPS. If zero, there is no target (unlimited). (default: 0)
+The targeted queries per second. If zero, there is no target (unlimited). (default: 0)
 
 ## --healerinterval INTERVAL
 

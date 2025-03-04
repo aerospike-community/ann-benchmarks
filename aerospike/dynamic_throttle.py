@@ -71,6 +71,9 @@ class DynamicThrottle:
         self.n_records += 1
         return pause_for
 
+    def reset(self) -> None:
+        self.tps_state = None
+
     async def throttle(self) -> None:
         """
         Throttle execution to maintain the target period.
@@ -80,9 +83,7 @@ class DynamicThrottle:
 
         pause_duration: float = self.pause_for_duration()
 
-        try:
-            self.tps_state = 'Throttled'
+        if pause_duration > 0:
+            self.tps_state = f'Throttled ({pause_duration} secs)'
             # Sleep for the calculated duration in seconds
             await asyncio.sleep(pause_duration)
-        finally:
-            self.tps_state = None

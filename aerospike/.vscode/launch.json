@@ -284,7 +284,7 @@
                     "--dataset", "${input:enterDataset}",
                     "--logfile", "./results/hdfquery.log",
                     "-r", "5",
-                    "--target-tps", "1000"
+                    "--targetqps", "100"
                     ],
             "console": "integratedTerminal"
         },

@@ -266,8 +266,8 @@ class Aerospike(BaseAerospike):
                 action='store_true'
             )
         parser.add_argument(
-                "--target-tps",
-                help="Target TPS for query. If zero (default), TPS disabled.",
+                "--targetqps",
+                help="Target query per second. If zero (default), QPS disabled.",
                 default=0,
                 type=int
             )
@@ -361,13 +361,13 @@ class Aerospike(BaseAerospike):
                                             vectorTypes.HnswSearchParams(),
                                             runtimeArgs.searchparams
                                         )
-            self._target_tps:int = runtimeArgs.target_tps
+            self._target_qps:int = runtimeArgs.targetqps
 
             self._throttler: list[DynamicThrottle] = []
 
             num_threads = self._query_runs if self._query_parallel else 1
             for thread in range(self._query_runs):
-                self._throttler.append(DynamicThrottle(self._target_tps, num_threads))
+                self._throttler.append(DynamicThrottle(self._target_qps, num_threads))
 
     async def __aenter__(self):
         return self
@@ -1019,6 +1019,7 @@ class Aerospike(BaseAerospike):
                                             self._query_distance_aerospike,
                                             self._query_neighbors,
                                             self._query_latencies])
+                        self._throttler[i-1].reset()
                     i += 1
 
                 if len(taskPuts) > 0:
@@ -1037,12 +1038,14 @@ class Aerospike(BaseAerospike):
                         self._query_neighbors = runnns
                         self._query_latencies = times
                         totalquerytime += sum(times)
+                        self._throttler[i-1].reset()
                         i += 1
 
                 t = time.time()
                 self._query_metric_value = statistics.mean(metricValues)
                 self._aerospike_metric_value = statistics.mean(metricValuesAS)
                 self._query_metric_big_value = statistics.mean(metricValuesBig)
+                self._query_throttle = None
 
             print('\n')
             totqueries = sum([len(x[1]) for x in queries])
